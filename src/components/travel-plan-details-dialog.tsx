@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, ExternalLink, CloudSun, CloudRain, Thermometer } from "lucide-react";
-import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer } from "lucide-react";
+import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isWithinInterval, isBefore } from "date-fns";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
@@ -44,48 +44,60 @@ export function TravelPlanDetailsDialog({
     if (!plan) return [];
 
     const startDate = startOfDay(parseISO(plan.startDate));
-    const endDate = startOfDay(parseISO(plan.endDate));
+    const endDate = startOfDay(parseISO(plan.endDate)); // Ensure endDate is also startOfDay for consistent comparison
     const duration = differenceInCalendarDays(endDate, startDate) + 1;
 
     const datePoints: Map<string, { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }> = new Map();
 
     // Always add start date
     datePoints.set(format(startDate, 'yyyy-MM-dd'), { date: startDate, id: 'start', labelPrefix: 'Start of Trip' });
-
+    
     // Add end date if different from start
-    if (!isWithinInterval(endDate, { start: startDate, end: startDate })) {
-         datePoints.set(format(endDate, 'yyyy-MM-dd'), { date: endDate, id: 'end', labelPrefix: 'End of Trip' });
-    } else if (duration === 1) { // If only one day, "End of Trip" is same as "Start"
-        // No need to add, start date covers it.
+    if (format(endDate, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd')) {
+      datePoints.set(format(endDate, 'yyyy-MM-dd'), { date: endDate, id: 'end', labelPrefix: 'End of Trip' });
+    } else if (duration === 1) {
+      // For single day trips, start and end are the same. No need to add 'end' separately.
+      // The label for the 'start' segment can be adjusted if needed for single day trips.
     }
-
 
     // Add middle date if trip is 3 days or longer, and middle is distinct from start/end
     if (duration >= 3) {
-        const middleDateOffset = Math.floor(duration / 2); // Ensure it's an integer offset
-        const middleDate = startOfDay(addDays(startDate, middleDateOffset));
-        
-        const middleDateStr = format(middleDate, 'yyyy-MM-dd');
-        const startDateStr = format(startDate, 'yyyy-MM-dd');
-        const endDateStr = format(endDate, 'yyyy-MM-dd');
+      const middleDateOffset = Math.floor(duration / 2); // Integer offset
+      const middleDate = startOfDay(addDays(startDate, middleDateOffset));
+      
+      const middleDateStr = format(middleDate, 'yyyy-MM-dd');
+      const startDateStr = format(startDate, 'yyyy-MM-dd');
+      const endDateStr = format(endDate, 'yyyy-MM-dd');
 
-        if (middleDateStr !== startDateStr && middleDateStr !== endDateStr) {
-            datePoints.set(middleDateStr, { date: middleDate, id: 'middle', labelPrefix: 'Middle of Trip' });
-        }
+      if (middleDateStr !== startDateStr && middleDateStr !== endDateStr) {
+          datePoints.set(middleDateStr, { date: middleDate, id: 'middle', labelPrefix: 'Middle of Trip' });
+      }
     }
     
-    // Create segments in order: start, middle (if exists), end (if exists and different)
-    const orderedSegments: { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }[] = [];
-    const startSegment = Array.from(datePoints.values()).find(dp => dp.id === 'start');
-    const middleSegment = Array.from(datePoints.values()).find(dp => dp.id === 'middle');
-    const endSegment = Array.from(datePoints.values()).find(dp => dp.id === 'end');
+    const orderedSegmentsConfig: { id: 'start' | 'middle' | 'end'; labelPrefix: string }[] = [];
+    if (datePoints.has(format(startDate, 'yyyy-MM-dd'))) {
+        orderedSegmentsConfig.push(datePoints.get(format(startDate, 'yyyy-MM-dd'))!);
+    }
+    // Attempt to add middle date if it exists and is different from start
+    const middleCandidate = Array.from(datePoints.values()).find(dp => dp.id === 'middle');
+    if (middleCandidate && format(middleCandidate.date, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd')) {
+        orderedSegmentsConfig.push(middleCandidate);
+    }
 
-    if (startSegment) orderedSegments.push(startSegment);
-    if (middleSegment && middleSegment.date !== startSegment?.date) orderedSegments.push(middleSegment);
-    if (endSegment && endSegment.date !== startSegment?.date && endSegment.date !== middleSegment?.date) orderedSegments.push(endSegment);
+    // Attempt to add end date if it exists and is different from start and middle
+    const endCandidate = Array.from(datePoints.values()).find(dp => dp.id === 'end');
+    if (endCandidate && format(endCandidate.date, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd') && 
+        (!middleCandidate || format(endCandidate.date, 'yyyy-MM-dd') !== format(middleCandidate.date, 'yyyy-MM-dd'))) {
+        orderedSegmentsConfig.push(endCandidate);
+    }
+    
+    // Remove duplicates based on date string, ensuring 'start', 'middle', 'end' id priority if dates clash (though logic tries to avoid this)
+    const finalSegmentMap = new Map<string, { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }>();
+    orderedSegmentsConfig.forEach(segmentConfig => {
+        finalSegmentMap.set(format(segmentConfig.date, 'yyyy-MM-dd'), segmentConfig);
+    });
 
-
-    return orderedSegments.map(dp => ({
+    return Array.from(finalSegmentMap.values()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(dp => ({
       id: dp.id,
       label: `${dp.labelPrefix} (${format(dp.date, "MMM d, yyyy")})`,
       date: dp.date,
@@ -128,14 +140,14 @@ export function TravelPlanDetailsDialog({
             weatherCondition: weather.condition,
             temperature: weather.temperature,
             familyProfile: familyProfile,
-            timeOfDay: "day", // Generic time for travel planning
+            timeOfDay: "day", 
             locationPreferences: plan.location,
           };
           const activities = await suggestActivities(activityInput);
           setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, activitySuggestions: activities, isLoading: false } : s));
           return { ...segment, weatherData: weather, clothingSuggestions: clothing, activitySuggestions: activities, isLoading: false };
         } catch (err: any) {
-          console.error(`Error fetching data for segment ${segment.id}:`, err);
+          console.error(`Error fetching data for segment ${segment.id} (${format(segment.date, "yyyy-MM-dd")}):`, err);
           const errorMessage = err.message || "Failed to load suggestions for this day.";
           setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: errorMessage, isLoading: false } : s));
           return { ...segment, error: errorMessage, isLoading: false };
@@ -217,17 +229,17 @@ export function TravelPlanDetailsDialog({
             <Plane className="text-primary" /> {plan?.tripName || "Travel Plan"} Suggestions
           </DialogTitle>
           {plan && (
-            <DialogDescription className="text-sm">
-              <div className="flex items-center gap-2 mt-1"><MapPin size={14}/> {plan.location}</div>
-              <div className="flex items-center gap-2 mt-1"><CalendarDays size={14}/> 
+            <>
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground"><MapPin size={14}/> {plan.location}</div>
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground"><CalendarDays size={14}/> 
                 {format(parseISO(plan.startDate), "MMM d, yyyy")} - {format(parseISO(plan.endDate), "MMM d, yyyy")}
               </div>
-            </DialogDescription>
+            </>
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0"> {/* Ensure ScrollArea can shrink and grow */}
-          <div className="p-6 space-y-4">
+        <ScrollArea className="flex-1 min-h-0"> 
+          <div className="p-6 space-y-4 pr-3"> {/* Added pr-3 for scrollbar space */}
             {overallLoading && segments.length === 0 && (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -249,7 +261,7 @@ export function TravelPlanDetailsDialog({
                 const WeatherIcon = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition) : CloudSun;
                 return (
                   <AccordionItem value={segment.id} key={segment.id}>
-                    <AccordionTrigger className="text-lg font-semibold hover:no-underline pr-2">
+                    <AccordionTrigger className="text-lg font-semibold hover:no-underline pr-2"> {/* Added pr-2 */}
                       {segment.label}
                       {segment.isLoading && <Skeleton className="h-5 w-20 ml-auto" />}
                       {segment.error && <AlertCircle className="h-5 w-5 text-destructive ml-auto" />}
@@ -355,5 +367,3 @@ export function TravelPlanDetailsDialog({
     </Dialog>
   );
 }
-
-    
