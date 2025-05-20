@@ -1,14 +1,23 @@
 import type { LucideProps } from 'lucide-react';
 
+export interface HourlyForecastData {
+  time: string; // e.g., "3:00 PM"
+  temperature: number;
+  condition: string; // "Sunny", "Cloudy", etc.
+  conditionCode: string; // Icon code
+  icon?: React.FC<LucideProps>; // Optional: pre-resolved icon component
+}
+
 export interface WeatherData {
   temperature: number;
-  condition: string; // "Sunny", "Cloudy", "Rainy", "Snowy"
-  conditionCode: string; // To map to icons
+  condition: string;
+  conditionCode: string;
   humidity: number;
   windSpeed: number;
   location: string;
   date: string; // ISO string for the forecast date
-  description: string; // e.g. "Clear sky"
+  description: string;
+  forecast?: HourlyForecastData[];
 }
 
 export interface FamilyProfile {

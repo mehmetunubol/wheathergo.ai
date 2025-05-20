@@ -1,7 +1,6 @@
-import type { WeatherData } from '@/types';
+import type { WeatherData, HourlyForecastData } from '@/types';
+import { format, setHours, getHours as getDateFnsHours } from 'date-fns';
 
-// Basic mock, in a real app this would call a weather service
-// Icon codes are inspired by OpenWeatherMap
 const weatherConditions = [
   { description: "clear sky", icon: "01d", generic: "Sunny" },
   { description: "few clouds", icon: "02d", generic: "Cloudy" },
@@ -14,49 +13,63 @@ const weatherConditions = [
   { description: "mist", icon: "50d", generic: "Cloudy" },
 ];
 
+const varyTemperature = (baseTemp: number) => baseTemp + Math.floor(Math.random() * 5) - 2;
+const getRandomCondition = () => weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
+
 export async function fetchWeather(location: string, date: Date): Promise<WeatherData> {
-  await new Promise(resolve => setTimeout(resolve, 700)); // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 700));
 
-  const randomConditionData = weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
-  const isFutureDate = new Date(date).setHours(0,0,0,0) > new Date().setHours(0,0,0,0);
-  
-  let tempModifier = 0;
-  // Slightly adjust temperature based on a hash of location and date to make it pseudo-consistent
+  const baseRandomConditionData = getRandomCondition();
   const pseudoHash = (location + date.toDateString()).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  tempModifier = (pseudoHash % 10) - 5; // -5 to +4 C change
+  let tempModifier = (pseudoHash % 10) - 5;
 
-  let temperature: number;
-  switch (randomConditionData.generic) {
-    case "Sunny":
-      temperature = 25 + tempModifier;
-      break;
-    case "Cloudy":
-      temperature = 18 + tempModifier;
-      break;
-    case "Rainy":
-      temperature = 15 + tempModifier;
-      break;
-    case "Snowy":
-      temperature = -2 + tempModifier;
-      break;
-    default:
-      temperature = 20 + tempModifier;
+  let baseTemperature: number;
+  switch (baseRandomConditionData.generic) {
+    case "Sunny": baseTemperature = 25 + tempModifier; break;
+    case "Cloudy": baseTemperature = 18 + tempModifier; break;
+    case "Rainy": baseTemperature = 15 + tempModifier; break;
+    case "Snowy": baseTemperature = -2 + tempModifier; break;
+    default: baseTemperature = 20 + tempModifier;
   }
   
-  // If it's a future date, make it a bit more variable
-  if (isFutureDate) {
-    temperature += (Math.random() * 6) - 3; // +/- 3 degrees
-  }
+  const selectedDateObj = date;
 
-
-  return {
-    temperature: Math.round(temperature),
-    condition: randomConditionData.generic,
-    conditionCode: randomConditionData.icon,
-    description: randomConditionData.description,
-    humidity: Math.floor(Math.random() * 40) + 40, // 40-79%
-    windSpeed: Math.floor(Math.random() * 15) + 5, // 5-19 km/h
+  const mainWeatherData: WeatherData = {
+    temperature: Math.round(baseTemperature),
+    condition: baseRandomConditionData.generic,
+    conditionCode: baseRandomConditionData.icon,
+    description: baseRandomConditionData.description,
+    humidity: Math.floor(Math.random() * 40) + 40,
+    windSpeed: Math.floor(Math.random() * 15) + 5,
     location: location,
-    date: date.toISOString(),
+    date: selectedDateObj.toISOString(),
+    forecast: []
   };
+
+  const forecastPoints: HourlyForecastData[] = [];
+  const forecastHours = [9, 12, 15, 18, 21]; // 9 AM, 12 PM, 3 PM, 6 PM, 9 PM
+
+  const now = new Date();
+  const isSelectedDateToday = format(selectedDateObj, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+  const currentHourToday = getDateFnsHours(now);
+
+  for (const hour of forecastHours) {
+    if (isSelectedDateToday && hour < currentHourToday) {
+      // If it's today and the forecast slot's starting hour is in the past, skip it.
+      continue;
+    }
+
+    const forecastTime = setHours(selectedDateObj, hour);
+    const hourlyCondition = getRandomCondition();
+    forecastPoints.push({
+      time: format(forecastTime, "h a"), // e.g., "9 AM"
+      temperature: varyTemperature(baseTemperature),
+      condition: hourlyCondition.generic,
+      conditionCode: hourlyCondition.icon,
+    });
+  }
+  
+  mainWeatherData.forecast = forecastPoints.length > 0 ? forecastPoints : undefined;
+
+  return mainWeatherData;
 }

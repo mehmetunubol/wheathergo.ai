@@ -12,6 +12,7 @@ import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/ac
 import type { WeatherData, LastKnownWeather } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday } from "date-fns";
+import { HourlyForecastCard } from "./hourly-forecast-card";
 
 const DEFAULT_LOCATION = "New York";
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
@@ -46,7 +47,6 @@ export function WeatherDashboard() {
     const storedProfile = localStorage.getItem("weatherwise-familyProfile");
     if (storedProfile) setFamilyProfile(storedProfile);
     
-    // Set initial loading to true to fetch data on first load
     setIsLoadingWeather(true); 
   }, []);
 
@@ -64,14 +64,13 @@ export function WeatherDashboard() {
     async function getWeather() {
       if (!location || !selectedDate) return;
       setIsLoadingWeather(true);
-      setWeatherData(null); // Clear previous data
-      setOutfitSuggestions(null); // Clear suggestions
-      setActivitySuggestions(null); // Clear suggestions
+      setWeatherData(null); 
+      setOutfitSuggestions(null); 
+      setActivitySuggestions(null); 
       try {
         const data = await fetchWeather(location, selectedDate);
         setWeatherData(data);
 
-        // Notification logic only for today's weather
         if (isToday(selectedDate)) {
             const todayStr = format(new Date(), "yyyy-MM-dd");
             const lastKnownWeatherStr = localStorage.getItem("weatherwise-lastKnownWeather");
@@ -124,8 +123,9 @@ export function WeatherDashboard() {
         setOutfitSuggestions(clothing);
       } catch (error) {
         console.error("Failed to get outfit suggestions:", error);
-        toast({ title: "AI Error", description: "Could not get outfit suggestions.", variant: "destructive" });
         setOutfitSuggestions(null);
+        // Avoid toast spam if AI consistently fails
+        // toast({ title: "AI Error", description: "Could not get outfit suggestions.", variant: "destructive" });
       } finally {
         setIsLoadingOutfit(false);
       }
@@ -142,8 +142,8 @@ export function WeatherDashboard() {
         setActivitySuggestions(activities);
       } catch (error) {
         console.error("Failed to get activity suggestions:", error);
-        toast({ title: "AI Error", description: "Could not get activity suggestions.", variant: "destructive" });
         setActivitySuggestions(null);
+        // toast({ title: "AI Error", description: "Could not get activity suggestions.", variant: "destructive" });
       } finally {
         setIsLoadingActivity(false);
       }
@@ -179,6 +179,14 @@ export function WeatherDashboard() {
         </div>
 
         <CurrentWeatherCard weatherData={weatherData} isLoading={isLoadingWeather} />
+        
+        { (weatherData || isLoadingWeather) && selectedDate && (
+          <HourlyForecastCard
+            forecastData={weatherData?.forecast}
+            isLoading={isLoadingWeather}
+            date={selectedDate}
+          />
+        )}
         
         {(weatherData || isLoadingOutfit || isLoadingActivity) && (
           <SuggestionsTabs
