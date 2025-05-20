@@ -53,24 +53,12 @@ export async function fetchWeather(location: string, date: Date): Promise<Weathe
   
   let forecastStartHour = 8; // Default start hour for future dates (8 AM)
   const forecastEndHour = 22; // Forecast up to 10 PM
-  const forecastInterval = 2; // Show forecast every 2 hours
+  const forecastInterval = 1; // Show forecast every 1 hour
 
   if (isSelectedDateToday) {
     // For today, start from the next hour, or 8 AM if it's earlier than that.
-    // Ensure we round up to the next even hour for 2-hour intervals if needed, or just start from next hour.
     const currentHour = getDateFnsHours(now);
     forecastStartHour = Math.max(8, currentHour + 1);
-    // If currentHour is 7, next hour is 8. If currentHour is 8, next hour is 9.
-    // To align with 2-hour intervals starting from an even hour like 8:
-    if (forecastStartHour % forecastInterval !== 0 && forecastStartHour > 8) {
-        // If next hour is 9, and interval is 2, start from 10.
-        // If next hour is 13, start from 14.
-        forecastStartHour = Math.ceil(forecastStartHour / forecastInterval) * forecastInterval;
-    } else if (forecastStartHour % forecastInterval !== 0 && forecastStartHour <= 8) {
-        // If it's early (e.g. current 6AM, forecastStartHour becomes 7AM), make it 8AM to align.
-        forecastStartHour = 8;
-    }
-     // if currentHour +1 is already an even hour, it's fine. e.g. current is 7, start at 8. current is 9, start at 10.
   }
 
 
@@ -83,7 +71,7 @@ export async function fetchWeather(location: string, date: Date): Promise<Weathe
 
     const hourlyCondition = getRandomCondition();
     forecastPoints.push({
-      time: format(forecastTime, "h a"), // e.g., "8 AM", "10 AM"
+      time: format(forecastTime, "h a"), // e.g., "8 AM", "9 AM"
       temperature: varyTemperature(baseTemperature),
       condition: hourlyCondition.generic,
       conditionCode: hourlyCondition.icon,
@@ -94,3 +82,4 @@ export async function fetchWeather(location: string, date: Date): Promise<Weathe
 
   return mainWeatherData;
 }
+
