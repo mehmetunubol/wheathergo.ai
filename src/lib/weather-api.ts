@@ -1,5 +1,5 @@
 import type { WeatherData, HourlyForecastData } from '@/types';
-import { format, setHours, getHours as getDateFnsHours, startOfHour } from 'date-fns';
+import { format, setHours, getHours as getDateFnsHours, startOfHour, addHours, startOfDay, isSameDay } from 'date-fns';
 
 const weatherConditions = [
   { description: "clear sky", icon: "01d", generic: "Sunny" },
@@ -47,32 +47,23 @@ export async function fetchWeather(location: string, date: Date): Promise<Weathe
   };
 
   const forecastPoints: HourlyForecastData[] = [];
-  
   const now = new Date();
   const isSelectedDateToday = format(selectedDateObj, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
   
-  let forecastStartHour = 8; // Default start hour for future dates (8 AM)
-  const forecastEndHour = 22; // Forecast up to 10 PM
-  const forecastInterval = 1; // Show forecast every 1 hour
-
+  let startTime: Date;
   if (isSelectedDateToday) {
-    // For today, start from the next hour, or 8 AM if it's earlier than that.
-    const currentHour = getDateFnsHours(now);
-    forecastStartHour = Math.max(8, currentHour + 1);
+    startTime = startOfHour(addHours(now, 1)); // Start from the next full hour for today
+  } else {
+    startTime = startOfDay(selectedDateObj); // Start from 00:00 of the selected future date
   }
 
-
-  for (let hour = forecastStartHour; hour <= forecastEndHour; hour += forecastInterval) {
-    const forecastTime = setHours(selectedDateObj, hour);
-    // Double check for today: if the generated forecastTime is somehow in the past (e.g. due to interval logic), skip
-    if (isSelectedDateToday && forecastTime < startOfHour(now)) {
-        continue;
-    }
-
+  for (let i = 0; i < 24; i++) { // Generate 24 hourly forecasts
+    const forecastTime = addHours(startTime, i);
     const hourlyCondition = getRandomCondition();
+    
     forecastPoints.push({
-      time: format(forecastTime, "h a"), // e.g., "8 AM", "9 AM"
-      temperature: varyTemperature(baseTemperature),
+      time: format(forecastTime, isSameDay(forecastTime, selectedDateObj) ? "h a" : "MMM d, h a"),
+      temperature: varyTemperature(baseTemperature), // Vary based on the main day's temp for simplicity
       condition: hourlyCondition.generic,
       conditionCode: hourlyCondition.icon,
     });
@@ -82,4 +73,3 @@ export async function fetchWeather(location: string, date: Date): Promise<Weathe
 
   return mainWeatherData;
 }
-

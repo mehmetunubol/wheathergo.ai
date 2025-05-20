@@ -16,26 +16,7 @@ interface HourlyForecastCardProps {
 }
 
 export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyForecastCardProps) {
-  const forecastTitle = `Forecast for ${formatDateFns(date, "MMM d")}`;
-
-  React.useEffect(() => {
-    // Helper style for no-scrollbar, can be added to globals.css if preferred
-    const styleId = "no-scrollbar-style";
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.innerHTML = `
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none; 
-          scrollbar-width: none; 
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }, []);
+  const forecastTitle = `Forecast for ${formatDateFns(date, "MMM d, yyyy")}`;
 
   if (isLoading) {
     return (
@@ -46,10 +27,10 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-4 overflow-x-auto pb-2 no-scrollbar">
-            {[...Array(4)].map((_, index) => (
-              <div key={index} className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[80px] bg-card">
-                <Skeleton className="h-4 w-10 mb-1" /> {/* Time */}
+          <div className="flex space-x-4 overflow-x-auto pb-2">
+            {[...Array(8)].map((_, index) => ( // Show more skeletons for 24h
+              <div key={index} className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[90px] bg-card">
+                <Skeleton className="h-4 w-12 mb-1" /> {/* Time potentially longer */}
                 <Skeleton className="h-8 w-8 rounded-full my-1" /> {/* Icon */}
                 <Skeleton className="h-4 w-8 mt-1" /> {/* Temp */}
               </div>
@@ -69,7 +50,7 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No further forecast details available for today, or for the selected date.</p>
+          <p className="text-muted-foreground">No forecast details available for the selected period.</p>
         </CardContent>
       </Card>
     );
@@ -83,13 +64,13 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar" role="list" aria-label="Hourly weather forecast">
+        <div className="flex space-x-3 overflow-x-auto pb-2" role="list" aria-label="Hourly weather forecast">
           {forecastData.map((item, index) => {
             const IconComponent = getWeatherIcon(item.conditionCode, item.condition);
             return (
               <div
                 key={index}
-                className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[90px] bg-card shadow-sm text-center"
+                className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[100px] bg-card shadow-sm text-center" // min-w increased slightly
                 role="listitem"
               >
                 <p className="text-xs font-medium text-muted-foreground">{item.time}</p>
