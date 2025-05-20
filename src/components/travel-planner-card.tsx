@@ -11,11 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat } from "lucide-react";
+import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye } from "lucide-react";
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
+import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog"; // New Import
 
 const DEFAULT_NOTIFICATION_TIME = "09:00"; // 9 AM
 const DEFAULT_NOTIFICATION_FREQUENCY: NotificationFrequency = "daily";
+const DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS = "An adult traveler.";
+
 
 const generateTimeOptions = () => {
   const options = [];
@@ -51,6 +54,11 @@ export function TravelPlannerCard() {
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = React.useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = React.useState(false);
 
+  const [selectedPlanForDetails, setSelectedPlanForDetails] = React.useState<TravelPlanItem | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  const [familyProfileForSuggestions, setFamilyProfileForSuggestions] = React.useState<string>(DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS);
+
+
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -62,13 +70,19 @@ export function TravelPlannerCard() {
           ...plan,
           startDate: plan.startDate, 
           endDate: plan.endDate,
-          notificationFrequency: plan.notificationFrequency || DEFAULT_NOTIFICATION_FREQUENCY, // Ensure old plans have a default
+          notificationFrequency: plan.notificationFrequency || DEFAULT_NOTIFICATION_FREQUENCY,
         })));
       } catch (error) {
         console.error("Failed to parse travel plans from localStorage", error);
         setTravelPlans([]);
       }
     }
+
+    const storedFamilyProfile = localStorage.getItem("weatherwise-familyProfile");
+    if (storedFamilyProfile) {
+      setFamilyProfileForSuggestions(storedFamilyProfile);
+    }
+
   }, []);
 
   React.useEffect(() => {
@@ -128,7 +142,8 @@ export function TravelPlannerCard() {
     });
   };
 
-  const handleDeleteTravelPlan = (id: string) => {
+  const handleDeleteTravelPlan = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent opening dialog when deleting
     setTravelPlans(travelPlans.filter((plan) => plan.id !== id));
     toast({
       title: "Travel Plan Removed",
@@ -136,189 +151,232 @@ export function TravelPlannerCard() {
     });
   };
 
+  const handleViewDetails = (plan: TravelPlanItem) => {
+    // Re-fetch family profile from local storage in case it changed on the main page
+    const storedFamilyProfile = localStorage.getItem("weatherwise-familyProfile");
+    if (storedFamilyProfile) {
+      setFamilyProfileForSuggestions(storedFamilyProfile);
+    } else {
+      setFamilyProfileForSuggestions(DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS);
+    }
+    setSelectedPlanForDetails(plan);
+    setIsDetailsDialogOpen(true);
+  };
+
+
   return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2">
-          <Plane className="text-primary" /> My Travel Plans
-        </CardTitle>
-        <CardDescription>
-          Plan your trips and receive weather updates and suggestions via email during your travel.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4 p-4 border rounded-md bg-card">
-          <h3 className="text-lg font-semibold flex items-center gap-2"><PlusCircle size={20} /> Add New Travel Plan</h3>
-          
-          <div>
-            <Label htmlFor="trip-name">Trip Name</Label>
-            <Input
-              id="trip-name"
-              value={newTripName}
-              onChange={(e) => setNewTripName(e.target.value)}
-              placeholder="E.g., Summer Vacation, Business Trip"
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="travel-location">Location</Label>
-            <Input
-              id="travel-location"
-              value={newLocation}
-              onChange={(e) => setNewLocation(e.target.value)}
-              placeholder="E.g., Paris, Tokyo"
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="travel-email">Email Address</Label>
-            <Input
-              id="travel-email"
-              type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              placeholder="your.email@example.com"
-              className="mt-1"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Plane className="text-primary" /> My Travel Plans
+          </CardTitle>
+          <CardDescription>
+            Plan your trips and receive weather updates and suggestions via email during your travel. Click a plan to view suggestions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4 p-4 border rounded-md bg-card">
+            <h3 className="text-lg font-semibold flex items-center gap-2"><PlusCircle size={20} /> Add New Travel Plan</h3>
+            
             <div>
-              <Label htmlFor="start-date">Start Date</Label>
-              <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {newStartDate ? format(newStartDate, "PPP") : "Select start date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={newStartDate}
-                    onSelect={(date) => {
-                        setNewStartDate(date);
-                        setIsStartDatePickerOpen(false);
-                        if (date && newEndDate && isBefore(newEndDate, date)) {
-                            setNewEndDate(undefined);
-                        }
-                    }}
-                    disabled={(date) => isBefore(date, startOfDay(new Date()))} 
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="trip-name">Trip Name</Label>
+              <Input
+                id="trip-name"
+                value={newTripName}
+                onChange={(e) => setNewTripName(e.target.value)}
+                placeholder="E.g., Summer Vacation, Business Trip"
+                className="mt-1"
+              />
             </div>
+
             <div>
-              <Label htmlFor="end-date">End Date</Label>
-               <Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {newEndDate ? format(newEndDate, "PPP") : "Select end date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={newEndDate}
-                    onSelect={(date) => {
-                        setNewEndDate(date);
-                        setIsEndDatePickerOpen(false);
-                    }}
-                    disabled={(date) => 
-                        (newStartDate && isBefore(date, newStartDate)) || isBefore(date, startOfDay(new Date()))
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="travel-location">Location</Label>
+              <Input
+                id="travel-location"
+                value={newLocation}
+                onChange={(e) => setNewLocation(e.target.value)}
+                placeholder="E.g., Paris, Tokyo"
+                className="mt-1"
+              />
             </div>
+
+            <div>
+              <Label htmlFor="travel-email">Email Address</Label>
+              <Input
+                id="travel-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="your.email@example.com"
+                className="mt-1"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start-date">Start Date</Label>
+                <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {newStartDate ? format(newStartDate, "PPP") : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={newStartDate}
+                      onSelect={(date) => {
+                          setNewStartDate(date);
+                          setIsStartDatePickerOpen(false);
+                          if (date && newEndDate && isBefore(newEndDate, date)) {
+                              setNewEndDate(undefined);
+                          }
+                      }}
+                      disabled={(date) => isBefore(date, startOfDay(new Date()))} 
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label htmlFor="end-date">End Date</Label>
+                 <Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {newEndDate ? format(newEndDate, "PPP") : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={newEndDate}
+                      onSelect={(date) => {
+                          setNewEndDate(date);
+                          setIsEndDatePickerOpen(false);
+                      }}
+                      disabled={(date) => 
+                          (newStartDate && isBefore(date, newStartDate)) || isBefore(date, startOfDay(new Date()))
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="travel-time">Notification Time</Label>
+                <Select value={newTime} onValueChange={setNewTime}>
+                  <SelectTrigger id="travel-time" className="w-full mt-1">
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="notification-frequency">Notification Frequency</Label>
+                <Select value={newNotificationFrequency} onValueChange={(value) => setNewNotificationFrequency(value as NotificationFrequency)}>
+                  <SelectTrigger id="notification-frequency" className="w-full mt-1">
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button onClick={handleAddTravelPlan} className="w-full">
+              <PlusCircle className="mr-2" /> Add Travel Plan
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="travel-time">Notification Time</Label>
-              <Select value={newTime} onValueChange={setNewTime}>
-                <SelectTrigger id="travel-time" className="w-full mt-1">
-                  <SelectValue placeholder="Select time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="notification-frequency">Notification Frequency</Label>
-              <Select value={newNotificationFrequency} onValueChange={(value) => setNewNotificationFrequency(value as NotificationFrequency)}>
-                <SelectTrigger id="notification-frequency" className="w-full mt-1">
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <Button onClick={handleAddTravelPlan} className="w-full">
-            <PlusCircle className="mr-2" /> Add Travel Plan
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-           <h3 className="text-lg font-semibold flex items-center gap-2 pt-4 border-t"><ListChecks size={20} /> Your Travel Plans</h3>
-          {travelPlans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No travel plans added yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {travelPlans.map((plan) => {
-                const startDate = parseISO(plan.startDate);
-                const endDate = parseISO(plan.endDate);
-                return (
-                <li key={plan.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-md bg-card shadow-sm space-y-2 sm:space-y-0">
-                  <div className="text-sm flex-grow">
-                    <p className="font-semibold text-base flex items-center gap-1"><Edit3 size={16} /> {plan.tripName}</p>
-                    <p className="text-muted-foreground flex items-center gap-1"><MapPin size={12} /> {plan.location}</p>
-                    <p className="text-muted-foreground text-xs flex items-center gap-1"><Mail size={12} /> {plan.email}</p>
-                    <p className="text-muted-foreground text-xs flex items-center gap-1">
-                      <CalendarDays size={12} /> 
-                      {isValid(startDate) ? format(startDate, "MMM d, yyyy") : "Invalid date"} - {isValid(endDate) ? format(endDate, "MMM d, yyyy") : "Invalid date"}
-                    </p>
-                    <p className="text-muted-foreground text-xs flex items-center gap-1">
-                      <Clock size={12} /> At {plan.notificationTimeLabel || plan.notificationTime}
-                    </p>
-                    <p className="text-muted-foreground text-xs flex items-center gap-1 capitalize">
-                      <Repeat size={12} /> {plan.notificationFrequency}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteTravelPlan(plan.id)}
-                    aria-label="Delete travel plan"
-                    className="mt-2 sm:mt-0 sm:ml-2 self-end sm:self-center"
+          <div className="space-y-3">
+             <h3 className="text-lg font-semibold flex items-center gap-2 pt-4 border-t"><ListChecks size={20} /> Your Travel Plans</h3>
+            {travelPlans.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No travel plans added yet. Click "Add New Travel Plan" to get started.</p>
+            ) : (
+              <ul className="space-y-3">
+                {travelPlans.map((plan) => {
+                  const startDate = parseISO(plan.startDate);
+                  const endDate = parseISO(plan.endDate);
+                  return (
+                  <li 
+                    key={plan.id} 
+                    className="p-4 border rounded-md bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleViewDetails(plan)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleViewDetails(plan)}
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </li>
-              )})}
-            </ul>
-          )}
-        </div>
-      </CardContent>
-       <CardFooter>
-        <p className="text-xs text-muted-foreground">
-          Notifications for your trips are processed conceptually based on the set frequency. In a real app, a backend service would handle email dispatch.
-        </p>
-      </CardFooter>
-    </Card>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                      <div className="text-sm flex-grow space-y-0.5">
+                        <p className="font-semibold text-base flex items-center gap-1.5"><Edit3 size={16} /> {plan.tripName}</p>
+                        <p className="text-muted-foreground flex items-center gap-1.5"><MapPin size={12} /> {plan.location}</p>
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Mail size={12} /> {plan.email}</p>
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5">
+                          <CalendarDays size={12} /> 
+                          {isValid(startDate) ? format(startDate, "MMM d, yyyy") : "Invalid date"} - {isValid(endDate) ? format(endDate, "MMM d, yyyy") : "Invalid date"}
+                        </p>
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5">
+                          <Clock size={12} /> At {plan.notificationTimeLabel || plan.notificationTime}
+                        </p>
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5 capitalize">
+                          <Repeat size={12} /> {plan.notificationFrequency}
+                        </p>
+                      </div>
+                      <div className="flex items-center self-end sm:self-center space-x-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}}
+                            aria-label="View suggestions"
+                            className="px-2 py-1 h-auto text-xs"
+                          >
+                            <Eye className="mr-1.5 h-3 w-3" /> View
+                          </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleDeleteTravelPlan(plan.id, e)}
+                          aria-label="Delete travel plan"
+                           className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </li>
+                )})}
+              </ul>
+            )}
+          </div>
+        </CardContent>
+         <CardFooter>
+          <p className="text-xs text-muted-foreground">
+            Notifications for your trips are processed conceptually. In a real app, a backend service would handle email dispatch and suggestion generation.
+          </p>
+        </CardFooter>
+      </Card>
+
+      {selectedPlanForDetails && (
+        <TravelPlanDetailsDialog
+          isOpen={isDetailsDialogOpen}
+          onOpenChange={setIsDetailsDialogOpen}
+          plan={selectedPlanForDetails}
+          familyProfile={familyProfileForSuggestions}
+        />
+      )}
+    </>
   );
 }
-
