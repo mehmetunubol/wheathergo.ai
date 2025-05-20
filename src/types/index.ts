@@ -1,5 +1,7 @@
 
 import type { LucideProps } from 'lucide-react';
+import type { ClothingSuggestionsOutput } from '@/ai/flows/clothing-suggestions';
+import type { ActivitySuggestionsOutput } from '@/ai/flows/activity-suggestions';
 
 export interface HourlyForecastData {
   time: string; // e.g., "3:00 PM" or "May 21, 3:00 PM"
@@ -53,8 +55,10 @@ export interface TripSegmentSuggestions {
   label: string;
   date: Date;
   weatherData: WeatherData | null;
-  // clothingSuggestions: ClothingSuggestionsOutput | null; // Assuming ClothingSuggestionsOutput is defined elsewhere
-  // activitySuggestions: ActivitySuggestionsOutput | null; // Assuming ActivitySuggestionsOutput is defined elsewhere
+  clothingSuggestions: ClothingSuggestionsOutput | null; 
+  activitySuggestions: ActivitySuggestionsOutput | null; 
   isLoading: boolean;
   error: string | null;
 }
+
+    
