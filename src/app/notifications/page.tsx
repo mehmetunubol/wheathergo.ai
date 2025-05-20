@@ -1,15 +1,16 @@
+
 "use client";
 
-import { ScheduleManagerCard } from "@/components/schedule-manager-card";
+import { TravelPlannerCard } from "@/components/travel-planner-card"; // Updated import
 
-export default function NotificationsPage() {
+export default function TravelPlannerPage() { // Renamed function
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Notification Schedules</h1>
+      <h1 className="text-2xl font-semibold">Travel Planner</h1> {/* Updated title */}
       <p className="text-muted-foreground">
-        Manage your daily email notifications for weather updates and suggestions.
+        Manage your travel plans and set up daily email notifications for weather updates and suggestions during your trips.
       </p>
-      <ScheduleManagerCard />
+      <TravelPlannerCard /> {/* Updated component */}
     </div>
   );
 }

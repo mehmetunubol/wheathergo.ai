@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { Zap, CalendarDays, Bell } from "lucide-react";
+import { Zap, CalendarDays, Plane } from "lucide-react"; // Changed Bell to Plane
 import { UserNav } from "./user-nav";
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
@@ -11,7 +12,7 @@ export function MainNav() {
 
   const navItems = [
     { href: "/", label: "Weather", icon: <CalendarDays className="h-4 w-4" /> },
-    { href: "/notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
+    { href: "/notifications", label: "Travel Plans", icon: <Plane className="h-4 w-4" /> }, // Updated label and icon
   ];
 
   return (

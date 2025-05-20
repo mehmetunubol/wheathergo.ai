@@ -1,3 +1,4 @@
+
 import type { LucideProps } from 'lucide-react';
 
 export interface HourlyForecastData {
@@ -32,10 +33,13 @@ export interface LastKnownWeather {
   date: string; // Date for which this weather was known, YYYY-MM-DD
 }
 
-export interface ScheduleItem {
+export interface TravelPlanItem {
   id: string;
+  tripName: string;
   location: string;
   email: string;
-  notificationTime: string; // e.g., "09:00", "17:00" (24-hour format)
-  label?: string; // User-friendly time label e.g. "9:00 PM"
+  startDate: string; // ISO string
+  endDate: string; // ISO string
+  notificationTime: string; // e.g., "09:00" (24-hour format)
+  notificationTimeLabel?: string; // User-friendly time label e.g. "9:00 AM"
 }
