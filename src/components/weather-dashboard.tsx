@@ -13,6 +13,7 @@ import type { WeatherData, LastKnownWeather } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday } from "date-fns";
 import { HourlyForecastCard } from "./hourly-forecast-card";
+import { ScheduleManagerCard } from "./schedule-manager-card"; // Added import
 
 const DEFAULT_LOCATION = "New York";
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
@@ -124,8 +125,6 @@ export function WeatherDashboard() {
       } catch (error) {
         console.error("Failed to get outfit suggestions:", error);
         setOutfitSuggestions(null);
-        // Avoid toast spam if AI consistently fails
-        // toast({ title: "AI Error", description: "Could not get outfit suggestions.", variant: "destructive" });
       } finally {
         setIsLoadingOutfit(false);
       }
@@ -143,7 +142,6 @@ export function WeatherDashboard() {
       } catch (error) {
         console.error("Failed to get activity suggestions:", error);
         setActivitySuggestions(null);
-        // toast({ title: "AI Error", description: "Could not get activity suggestions.", variant: "destructive" });
       } finally {
         setIsLoadingActivity(false);
       }
@@ -196,6 +194,9 @@ export function WeatherDashboard() {
             isActivityLoading={isLoadingActivity}
           />
         )}
+        
+        <ScheduleManagerCard />
+
       </main>
       <footer className="text-center py-4 text-sm text-muted-foreground border-t">
         WeatherWise Guide &copy; {new Date().getFullYear()}

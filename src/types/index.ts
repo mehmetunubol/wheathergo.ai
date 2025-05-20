@@ -1,7 +1,7 @@
 import type { LucideProps } from 'lucide-react';
 
 export interface HourlyForecastData {
-  time: string; // e.g., "3:00 PM"
+  time: string; // e.g., "3:00 PM" or "May 21, 3:00 PM"
   temperature: number;
   condition: string; // "Sunny", "Cloudy", etc.
   conditionCode: string; // Icon code
@@ -30,4 +30,12 @@ export interface LastKnownWeather {
   temperature: number;
   location: string;
   date: string; // Date for which this weather was known, YYYY-MM-DD
+}
+
+export interface ScheduleItem {
+  id: string;
+  location: string;
+  email: string;
+  notificationTime: string; // e.g., "09:00", "17:00" (24-hour format)
+  label?: string; // User-friendly time label e.g. "9:00 PM"
 }
