@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, MapPin } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, Check, X as XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -29,10 +30,17 @@ export function LocationDateSelector({
   onDateChange,
 }: LocationDateSelectorProps) {
   const [currentLocationInput, setCurrentLocationInput] = React.useState(location);
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
+  const [provisionalDate, setProvisionalDate] = React.useState<Date | undefined>(selectedDate);
 
   React.useEffect(() => {
     setCurrentLocationInput(location);
   }, [location]);
+
+  // Update provisionalDate if selectedDate prop changes from outside
+  React.useEffect(() => {
+    setProvisionalDate(selectedDate);
+  }, [selectedDate]);
 
   const handleLocationBlur = () => {
     if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
@@ -46,6 +54,24 @@ export function LocationDateSelector({
         onLocationChange(currentLocationInput);
       }
     }
+  };
+
+  const handleConfirmDate = () => {
+    onDateChange(provisionalDate);
+    setIsCalendarOpen(false);
+  };
+
+  const handleCancelDate = () => {
+    setProvisionalDate(selectedDate); // Reset to the last confirmed date
+    setIsCalendarOpen(false);
+  };
+
+  const handlePopoverOpenChange = (open: boolean) => {
+    if (open) {
+      // When opening, ensure provisional date is the current selected date
+      setProvisionalDate(selectedDate);
+    }
+    setIsCalendarOpen(open);
   };
 
   return (
@@ -76,7 +102,7 @@ export function LocationDateSelector({
           <Label htmlFor="date" className="text-sm font-medium">
             Date
           </Label>
-          <Popover>
+          <Popover open={isCalendarOpen} onOpenChange={handlePopoverOpenChange}>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
@@ -92,10 +118,18 @@ export function LocationDateSelector({
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={selectedDate}
-                onSelect={onDateChange}
+                selected={provisionalDate}
+                onSelect={setProvisionalDate}
                 initialFocus
               />
+              <div className="p-2 border-t border-border flex justify-end space-x-2">
+                <Button variant="ghost" size="sm" onClick={handleCancelDate}>
+                  <XIcon className="mr-1 h-4 w-4" /> Cancel
+                </Button>
+                <Button variant="default" size="sm" onClick={handleConfirmDate}>
+                  <Check className="mr-1 h-4 w-4" /> Confirm
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
