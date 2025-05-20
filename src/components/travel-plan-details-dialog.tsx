@@ -44,69 +44,54 @@ export function TravelPlanDetailsDialog({
     if (!plan) return [];
 
     const startDate = startOfDay(parseISO(plan.startDate));
-    const endDate = startOfDay(parseISO(plan.endDate)); // Ensure endDate is also startOfDay for consistent comparison
+    const endDate = startOfDay(parseISO(plan.endDate));
     const duration = differenceInCalendarDays(endDate, startDate) + 1;
 
-    const datePoints: Map<string, { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }> = new Map();
+    const potentialSegments: { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }[] = [];
 
-    // Always add start date
-    datePoints.set(format(startDate, 'yyyy-MM-dd'), { date: startDate, id: 'start', labelPrefix: 'Start of Trip' });
-    
-    // Add end date if different from start
-    if (format(endDate, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd')) {
-      datePoints.set(format(endDate, 'yyyy-MM-dd'), { date: endDate, id: 'end', labelPrefix: 'End of Trip' });
-    } else if (duration === 1) {
-      // For single day trips, start and end are the same. No need to add 'end' separately.
-      // The label for the 'start' segment can be adjusted if needed for single day trips.
-    }
+    // 1. Add start date
+    potentialSegments.push({ date: startDate, id: 'start', labelPrefix: 'Start of Trip' });
 
-    // Add middle date if trip is 3 days or longer, and middle is distinct from start/end
+    // 2. Add middle date (if applicable and distinct)
     if (duration >= 3) {
-      const middleDateOffset = Math.floor(duration / 2); // Integer offset
-      const middleDate = startOfDay(addDays(startDate, middleDateOffset));
-      
-      const middleDateStr = format(middleDate, 'yyyy-MM-dd');
+      const middleOffset = Math.floor(duration / 2);
+      const middleDateCand = startOfDay(addDays(startDate, middleOffset));
+      const middleDateStr = format(middleDateCand, 'yyyy-MM-dd');
       const startDateStr = format(startDate, 'yyyy-MM-dd');
       const endDateStr = format(endDate, 'yyyy-MM-dd');
 
       if (middleDateStr !== startDateStr && middleDateStr !== endDateStr) {
-          datePoints.set(middleDateStr, { date: middleDate, id: 'middle', labelPrefix: 'Middle of Trip' });
+        potentialSegments.push({ date: middleDateCand, id: 'middle', labelPrefix: 'Middle of Trip' });
       }
     }
-    
-    const orderedSegmentsConfig: { id: 'start' | 'middle' | 'end'; labelPrefix: string }[] = [];
-    if (datePoints.has(format(startDate, 'yyyy-MM-dd'))) {
-        orderedSegmentsConfig.push(datePoints.get(format(startDate, 'yyyy-MM-dd'))!);
-    }
-    // Attempt to add middle date if it exists and is different from start
-    const middleCandidate = Array.from(datePoints.values()).find(dp => dp.id === 'middle');
-    if (middleCandidate && format(middleCandidate.date, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd')) {
-        orderedSegmentsConfig.push(middleCandidate);
-    }
 
-    // Attempt to add end date if it exists and is different from start and middle
-    const endCandidate = Array.from(datePoints.values()).find(dp => dp.id === 'end');
-    if (endCandidate && format(endCandidate.date, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd') && 
-        (!middleCandidate || format(endCandidate.date, 'yyyy-MM-dd') !== format(middleCandidate.date, 'yyyy-MM-dd'))) {
-        orderedSegmentsConfig.push(endCandidate);
+    // 3. Add end date (if different from start date)
+    if (format(endDate, 'yyyy-MM-dd') !== format(startDate, 'yyyy-MM-dd')) {
+      potentialSegments.push({ date: endDate, id: 'end', labelPrefix: 'End of Trip' });
     }
     
-    // Remove duplicates based on date string, ensuring 'start', 'middle', 'end' id priority if dates clash (though logic tries to avoid this)
-    const finalSegmentMap = new Map<string, { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }>();
-    orderedSegmentsConfig.forEach(segmentConfig => {
-        finalSegmentMap.set(format(segmentConfig.date, 'yyyy-MM-dd'), segmentConfig);
+    // Deduplicate segments by date string, then sort by date
+    const uniqueSegmentsMap = new Map<string, { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }>();
+    potentialSegments.forEach(segment => {
+        const dateStr = format(segment.date, 'yyyy-MM-dd');
+        // A simple way to ensure date uniqueness; more sophisticated logic could prioritize based on ID if dates clashed.
+        if (!uniqueSegmentsMap.has(dateStr)) {
+            uniqueSegmentsMap.set(dateStr, segment);
+        }
     });
 
-    return Array.from(finalSegmentMap.values()).sort((a, b) => a.date.getTime() - b.date.getTime()).map(dp => ({
-      id: dp.id,
-      label: `${dp.labelPrefix} (${format(dp.date, "MMM d, yyyy")})`,
-      date: dp.date,
-      weatherData: null,
-      clothingSuggestions: null,
-      activitySuggestions: null,
-      isLoading: true,
-      error: null,
-    }));
+    return Array.from(uniqueSegmentsMap.values())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map(dp => ({
+        id: dp.id,
+        label: `${dp.labelPrefix} (${format(dp.date, "MMM d, yyyy")})`,
+        date: dp.date,
+        weatherData: null,
+        clothingSuggestions: null,
+        activitySuggestions: null,
+        isLoading: true,
+        error: null,
+      }));
 
   }, [plan]);
 
@@ -230,16 +215,16 @@ export function TravelPlanDetailsDialog({
           </DialogTitle>
           {plan && (
             <>
-              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground"><MapPin size={14}/> {plan.location}</div>
-              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground"><CalendarDays size={14}/> 
+              <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><MapPin size={14}/> {plan.location}</div>
+              <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><CalendarDays size={14}/> 
                 {format(parseISO(plan.startDate), "MMM d, yyyy")} - {format(parseISO(plan.endDate), "MMM d, yyyy")}
               </div>
             </>
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0"> 
-          <div className="p-6 space-y-4 pr-3"> {/* Added pr-3 for scrollbar space */}
+        <ScrollArea className="flex-1 min-h-0"> {/* Ensures ScrollArea can shrink and grow */}
+          <Accordion type="multiple" className="w-full p-6 pr-3 space-y-1"> {/* Padding moved here, direct child of ScrollArea */}
             {overallLoading && segments.length === 0 && (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -256,12 +241,11 @@ export function TravelPlanDetailsDialog({
                 </div>
             )}
             
-            <Accordion type="multiple" className="w-full">
               {segments.map((segment) => {
                 const WeatherIcon = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition) : CloudSun;
                 return (
                   <AccordionItem value={segment.id} key={segment.id}>
-                    <AccordionTrigger className="text-lg font-semibold hover:no-underline pr-2"> {/* Added pr-2 */}
+                    <AccordionTrigger className="text-lg font-semibold hover:no-underline pr-2">
                       {segment.label}
                       {segment.isLoading && <Skeleton className="h-5 w-20 ml-auto" />}
                       {segment.error && <AlertCircle className="h-5 w-5 text-destructive ml-auto" />}
@@ -347,11 +331,10 @@ export function TravelPlanDetailsDialog({
               })}
             </Accordion>
              {!overallLoading && segments.length > 0 && !allSegmentsLoadedSuccessfully && (
-                <div className="text-center py-4 text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200">
+                <div className="text-center py-4 text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200 mx-6 mb-4"> {/* Added margin for better spacing */}
                     <p><Info size={16} className="inline mr-1" /> Some suggestions might still be loading or encountered an error. Please check each section.</p>
                 </div>
             )}
-          </div>
         </ScrollArea>
 
         <DialogFooter className="p-6 pt-4 border-t bg-background">
@@ -367,3 +350,4 @@ export function TravelPlanDetailsDialog({
     </Dialog>
   );
 }
+
