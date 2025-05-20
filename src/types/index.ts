@@ -47,3 +47,14 @@ export interface TravelPlanItem {
   notificationFrequency: NotificationFrequency;
 }
 
+// This type is primarily for internal use within TravelPlanDetailsDialog
+export interface TripSegmentSuggestions {
+  id: string; 
+  label: string;
+  date: Date;
+  weatherData: WeatherData | null;
+  // clothingSuggestions: ClothingSuggestionsOutput | null; // Assuming ClothingSuggestionsOutput is defined elsewhere
+  // activitySuggestions: ActivitySuggestionsOutput | null; // Assuming ActivitySuggestionsOutput is defined elsewhere
+  isLoading: boolean;
+  error: string | null;
+}
