@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { MainNav } from '@/components/main-nav'; // Added MainNav
+import { AuthProvider } from '@/hooks/use-auth'; // Added AuthProvider
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,9 +27,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
-        <Toaster />
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
+        <AuthProvider>
+          <MainNav />
+          <main className="flex-grow container mx-auto max-w-2xl p-4">
+            {children}
+          </main>
+          <footer className="text-center py-4 text-sm text-muted-foreground border-t mt-auto">
+            WeatherWise Guide &copy; {new Date().getFullYear()}
+          </footer>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
