@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -37,28 +38,20 @@ export default function TripDetailsPage() {
 
     const startDate = startOfDay(parseISO(plan.startDate));
     const endDate = startOfDay(parseISO(plan.endDate));
-    const duration = differenceInCalendarDays(endDate, startDate); // 0 for same day, 1 for 2 days etc.
+    const duration = differenceInCalendarDays(endDate, startDate); 
 
     const potentialSegments: { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }[] = [];
 
-    // 1. Add start date
     potentialSegments.push({ date: startDate, id: 'start', labelPrefix: 'Start of Trip' });
 
-    // 2. Add middle date (if applicable and distinct)
-    // For a trip of 3 days (duration 2), middle day is startDate + 1
-    // For a trip of 4 days (duration 3), middle day is startDate + 1 (or 2, floor(3/2)=1)
-    // For a trip of 5 days (duration 4), middle day is startDate + 2
-    if (duration >= 2) { // At least 3 days long trip
-      const middleOffset = Math.floor(duration / 2.0); // floor ensures it's closer to start for even durations
+    if (duration >= 2) { 
+      const middleOffset = Math.floor(duration / 2.0);
       const middleDateCand = startOfDay(addDays(startDate, middleOffset));
-      
-      // Ensure middle date is not same as start or end
       if (!isSameDay(middleDateCand, startDate) && !isSameDay(middleDateCand, endDate)) {
         potentialSegments.push({ date: middleDateCand, id: 'middle', labelPrefix: 'Middle of Trip' });
       }
     }
     
-    // 3. Add end date (if different from start date)
     if (!isSameDay(endDate, startDate)) {
       potentialSegments.push({ date: endDate, id: 'end', labelPrefix: 'End of Trip' });
     }
@@ -66,15 +59,23 @@ export default function TripDetailsPage() {
     const uniqueSegmentsMap = new Map<string, { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }>();
     potentialSegments.forEach(segment => {
         const dateStr = format(segment.date, 'yyyy-MM-dd');
-        if (!uniqueSegmentsMap.has(dateStr)) { // Prioritize first occurrence (start, then middle, then end if dates were same)
+        if (!uniqueSegmentsMap.has(dateStr)) { 
             uniqueSegmentsMap.set(dateStr, segment);
+        } else {
+            // If date is already present, ensure 'start' or 'end' id takes precedence if applicable
+            // This handles cases where middle date might be same as start/end for short trips if logic was different
+            if (segment.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'start') {
+                 uniqueSegmentsMap.set(dateStr, segment);
+            } else if (segment.id === 'end' && uniqueSegmentsMap.get(dateStr)?.id !== 'end') {
+                 uniqueSegmentsMap.set(dateStr, segment);
+            }
         }
     });
 
     return Array.from(uniqueSegmentsMap.values())
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .map(dp => ({
-        id: dp.id, // Use the 'start', 'middle', 'end' as ID
+        id: dp.id,
         label: `${dp.labelPrefix} (${format(dp.date, "MMM d, yyyy")})`,
         date: dp.date,
         weatherData: null,
@@ -129,13 +130,12 @@ export default function TripDetailsPage() {
         setOverallLoading(false);
         return;
     }
-    setOverallLoading(true); // Reset overall loading when plan changes and segments are generated
+    setOverallLoading(true); 
 
     const fetchAllSegmentData = async () => {
       const promises = initialSegments.map(async (segment) => {
         try {
           const weather = await fetchWeather(plan.location, segment.date);
-          // Use functional updates for setSegments to ensure fresh state
           setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, weatherData: weather } : s));
 
           const clothingInput = {
@@ -159,9 +159,9 @@ export default function TripDetailsPage() {
           return { ...segment, weatherData: weather, clothingSuggestions: clothing, activitySuggestions: activities, isLoading: false, error: null };
         } catch (err: any) {
           console.error(`Error fetching data for segment ${segment.id} (${format(segment.date, "yyyy-MM-dd")}):`, err);
-          const errorMessage = err.message || "Failed to load suggestions for this day.";
-          setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: errorMessage, isLoading: false } : s));
-          return { ...segment, error: errorMessage, isLoading: false };
+          const userFriendlyMessage = "AI suggestions are currently unavailable for this day. Please try again later.";
+          setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: userFriendlyMessage, isLoading: false } : s));
+          return { ...segment, error: userFriendlyMessage, isLoading: false };
         }
       });
       
@@ -261,7 +261,7 @@ export default function TripDetailsPage() {
      );
   }
   
-  if (!plan) { // Should be caught by pageError but as a fallback
+  if (!plan) { 
     return (
          <Card className="mt-4 shadow-lg">
             <CardHeader><CardTitle>Loading Plan...</CardTitle></CardHeader>
@@ -313,12 +313,12 @@ export default function TripDetailsPage() {
                 )}
 
                 {segments.length > 0 && (
-                    <Accordion type="multiple" className="w-full space-y-1 p-1"> {/* Added p-1 to Accordion */}
+                    <Accordion type="multiple" className="w-full space-y-1 p-1">
                     {segments.map((segment) => {
                         const WeatherIcon = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition) : CloudSun;
                         return (
                         <AccordionItem value={segment.id} key={segment.id} className="border-b-0">
-                            <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0 pr-2"> {/* Added pr-2 */}
+                            <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0 pr-2">
                             <span>{segment.label}</span>
                             {segment.isLoading && <Skeleton className="h-5 w-20 ml-auto" />}
                             {segment.error && <AlertCircle className="h-5 w-5 text-destructive ml-auto" />}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -90,7 +91,7 @@ export default function HomePage() {
         }
       } catch (error) {
         console.error("Failed to fetch weather:", error);
-        toast({ title: "Error", description: "Could not fetch weather data.", variant: "destructive" });
+        toast({ title: "Error Fetching Weather", description: "Could not fetch weather data. Please check your connection or try again.", variant: "destructive" });
         setWeatherData(null);
       } finally {
         setIsLoadingWeather(false);
@@ -118,6 +119,11 @@ export default function HomePage() {
       } catch (error) {
         console.error("Failed to get outfit suggestions:", error);
         setOutfitSuggestions(null);
+        toast({
+          title: "Outfit Suggestion Error",
+          description: "Could not fetch outfit suggestions. The AI service may be temporarily unavailable. Please try again later.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoadingOutfit(false);
       }
@@ -135,6 +141,11 @@ export default function HomePage() {
       } catch (error) {
         console.error("Failed to get activity suggestions:", error);
         setActivitySuggestions(null);
+        toast({
+          title: "Activity Suggestion Error",
+          description: "Could not fetch activity suggestions. The AI service may be temporarily unavailable. Please try again later.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoadingActivity(false);
       }
@@ -188,3 +199,4 @@ export default function HomePage() {
     </div>
   );
 }
+

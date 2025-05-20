@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -51,8 +52,21 @@ const suggestClothingFlow = ai.defineFlow(
     inputSchema: ClothingSuggestionsInputSchema,
     outputSchema: ClothingSuggestionsOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+    try {
+      const {output} = await prompt(input);
+      if (!output) {
+        // This case should ideally be handled by the prompt throwing an error if generation fails.
+        // However, as a fallback, return an empty/default response adhering to the schema.
+        console.error('Clothing suggestions prompt returned no output, but did not throw. Input:', input);
+        return { suggestions: [], reasoning: "Could not generate suggestions at this time." };
+      }
+      return output;
+    } catch (error) {
+      console.error('Error in suggestClothingFlow:', error);
+      // Re-throw the error to be caught by the client-side caller
+      throw error;
+    }
   }
 );
+

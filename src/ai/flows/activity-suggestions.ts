@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -59,8 +60,21 @@ const activitySuggestionsFlow = ai.defineFlow(
     inputSchema: ActivitySuggestionsInputSchema,
     outputSchema: ActivitySuggestionsOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+    try {
+      const {output} = await prompt(input);
+      if (!output) {
+        // This case should ideally be handled by the prompt throwing an error if generation fails.
+        // However, as a fallback, return an empty/default response adhering to the schema.
+        console.error('Activity suggestions prompt returned no output, but did not throw. Input:', input);
+        return { indoorActivities: [], outdoorActivities: [] };
+      }
+      return output;
+    } catch (error) {
+      console.error('Error in activitySuggestionsFlow:', error);
+      // Re-throw the error to be caught by the client-side caller
+      throw error;
+    }
   }
 );
+
