@@ -1,5 +1,5 @@
 import type { WeatherData, HourlyForecastData } from '@/types';
-import { format, setHours, getHours as getDateFnsHours } from 'date-fns';
+import { format, setHours, getHours as getDateFnsHours, startOfHour } from 'date-fns';
 
 const weatherConditions = [
   { description: "clear sky", icon: "01d", generic: "Sunny" },
@@ -47,22 +47,43 @@ export async function fetchWeather(location: string, date: Date): Promise<Weathe
   };
 
   const forecastPoints: HourlyForecastData[] = [];
-  const forecastHours = [9, 12, 15, 18, 21]; // 9 AM, 12 PM, 3 PM, 6 PM, 9 PM
-
+  
   const now = new Date();
   const isSelectedDateToday = format(selectedDateObj, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
-  const currentHourToday = getDateFnsHours(now);
+  
+  let forecastStartHour = 8; // Default start hour for future dates (8 AM)
+  const forecastEndHour = 22; // Forecast up to 10 PM
+  const forecastInterval = 2; // Show forecast every 2 hours
 
-  for (const hour of forecastHours) {
-    if (isSelectedDateToday && hour < currentHourToday) {
-      // If it's today and the forecast slot's starting hour is in the past, skip it.
-      continue;
+  if (isSelectedDateToday) {
+    // For today, start from the next hour, or 8 AM if it's earlier than that.
+    // Ensure we round up to the next even hour for 2-hour intervals if needed, or just start from next hour.
+    const currentHour = getDateFnsHours(now);
+    forecastStartHour = Math.max(8, currentHour + 1);
+    // If currentHour is 7, next hour is 8. If currentHour is 8, next hour is 9.
+    // To align with 2-hour intervals starting from an even hour like 8:
+    if (forecastStartHour % forecastInterval !== 0 && forecastStartHour > 8) {
+        // If next hour is 9, and interval is 2, start from 10.
+        // If next hour is 13, start from 14.
+        forecastStartHour = Math.ceil(forecastStartHour / forecastInterval) * forecastInterval;
+    } else if (forecastStartHour % forecastInterval !== 0 && forecastStartHour <= 8) {
+        // If it's early (e.g. current 6AM, forecastStartHour becomes 7AM), make it 8AM to align.
+        forecastStartHour = 8;
+    }
+     // if currentHour +1 is already an even hour, it's fine. e.g. current is 7, start at 8. current is 9, start at 10.
+  }
+
+
+  for (let hour = forecastStartHour; hour <= forecastEndHour; hour += forecastInterval) {
+    const forecastTime = setHours(selectedDateObj, hour);
+    // Double check for today: if the generated forecastTime is somehow in the past (e.g. due to interval logic), skip
+    if (isSelectedDateToday && forecastTime < startOfHour(now)) {
+        continue;
     }
 
-    const forecastTime = setHours(selectedDateObj, hour);
     const hourlyCondition = getRandomCondition();
     forecastPoints.push({
-      time: format(forecastTime, "h a"), // e.g., "9 AM"
+      time: format(forecastTime, "h a"), // e.g., "8 AM", "10 AM"
       temperature: varyTemperature(baseTemperature),
       condition: hourlyCondition.generic,
       conditionCode: hourlyCondition.icon,
