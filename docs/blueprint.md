@@ -8,6 +8,8 @@
 - Profile Configuration: Allow users to input family member profiles (age, sensitivities) for tailored recommendations.
 - Future Forecast: Enable weather forecast lookup for future dates and different locations.
 - Notification Handler: Push notifications to the user if weather conditions expectations changed or different than previous days
+- Travel Planner Card: A card interface for managing and viewing saved travel plans.
+- Travel Plan Details Dialog: A dialog for viewing and editing the details of a specific travel plan.
 
 ## Style Guidelines:
 
