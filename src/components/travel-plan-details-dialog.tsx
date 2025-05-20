@@ -20,8 +20,8 @@ import type { TravelPlanItem, WeatherData } from "@/types";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
-import { Thermometer, CloudSun, Shirt, ListTree, Download, Share2, Info, CalendarDays, MapPinIcon } from "lucide-react";
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isBefore } from "date-fns"; // Added isBefore
+import { Thermometer, CloudSun, Shirt, ListTree, Download, Share2, Info, CalendarDays, MapPinIcon, Plane } from "lucide-react"; // Added Plane
 
 interface TravelPlanDetailsDialogProps {
   isOpen: boolean;
@@ -311,3 +311,4 @@ export function TravelPlanDetailsDialog({
     </Dialog>
   );
 }
+
