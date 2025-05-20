@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { TravelPlanItem } from "@/types";
+import type { TravelPlanItem, NotificationFrequency } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3 } from "lucide-react";
+import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat } from "lucide-react";
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
 
 const DEFAULT_NOTIFICATION_TIME = "09:00"; // 9 AM
+const DEFAULT_NOTIFICATION_FREQUENCY: NotificationFrequency = "daily";
 
 const generateTimeOptions = () => {
   const options = [];
@@ -45,6 +46,7 @@ export function TravelPlannerCard() {
   const [newStartDate, setNewStartDate] = React.useState<Date | undefined>(undefined);
   const [newEndDate, setNewEndDate] = React.useState<Date | undefined>(undefined);
   const [newTime, setNewTime] = React.useState<string>(DEFAULT_NOTIFICATION_TIME);
+  const [newNotificationFrequency, setNewNotificationFrequency] = React.useState<NotificationFrequency>(DEFAULT_NOTIFICATION_FREQUENCY);
   
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = React.useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = React.useState(false);
@@ -56,11 +58,11 @@ export function TravelPlannerCard() {
     if (storedTravelPlans) {
       try {
         const parsedPlans = JSON.parse(storedTravelPlans) as TravelPlanItem[];
-        // Ensure dates are valid Date objects after parsing
         setTravelPlans(parsedPlans.map(plan => ({
           ...plan,
-          startDate: plan.startDate, // Keep as ISO string from storage
-          endDate: plan.endDate,     // Keep as ISO string from storage
+          startDate: plan.startDate, 
+          endDate: plan.endDate,
+          notificationFrequency: plan.notificationFrequency || DEFAULT_NOTIFICATION_FREQUENCY, // Ensure old plans have a default
         })));
       } catch (error) {
         console.error("Failed to parse travel plans from localStorage", error);
@@ -110,6 +112,7 @@ export function TravelPlannerCard() {
       endDate: newEndDate.toISOString(),
       notificationTime: newTime,
       notificationTimeLabel: selectedTimeOption?.label || newTime,
+      notificationFrequency: newNotificationFrequency,
     };
     setTravelPlans([...travelPlans, newPlan]);
     setNewTripName("");
@@ -118,9 +121,10 @@ export function TravelPlannerCard() {
     setNewStartDate(undefined);
     setNewEndDate(undefined);
     setNewTime(DEFAULT_NOTIFICATION_TIME);
+    setNewNotificationFrequency(DEFAULT_NOTIFICATION_FREQUENCY);
     toast({
       title: "Travel Plan Added",
-      description: `Notifications for ${newPlan.tripName} to ${newPlan.location} will be sent daily to ${newPlan.email} at ${newPlan.notificationTimeLabel}.`,
+      description: `Notifications for ${newPlan.tripName} to ${newPlan.location} will be sent ${newPlan.notificationFrequency} to ${newPlan.email} at ${newPlan.notificationTimeLabel}.`,
     });
   };
 
@@ -139,7 +143,7 @@ export function TravelPlannerCard() {
           <Plane className="text-primary" /> My Travel Plans
         </CardTitle>
         <CardDescription>
-          Plan your trips and receive daily weather updates and suggestions via email during your travel.
+          Plan your trips and receive weather updates and suggestions via email during your travel.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -197,12 +201,11 @@ export function TravelPlannerCard() {
                     onSelect={(date) => {
                         setNewStartDate(date);
                         setIsStartDatePickerOpen(false);
-                        // If end date is before new start date, clear end date
                         if (date && newEndDate && isBefore(newEndDate, date)) {
                             setNewEndDate(undefined);
                         }
                     }}
-                    disabled={(date) => isBefore(date, startOfDay(new Date()))} // Disable past dates
+                    disabled={(date) => isBefore(date, startOfDay(new Date()))} 
                     initialFocus
                   />
                 </PopoverContent>
@@ -225,7 +228,7 @@ export function TravelPlannerCard() {
                         setNewEndDate(date);
                         setIsEndDatePickerOpen(false);
                     }}
-                    disabled={(date) => // Disable dates before start date or today
+                    disabled={(date) => 
                         (newStartDate && isBefore(date, newStartDate)) || isBefore(date, startOfDay(new Date()))
                     }
                     initialFocus
@@ -235,20 +238,34 @@ export function TravelPlannerCard() {
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="travel-time">Daily Notification Time</Label>
-            <Select value={newTime} onValueChange={setNewTime}>
-              <SelectTrigger id="travel-time" className="w-full mt-1">
-                <SelectValue placeholder="Select time" />
-              </SelectTrigger>
-              <SelectContent>
-                {timeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="travel-time">Notification Time</Label>
+              <Select value={newTime} onValueChange={setNewTime}>
+                <SelectTrigger id="travel-time" className="w-full mt-1">
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="notification-frequency">Notification Frequency</Label>
+              <Select value={newNotificationFrequency} onValueChange={(value) => setNewNotificationFrequency(value as NotificationFrequency)}>
+                <SelectTrigger id="notification-frequency" className="w-full mt-1">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <Button onClick={handleAddTravelPlan} className="w-full">
             <PlusCircle className="mr-2" /> Add Travel Plan
@@ -275,7 +292,10 @@ export function TravelPlannerCard() {
                       {isValid(startDate) ? format(startDate, "MMM d, yyyy") : "Invalid date"} - {isValid(endDate) ? format(endDate, "MMM d, yyyy") : "Invalid date"}
                     </p>
                     <p className="text-muted-foreground text-xs flex items-center gap-1">
-                      <Clock size={12} /> Daily at {plan.notificationTimeLabel || plan.notificationTime}
+                      <Clock size={12} /> At {plan.notificationTimeLabel || plan.notificationTime}
+                    </p>
+                    <p className="text-muted-foreground text-xs flex items-center gap-1 capitalize">
+                      <Repeat size={12} /> {plan.notificationFrequency}
                     </p>
                   </div>
                   <Button
@@ -295,7 +315,7 @@ export function TravelPlannerCard() {
       </CardContent>
        <CardFooter>
         <p className="text-xs text-muted-foreground">
-          Daily notifications for your trips are processed conceptually. In a real app, a backend service would handle email dispatch.
+          Notifications for your trips are processed conceptually based on the set frequency. In a real app, a backend service would handle email dispatch.
         </p>
       </CardFooter>
     </Card>

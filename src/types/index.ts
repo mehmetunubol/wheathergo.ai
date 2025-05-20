@@ -33,6 +33,8 @@ export interface LastKnownWeather {
   date: string; // Date for which this weather was known, YYYY-MM-DD
 }
 
+export type NotificationFrequency = 'daily' | 'weekly';
+
 export interface TravelPlanItem {
   id: string;
   tripName: string;
@@ -42,4 +44,6 @@ export interface TravelPlanItem {
   endDate: string; // ISO string
   notificationTime: string; // e.g., "09:00" (24-hour format)
   notificationTimeLabel?: string; // User-friendly time label e.g. "9:00 AM"
+  notificationFrequency: NotificationFrequency;
 }
+
