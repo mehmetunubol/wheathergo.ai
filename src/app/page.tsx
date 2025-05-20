@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { LocationDateSelector } from "@/components/location-date-selector";
 import { FamilyProfileEditor } from "@/components/family-profile-editor";
 import { CurrentWeatherCard } from "@/components/current-weather-card";
@@ -13,6 +14,10 @@ import type { WeatherData, LastKnownWeather } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plane, LogIn, Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 const DEFAULT_LOCATION = "New York";
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
@@ -38,6 +43,7 @@ export default function HomePage() {
   const [isLoadingActivity, setIsLoadingActivity] = React.useState(false);
 
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   React.useEffect(() => {
     const storedLocation = localStorage.getItem("weatherwise-location");
@@ -196,6 +202,38 @@ export default function HomePage() {
           isActivityLoading={isLoadingActivity}
         />
       )}
+
+      <Card className="shadow-lg bg-primary/10 border-primary/30">
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
+            <Sparkles className="text-accent h-6 w-6" />
+            Ready for an Adventure?
+            <Sparkles className="text-accent h-6 w-6" />
+          </CardTitle>
+          <CardDescription className="!mt-2 text-foreground/90">
+            Use our <strong className="font-semibold text-primary">Travel Planner</strong> to get daily weather forecasts and AI-powered suggestions for your entire trip!
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Plan your packing and activities with ease. {!isAuthenticated && "Sign up or log in to save your plans and enable (simulated) email notifications!"}
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
+            <Link href="/notifications" passHref>
+              <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Plane className="mr-2 h-5 w-5" /> Explore Travel Plans
+              </Button>
+            </Link>
+            {!isAuthenticated && (
+              <Link href="/login" passHref>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <LogIn className="mr-2 h-5 w-5" /> Sign Up / Log In
+                </Button>
+              </Link>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
