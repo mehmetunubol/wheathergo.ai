@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft } from "lucide-react";
-import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isWithinInterval, isBefore } from "date-fns";
+import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isWithinInterval, isBefore, isSameDay } from "date-fns";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
@@ -313,12 +313,12 @@ export default function TripDetailsPage() {
                 )}
 
                 {segments.length > 0 && (
-                    <Accordion type="multiple" className="w-full space-y-1">
+                    <Accordion type="multiple" className="w-full space-y-1 p-1"> {/* Added p-1 to Accordion */}
                     {segments.map((segment) => {
                         const WeatherIcon = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition) : CloudSun;
                         return (
                         <AccordionItem value={segment.id} key={segment.id} className="border-b-0">
-                            <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
+                            <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0 pr-2"> {/* Added pr-2 */}
                             <span>{segment.label}</span>
                             {segment.isLoading && <Skeleton className="h-5 w-20 ml-auto" />}
                             {segment.error && <AlertCircle className="h-5 w-5 text-destructive ml-auto" />}
@@ -426,3 +426,4 @@ export default function TripDetailsPage() {
     </div>
   );
 }
+
