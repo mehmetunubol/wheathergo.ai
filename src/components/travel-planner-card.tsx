@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea"; // Added Textarea import
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye } from "lucide-react";
+import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye, Info } from "lucide-react";
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
-import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog"; // New Import
+import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog";
 
 const DEFAULT_NOTIFICATION_TIME = "09:00"; // 9 AM
 const DEFAULT_NOTIFICATION_FREQUENCY: NotificationFrequency = "daily";
@@ -50,12 +51,17 @@ export function TravelPlannerCard() {
   const [newEndDate, setNewEndDate] = React.useState<Date | undefined>(undefined);
   const [newTime, setNewTime] = React.useState<string>(DEFAULT_NOTIFICATION_TIME);
   const [newNotificationFrequency, setNewNotificationFrequency] = React.useState<NotificationFrequency>(DEFAULT_NOTIFICATION_FREQUENCY);
-  
+  const [newTripContext, setNewTripContext] = React.useState<string>(""); // State for trip context
+
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = React.useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = React.useState(false);
 
   const [selectedPlanForDetails, setSelectedPlanForDetails] = React.useState<TravelPlanItem | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  
+  // This state is no longer directly used by TravelPlannerCard for suggestions,
+  // but kept here in case other parts of the app might rely on it or if it's useful for future enhancements.
+  // The trip details page will fetch the family profile independently.
   const [familyProfileForSuggestions, setFamilyProfileForSuggestions] = React.useState<string>(DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS);
 
 
@@ -68,9 +74,10 @@ export function TravelPlannerCard() {
         const parsedPlans = JSON.parse(storedTravelPlans) as TravelPlanItem[];
         setTravelPlans(parsedPlans.map(plan => ({
           ...plan,
-          startDate: plan.startDate, 
+          startDate: plan.startDate,
           endDate: plan.endDate,
           notificationFrequency: plan.notificationFrequency || DEFAULT_NOTIFICATION_FREQUENCY,
+          tripContext: plan.tripContext || "", // Ensure tripContext is initialized
         })));
       } catch (error) {
         console.error("Failed to parse travel plans from localStorage", error);
@@ -93,7 +100,7 @@ export function TravelPlannerCard() {
     if (!newTripName.trim() || !newLocation.trim() || !newEmail.trim() || !newStartDate || !newEndDate) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all fields for the travel plan.",
+        description: "Please fill in all fields for the travel plan (except optional Trip Context).",
         variant: "destructive",
       });
       return;
@@ -127,6 +134,7 @@ export function TravelPlannerCard() {
       notificationTime: newTime,
       notificationTimeLabel: selectedTimeOption?.label || newTime,
       notificationFrequency: newNotificationFrequency,
+      tripContext: newTripContext.trim() || undefined, // Add trip context, store undefined if empty
     };
     setTravelPlans([...travelPlans, newPlan]);
     setNewTripName("");
@@ -136,6 +144,7 @@ export function TravelPlannerCard() {
     setNewEndDate(undefined);
     setNewTime(DEFAULT_NOTIFICATION_TIME);
     setNewNotificationFrequency(DEFAULT_NOTIFICATION_FREQUENCY);
+    setNewTripContext(""); // Reset trip context
     toast({
       title: "Travel Plan Added",
       description: `Notifications for ${newPlan.tripName} to ${newPlan.location} will be sent ${newPlan.notificationFrequency} to ${newPlan.email} at ${newPlan.notificationTimeLabel}.`,
@@ -143,7 +152,7 @@ export function TravelPlannerCard() {
   };
 
   const handleDeleteTravelPlan = (id: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent opening dialog when deleting
+    event.stopPropagation(); 
     setTravelPlans(travelPlans.filter((plan) => plan.id !== id));
     toast({
       title: "Travel Plan Removed",
@@ -152,13 +161,6 @@ export function TravelPlannerCard() {
   };
 
   const handleViewDetails = (plan: TravelPlanItem) => {
-    // Re-fetch family profile from local storage in case it changed on the main page
-    const storedFamilyProfile = localStorage.getItem("weatherwise-familyProfile");
-    if (storedFamilyProfile) {
-      setFamilyProfileForSuggestions(storedFamilyProfile);
-    } else {
-      setFamilyProfileForSuggestions(DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS);
-    }
     setSelectedPlanForDetails(plan);
     setIsDetailsDialogOpen(true);
   };
@@ -172,7 +174,7 @@ export function TravelPlannerCard() {
             <Plane className="text-primary" /> My Travel Plans
           </CardTitle>
           <CardDescription>
-            Plan your trips and receive weather updates and suggestions via email during your travel. Click a plan to view suggestions.
+            Plan your trips and receive weather updates and suggestions via email during your travel. Click a plan to view summary or full suggestions.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -296,6 +298,18 @@ export function TravelPlannerCard() {
                 </Select>
               </div>
             </div>
+            
+            <div>
+              <Label htmlFor="trip-context">Trip-Specific Context (Optional)</Label>
+              <Textarea
+                id="trip-context"
+                value={newTripContext}
+                onChange={(e) => setNewTripContext(e.target.value)}
+                placeholder="E.g., Business meetings during the day, casual evenings. Prefer indoor activities. Need wheelchair accessible options."
+                className="mt-1 min-h-[80px]"
+              />
+            </div>
+
             <Button onClick={handleAddTravelPlan} className="w-full">
               <PlusCircle className="mr-2" /> Add Travel Plan
             </Button>
@@ -334,13 +348,19 @@ export function TravelPlannerCard() {
                         <p className="text-muted-foreground text-xs flex items-center gap-1.5 capitalize">
                           <Repeat size={12} /> {plan.notificationFrequency}
                         </p>
+                        {plan.tripContext && (
+                          <p className="text-muted-foreground text-xs flex items-start gap-1.5 pt-1">
+                            <Info size={12} className="mt-0.5 shrink-0" /> 
+                            <span className="italic truncate">Context: {plan.tripContext.length > 50 ? `${plan.tripContext.substring(0, 50)}...` : plan.tripContext}</span>
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center self-end sm:self-center space-x-2">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}}
-                            aria-label="View suggestions"
+                            aria-label="View summary" 
                             className="px-2 py-1 h-auto text-xs"
                           >
                             <Eye className="mr-1.5 h-3 w-3" /> View
@@ -374,7 +394,6 @@ export function TravelPlannerCard() {
           isOpen={isDetailsDialogOpen}
           onOpenChange={setIsDetailsDialogOpen}
           plan={selectedPlanForDetails}
-          familyProfile={familyProfileForSuggestions}
         />
       )}
     </>

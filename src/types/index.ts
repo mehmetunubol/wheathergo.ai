@@ -47,18 +47,17 @@ export interface TravelPlanItem {
   notificationTime: string; // e.g., "09:00" (24-hour format)
   notificationTimeLabel?: string; // User-friendly time label e.g. "9:00 AM"
   notificationFrequency: NotificationFrequency;
+  tripContext?: string; // New field for trip-specific context
 }
 
-// This type is primarily for internal use within TravelPlanDetailsDialog
+// This type is primarily for internal use within the trip details page
 export interface TripSegmentSuggestions {
-  id: string; 
+  id: 'start' | 'middle' | 'end';
   label: string;
   date: Date;
   weatherData: WeatherData | null;
-  clothingSuggestions: ClothingSuggestionsOutput | null; 
-  activitySuggestions: ActivitySuggestionsOutput | null; 
+  clothingSuggestions: ClothingSuggestionsOutput | null;
+  activitySuggestions: ActivitySuggestionsOutput | null;
   isLoading: boolean;
   error: string | null;
 }
-
-    

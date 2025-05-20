@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plane, CalendarDays, MapPin, ExternalLink } from "lucide-react";
+import { Plane, CalendarDays, MapPin, ExternalLink, Mail, Clock, Repeat, Info } from "lucide-react"; // Added Mail, Clock, Repeat, Info
 import { format, parseISO } from "date-fns";
 import type { TravelPlanItem } from "@/types";
 import Link from "next/link";
@@ -32,31 +32,33 @@ export function TravelPlanDetailsDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+        <DialogHeader className="pb-4">
           <DialogTitle className="text-xl flex items-center gap-2">
             <Plane className="text-primary" /> {plan.tripName} - Summary
           </DialogTitle>
             <div className="pt-2 space-y-1 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <MapPin size={14}/> {plan.location}
-              </div>
+              <div className="flex items-center gap-2"><MapPin size={14}/> {plan.location}</div>
               <div className="flex items-center gap-2">
                 <CalendarDays size={14}/> 
                 {format(parseISO(plan.startDate), "MMM d, yyyy")} - {format(parseISO(plan.endDate), "MMM d, yyyy")}
               </div>
                <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                {plan.email}
+                <Mail size={14} /> {plan.email}
               </div>
               <div className="flex items-center gap-2 capitalize">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-repeat"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
-                {plan.notificationFrequency} at {plan.notificationTimeLabel || plan.notificationTime}
+                <Repeat size={14} /> {plan.notificationFrequency} at {plan.notificationTimeLabel || plan.notificationTime}
               </div>
+              {plan.tripContext && (
+                <div className="flex items-start gap-2 pt-1"> {/* items-start for better alignment with multi-line text */}
+                  <Info size={14} className="mt-0.5 shrink-0" /> 
+                  <span className="italic">Context: {plan.tripContext}</span>
+                </div>
+              )}
             </div>
         </DialogHeader>
         
         <DialogDescription className="pt-4">
-          This is a summary of your travel plan. For a detailed daily itinerary with weather forecasts and suggestions, please view the full plan.
+          This is a summary of your travel plan. For a detailed daily itinerary with weather forecasts and AI-powered suggestions, please view the full plan.
         </DialogDescription>
 
         <DialogFooter className="pt-4">

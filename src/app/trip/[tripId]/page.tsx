@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft } from "lucide-react";
+import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft, Edit3, Mail, Clock, Repeat } from "lucide-react"; // Added Edit3, Mail, Clock, Repeat
 import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isWithinInterval, isBefore, isSameDay } from "date-fns";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
@@ -38,52 +37,55 @@ export default function TripDetailsPage() {
 
     const startDate = startOfDay(parseISO(plan.startDate));
     const endDate = startOfDay(parseISO(plan.endDate));
-    const duration = differenceInCalendarDays(endDate, startDate); 
+    const duration = differenceInCalendarDays(endDate, startDate); // Duration is 0 for a 1-day trip
 
-    const potentialSegments: { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }[] = [];
+    const potentialSegments: TripSegmentSuggestions[] = [];
 
-    potentialSegments.push({ date: startDate, id: 'start', labelPrefix: 'Start of Trip' });
+    potentialSegments.push({
+      date: startDate,
+      id: 'start',
+      label: `Start of Trip (${format(startDate, "MMM d, yyyy")})`,
+      weatherData: null, clothingSuggestions: null, activitySuggestions: null, isLoading: true, error: null
+    });
 
-    if (duration >= 2) { 
-      const middleOffset = Math.floor(duration / 2.0);
+    if (duration >= 2) { // Middle day only makes sense for trips of 3 days or longer (duration >=2)
+      const middleOffset = Math.floor(duration / 2.0); // For 5 day trip (duration 4), middleOffset = 2, date = start + 2
       const middleDateCand = startOfDay(addDays(startDate, middleOffset));
       if (!isSameDay(middleDateCand, startDate) && !isSameDay(middleDateCand, endDate)) {
-        potentialSegments.push({ date: middleDateCand, id: 'middle', labelPrefix: 'Middle of Trip' });
+        potentialSegments.push({
+          date: middleDateCand,
+          id: 'middle',
+          label: `Middle of Trip (${format(middleDateCand, "MMM d, yyyy")})`,
+          weatherData: null, clothingSuggestions: null, activitySuggestions: null, isLoading: true, error: null
+        });
       }
     }
     
     if (!isSameDay(endDate, startDate)) {
-      potentialSegments.push({ date: endDate, id: 'end', labelPrefix: 'End of Trip' });
+      potentialSegments.push({
+        date: endDate,
+        id: 'end',
+        label: `End of Trip (${format(endDate, "MMM d, yyyy")})`,
+        weatherData: null, clothingSuggestions: null, activitySuggestions: null, isLoading: true, error: null
+      });
     }
     
-    const uniqueSegmentsMap = new Map<string, { date: Date; id: 'start' | 'middle' | 'end'; labelPrefix: string }>();
+    // Ensure uniqueness by date string, prioritizing start/middle/end IDs if multiple fall on same day (unlikely with this logic)
+    const uniqueSegmentsMap = new Map<string, TripSegmentSuggestions>();
     potentialSegments.forEach(segment => {
         const dateStr = format(segment.date, 'yyyy-MM-dd');
-        if (!uniqueSegmentsMap.has(dateStr)) { 
+        if (!uniqueSegmentsMap.has(dateStr) || 
+            (segment.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'start') ||
+            (segment.id === 'end' && uniqueSegmentsMap.get(dateStr)?.id !== 'end') ||
+            (segment.id === 'middle' && uniqueSegmentsMap.get(dateStr)?.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'middle') // Prefer middle over start if same
+        ) {
             uniqueSegmentsMap.set(dateStr, segment);
-        } else {
-            // If date is already present, ensure 'start' or 'end' id takes precedence if applicable
-            // This handles cases where middle date might be same as start/end for short trips if logic was different
-            if (segment.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'start') {
-                 uniqueSegmentsMap.set(dateStr, segment);
-            } else if (segment.id === 'end' && uniqueSegmentsMap.get(dateStr)?.id !== 'end') {
-                 uniqueSegmentsMap.set(dateStr, segment);
-            }
         }
     });
 
     return Array.from(uniqueSegmentsMap.values())
       .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .map(dp => ({
-        id: dp.id,
-        label: `${dp.labelPrefix} (${format(dp.date, "MMM d, yyyy")})`,
-        date: dp.date,
-        weatherData: null,
-        clothingSuggestions: null,
-        activitySuggestions: null,
-        isLoading: true,
-        error: null,
-      }));
+      .map(dp => ({ ...dp, isLoading: true, error: null })); // Ensure isLoading is reset
 
   }, [plan]);
 
@@ -133,6 +135,14 @@ export default function TripDetailsPage() {
     setOverallLoading(true); 
 
     const fetchAllSegmentData = async () => {
+      const baseFamilyProfileForAI = familyProfile || DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS;
+      let combinedProfileForAI = baseFamilyProfileForAI;
+      if (plan.tripContext && plan.tripContext.trim() !== "") {
+        combinedProfileForAI += `\n\nTrip-Specific Details: ${plan.tripContext.trim()}`;
+      } else {
+        combinedProfileForAI += `\n\nTrip-Specific Details: None provided.`;
+      }
+
       const promises = initialSegments.map(async (segment) => {
         try {
           const weather = await fetchWeather(plan.location, segment.date);
@@ -141,7 +151,7 @@ export default function TripDetailsPage() {
           const clothingInput = {
             weatherCondition: weather.condition,
             temperature: weather.temperature,
-            familyProfile: familyProfile,
+            familyProfile: combinedProfileForAI, // Use combined profile
             location: plan.location,
           };
           const clothing = await suggestClothing(clothingInput);
@@ -150,7 +160,7 @@ export default function TripDetailsPage() {
           const activityInput = {
             weatherCondition: weather.condition,
             temperature: weather.temperature,
-            familyProfile: familyProfile,
+            familyProfile: combinedProfileForAI, // Use combined profile
             timeOfDay: "day", 
             locationPreferences: plan.location,
           };
@@ -178,7 +188,12 @@ export default function TripDetailsPage() {
     if (!plan || segments.some(s => s.isLoading || s.error)) return "Suggestions are loading or incomplete.";
     
     let text = `WeatherWise Guide - Travel Plan: ${plan.tripName} to ${plan.location}\n`;
-    text += `Dates: ${format(parseISO(plan.startDate), "PPP")} - ${format(parseISO(plan.endDate), "PPP")}\n\n`;
+    text += `Dates: ${format(parseISO(plan.startDate), "PPP")} - ${format(parseISO(plan.endDate), "PPP")}\n`;
+    if (plan.tripContext) {
+      text += `Trip Notes: ${plan.tripContext}\n`;
+    }
+    text += `\nFamily Profile Used for Suggestions: ${familyProfile || DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS}\n\n`;
+
 
     segments.forEach(segment => {
       if (segment.weatherData && segment.clothingSuggestions && segment.activitySuggestions) {
@@ -218,7 +233,10 @@ export default function TripDetailsPage() {
         toast({ title: "Shared Successfully" });
       } catch (error) {
         console.error("Error sharing:", error);
-        toast({ title: "Share Canceled or Failed", variant: "destructive" });
+        // Don't toast if user cancelled share (AbortError)
+        if ((error as DOMException)?.name !== 'AbortError') {
+          toast({ title: "Share Failed", variant: "destructive" });
+        }
       }
     } else {
       navigator.clipboard.writeText(textToShare).then(() => {
@@ -249,23 +267,27 @@ export default function TripDetailsPage() {
     );
   }
 
-  if (!plan && overallLoading) {
+  if (!plan && overallLoading) { // Overall loading state for the plan itself
      return (
         <div className="space-y-4 mt-4">
             <Skeleton className="h-12 w-1/2" />
             <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-20 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+            <Skeleton className="h-20 w-full mt-4" />
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
         </div>
      );
   }
   
-  if (!plan) { 
+  if (!plan) { // Plan not found after loading attempt
     return (
          <Card className="mt-4 shadow-lg">
-            <CardHeader><CardTitle>Loading Plan...</CardTitle></CardHeader>
-            <CardContent><p>If this takes too long, the plan might not exist or there was an issue.</p>
+            <CardHeader><CardTitle>Loading Plan Details...</CardTitle></CardHeader>
+            <CardContent><p>If this takes too long, the plan might not exist or there was an issue loading it.</p>
              <Button onClick={() => router.push('/notifications')} className="mt-4">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Travel Plans
             </Button>
@@ -273,7 +295,6 @@ export default function TripDetailsPage() {
          </Card>
     );
   }
-
 
   return (
     <div className="space-y-6 py-4">
@@ -286,21 +307,28 @@ export default function TripDetailsPage() {
                 <CardTitle className="text-2xl flex items-center gap-3">
                     <Plane className="text-primary" /> {plan.tripName}
                 </CardTitle>
-                <CardDescription className="!mt-1">
+                <CardDescription className="!mt-1 text-sm space-y-0.5">
                     <span className="flex items-center gap-2"><MapPin size={14}/> {plan.location}</span>
                     <span className="flex items-center gap-2"><CalendarDays size={14}/> 
                     {format(parseISO(plan.startDate), "PPP")} - {format(parseISO(plan.endDate), "PPP")}
                     </span>
+                     <span className="flex items-center gap-2"><Mail size={14}/> {plan.email}</span>
+                     <span className="flex items-center gap-2 capitalize"><Repeat size={14}/> {plan.notificationFrequency} at {plan.notificationTimeLabel || plan.notificationTime}</span>
+                     {plan.tripContext && (
+                        <span className="flex items-start gap-2 pt-1"><Info size={14} className="mt-0.5 shrink-0" /> 
+                            <span className="italic">{plan.tripContext}</span>
+                        </span>
+                     )}
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-                <h2 className="text-xl font-semibold mb-3">Daily Itinerary & Suggestions</h2>
+                <h2 className="text-xl font-semibold mb-3">Daily Itinerary & AI Suggestions</h2>
                 
-                {overallLoading && segments.length === 0 && (
-                  <div className="space-y-3 p-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
+                {overallLoading && segments.length === 0 && ( // Skeletons for initial segment loading
+                  <div className="space-y-3 p-1">
+                    <Skeleton className="h-10 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
                   </div>
                 )}
 
@@ -308,22 +336,22 @@ export default function TripDetailsPage() {
                     <div className="text-center py-8 my-4 border rounded-md bg-card">
                         <Info size={48} className="mx-auto text-muted-foreground mb-2" />
                         <p className="text-muted-foreground">No suggestion segments to display for this trip duration.</p>
-                        <p className="text-xs text-muted-foreground mt-1">This might happen for very short trips.</p>
+                        <p className="text-xs text-muted-foreground mt-1">This might happen for very short trips or if segments could not be calculated.</p>
                     </div>
                 )}
 
                 {segments.length > 0 && (
-                    <Accordion type="multiple" className="w-full space-y-1 p-1">
+                  <Accordion type="multiple" defaultValue={segments.map(s => s.id)} className="w-full space-y-1">
                     {segments.map((segment) => {
                         const WeatherIcon = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition) : CloudSun;
                         return (
                         <AccordionItem value={segment.id} key={segment.id} className="border-b-0">
-                            <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0 pr-2">
-                            <span>{segment.label}</span>
+                            <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0 pr-3">
+                            <span className="flex-1 text-left">{segment.label}</span>
                             {segment.isLoading && <Skeleton className="h-5 w-20 ml-auto" />}
                             {segment.error && <AlertCircle className="h-5 w-5 text-destructive ml-auto" />}
                             </AccordionTrigger>
-                            <AccordionContent className="pt-0 pb-4 space-y-4 border border-t-0 rounded-b-md shadow-sm bg-card">
+                            <AccordionContent className="pt-0 pb-4 space-y-4 border border-t-0 rounded-b-md shadow-sm bg-card overflow-hidden">
                                 <div className="p-4">
                                 {segment.isLoading && (
                                     <div className="space-y-3 p-4 border rounded-md bg-background/50">
@@ -426,4 +454,3 @@ export default function TripDetailsPage() {
     </div>
   );
 }
-
