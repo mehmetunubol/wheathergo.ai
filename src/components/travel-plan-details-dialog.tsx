@@ -17,14 +17,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
-import type { TravelPlanItem, WeatherData, HourlyForecastData } from "@/types";
+import type { TravelPlanItem, WeatherData, TripSegmentSuggestions } from "@/types"; // Updated import
 import type { ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import type { ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities } from "@/ai/flows/activity-suggestions";
-import { format, parseISO, differenceInDays, addDays, startOfDay } from "date-fns";
-import { Thermometer, CloudSun, Shirt, ListTree, Download, Share2, CalendarDays, MapPinIcon, Plane, AlertCircle } from "lucide-react";
+import { format, parseISO, differenceInDays, addDays, startOfDay, isBefore } from "date-fns"; // Added isBefore
+import { Thermometer, CloudSun, Shirt, ListTree, Download, Share2, CalendarDays, MapPinIcon, Plane, AlertCircle } from "lucide-react"; // Added Plane
 
 interface TravelPlanDetailsDialogProps {
   isOpen: boolean;
@@ -35,16 +35,6 @@ interface TravelPlanDetailsDialogProps {
 
 const DEFAULT_FAMILY_PROFILE = "An adult traveler.";
 
-interface TripSegmentSuggestions {
-  id: string; // 'start', 'middle', 'end'
-  label: string;
-  date: Date;
-  weatherData: WeatherData | null;
-  clothingSuggestions: ClothingSuggestionsOutput | null;
-  activitySuggestions: ActivitySuggestionsOutput | null;
-  isLoading: boolean;
-  error: string | null;
-}
 
 export function TravelPlanDetailsDialog({
   isOpen,
@@ -60,7 +50,7 @@ export function TravelPlanDetailsDialog({
 
   React.useEffect(() => {
     if (!isOpen || !plan) {
-      setTripSegments([]); // Clear previous segments when dialog is closed or no plan
+      setTripSegments([]); 
       return;
     }
 
@@ -77,11 +67,14 @@ export function TravelPlanDetailsDialog({
         error: null,
       };
 
-      // Update state to show this segment is loading
       setTripSegments(prev => {
-        const existing = prev.find(s => s.id === id);
-        if (existing) return prev.map(s => s.id === id ? { ...s, isLoading: true, error: null, label: segmentLabel, date } : s);
-        return [...prev, initialSegmentState];
+        const existingIndex = prev.findIndex(s => s.id === id);
+        if (existingIndex > -1) {
+            const updated = [...prev];
+            updated[existingIndex] = { ...updated[existingIndex], isLoading: true, error: null, label: segmentLabel, date };
+            return updated;
+        }
+        return [...prev, initialSegmentState].sort((a, b) => a.date.getTime() - b.date.getTime());
       });
       
       try {
@@ -109,32 +102,36 @@ export function TravelPlanDetailsDialog({
         return { ...initialSegmentState, weatherData: weather, clothingSuggestions: clothing, activitySuggestions: activities, isLoading: false, label: segmentLabel, date };
       } catch (err) {
         console.error(`Error fetching data for ${segmentLabel}:`, err);
-        return { ...initialSegmentState, isLoading: false, error: `Failed to load suggestions for ${format(date, "MMM d")}.`, label: segmentLabel, date };
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+        return { ...initialSegmentState, isLoading: false, error: `Failed to load suggestions for ${format(date, "MMM d")}. Error: ${errorMessage}`, label: segmentLabel, date };
       }
     };
 
     const planStartDate = startOfDay(parseISO(plan.startDate));
     const planEndDate = startOfDay(parseISO(plan.endDate));
-    const duration = differenceInDays(planEndDate, planStartDate) + 1;
+    const duration = differenceInDays(planEndDate, planStartDate); // differenceInDays counts full days between
 
     const segmentsToFetch: { date: Date; id: string; labelPrefix: string }[] = [];
 
     segmentsToFetch.push({ date: planStartDate, id: 'start', labelPrefix: "Start of Trip" });
 
-    if (duration >= 4) { // Add middle date for trips of 4 days or more
-      const middleDateIndex = Math.floor(duration / 2);
+    if (duration >= 3) { // Add middle date for trips of at least 4 days total (duration 3 means 4 days)
+      const middleDateIndex = Math.floor((duration +1) / 2); // +1 because duration is exclusive of end date for count
       const middleDate = addDays(planStartDate, middleDateIndex);
-      if (!segmentsToFetch.find(s => s.date.getTime() === middleDate.getTime()) && middleDate.getTime() !== planEndDate.getTime()) {
-        segmentsToFetch.push({ date: middleDate, id: 'middle', labelPrefix: "Middle of Trip" });
+      if (middleDate.getTime() !== planStartDate.getTime() && middleDate.getTime() !== planEndDate.getTime()) {
+         segmentsToFetch.push({ date: middleDate, id: 'middle', labelPrefix: "Middle of Trip" });
       }
     }
-
-    if (planEndDate.getTime() !== planStartDate.getTime() && !segmentsToFetch.find(s => s.date.getTime() === planEndDate.getTime())) {
-      segmentsToFetch.push({ date: planEndDate, id: 'end', labelPrefix: "End of Trip" });
+    
+    if (planEndDate.getTime() !== planStartDate.getTime()) { // Only add end if it's not a single day trip
+        const endSegmentExists = segmentsToFetch.some(s => s.date.getTime() === planEndDate.getTime());
+        if (!endSegmentExists) {
+            segmentsToFetch.push({ date: planEndDate, id: 'end', labelPrefix: "End of Trip" });
+        }
     }
     
-    // Ensure unique segments by date, prioritizing start, then end, then middle if dates overlap due to short duration
-    const uniqueDateSegments = Array.from(new Map(segmentsToFetch.map(item => [item.date.toISOString(), item])).values());
+    const uniqueDateSegments = Array.from(new Map(segmentsToFetch.map(item => [item.date.toISOString(), item])).values())
+                                  .sort((a,b) => a.date.getTime() - b.date.getTime());
 
 
     setIsOverallLoading(true);
@@ -149,7 +146,7 @@ export function TravelPlanDetailsDialog({
 
     Promise.all(uniqueDateSegments.map(s => fetchSegmentData(s.date, s.id, s.labelPrefix)))
       .then(results => {
-        setTripSegments(results);
+        setTripSegments(results.sort((a,b) => a.date.getTime() - b.date.getTime()));
       })
       .finally(() => {
         setIsOverallLoading(false);
@@ -228,7 +225,7 @@ export function TravelPlanDetailsDialog({
     }
   };
 
-  if (!plan && isOpen) return null; // Should ideally be handled by parent, but good for safety
+  if (!plan && isOpen) return null; 
 
   const allSegmentsLoadedSuccessfully = tripSegments.length > 0 && tripSegments.every(s => !s.isLoading && !s.error && s.weatherData);
 
@@ -250,9 +247,9 @@ export function TravelPlanDetailsDialog({
 
         <Separator />
         
-        <ScrollArea className="flex-grow">
-          <div className="space-y-2 py-1">
-            {isOverallLoading && tripSegments.length === 0 && ( // Show overall skeleton only if no segments rendered yet
+        <ScrollArea className="flex-grow min-h-0"> {/* Added min-h-0 here */}
+          <div className="space-y-2 py-1 pr-3"> {/* Added pr-3 to give space for scrollbar */}
+            {isOverallLoading && tripSegments.length === 0 && ( 
               <div className="space-y-4 p-4">
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-24 w-full" />
@@ -264,7 +261,7 @@ export function TravelPlanDetailsDialog({
               <Accordion type="multiple" className="w-full">
                 {tripSegments.map((segment) => (
                   <AccordionItem value={segment.id} key={segment.id}>
-                    <AccordionTrigger className="text-base hover:no-underline">
+                    <AccordionTrigger className="text-base hover:no-underline pr-2"> {/* Added pr-2 for trigger */}
                       <div className="flex items-center gap-2">
                         {segment.isLoading && <Skeleton className="h-5 w-5 rounded-full animate-spin" />}
                         {segment.error && <AlertCircle className="h-5 w-5 text-destructive" />}
@@ -381,3 +378,4 @@ export function TravelPlanDetailsDialog({
     </Dialog>
   );
 }
+
