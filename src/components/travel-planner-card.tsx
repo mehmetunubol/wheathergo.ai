@@ -2,19 +2,22 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link"; // Added for login link
 import type { TravelPlanItem, NotificationFrequency } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea"; // Added Textarea import
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye, Info } from "lucide-react";
+import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye, Info, LogIn } from "lucide-react"; // Added LogIn
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
 import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog";
+import { useAuth } from "@/hooks/use-auth"; // Added useAuth
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added Alert components
 
 const DEFAULT_NOTIFICATION_TIME = "09:00"; // 9 AM
 const DEFAULT_NOTIFICATION_FREQUENCY: NotificationFrequency = "daily";
@@ -51,7 +54,7 @@ export function TravelPlannerCard() {
   const [newEndDate, setNewEndDate] = React.useState<Date | undefined>(undefined);
   const [newTime, setNewTime] = React.useState<string>(DEFAULT_NOTIFICATION_TIME);
   const [newNotificationFrequency, setNewNotificationFrequency] = React.useState<NotificationFrequency>(DEFAULT_NOTIFICATION_FREQUENCY);
-  const [newTripContext, setNewTripContext] = React.useState<string>(""); // State for trip context
+  const [newTripContext, setNewTripContext] = React.useState<string>("");
 
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = React.useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = React.useState(false);
@@ -59,13 +62,10 @@ export function TravelPlannerCard() {
   const [selectedPlanForDetails, setSelectedPlanForDetails] = React.useState<TravelPlanItem | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   
-  // This state is no longer directly used by TravelPlannerCard for suggestions,
-  // but kept here in case other parts of the app might rely on it or if it's useful for future enhancements.
-  // The trip details page will fetch the family profile independently.
   const [familyProfileForSuggestions, setFamilyProfileForSuggestions] = React.useState<string>(DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS);
 
-
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth(); // Get authentication status
 
   React.useEffect(() => {
     const storedTravelPlans = localStorage.getItem("weatherwise-travel-plans");
@@ -77,7 +77,7 @@ export function TravelPlannerCard() {
           startDate: plan.startDate,
           endDate: plan.endDate,
           notificationFrequency: plan.notificationFrequency || DEFAULT_NOTIFICATION_FREQUENCY,
-          tripContext: plan.tripContext || "", // Ensure tripContext is initialized
+          tripContext: plan.tripContext || "",
         })));
       } catch (error) {
         console.error("Failed to parse travel plans from localStorage", error);
@@ -134,7 +134,7 @@ export function TravelPlannerCard() {
       notificationTime: newTime,
       notificationTimeLabel: selectedTimeOption?.label || newTime,
       notificationFrequency: newNotificationFrequency,
-      tripContext: newTripContext.trim() || undefined, // Add trip context, store undefined if empty
+      tripContext: newTripContext.trim() || undefined,
     };
     setTravelPlans([...travelPlans, newPlan]);
     setNewTripName("");
@@ -144,7 +144,7 @@ export function TravelPlannerCard() {
     setNewEndDate(undefined);
     setNewTime(DEFAULT_NOTIFICATION_TIME);
     setNewNotificationFrequency(DEFAULT_NOTIFICATION_FREQUENCY);
-    setNewTripContext(""); // Reset trip context
+    setNewTripContext("");
     toast({
       title: "Travel Plan Added",
       description: `Notifications for ${newPlan.tripName} to ${newPlan.location} will be sent ${newPlan.notificationFrequency} to ${newPlan.email} at ${newPlan.notificationTimeLabel}.`,
@@ -178,6 +178,21 @@ export function TravelPlannerCard() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {!isAuthenticated && (
+            <Alert variant="default" className="mb-6">
+              <LogIn className="h-5 w-5" />
+              <AlertTitle className="font-semibold">Save Your Plans!</AlertTitle>
+              <AlertDescription>
+                You are not currently logged in. Your travel plans are saved locally in your browser and will be lost if you clear your browser data or use a different device.
+                <br />
+                <Link href="/login" className="font-medium text-primary hover:underline">
+                  Log in or Sign up
+                </Link>
+                {" "}to save your plans to your account and enable (simulated) email notifications.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-4 p-4 border rounded-md bg-card">
             <h3 className="text-lg font-semibold flex items-center gap-2"><PlusCircle size={20} /> Add New Travel Plan</h3>
             
@@ -399,3 +414,4 @@ export function TravelPlannerCard() {
     </>
   );
 }
+
