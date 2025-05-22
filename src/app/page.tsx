@@ -12,14 +12,14 @@ import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clot
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
 import type { WeatherData, LastKnownWeather } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { format, isToday, parseISO, getHours } from "date-fns";
+import { format, isToday, getHours } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plane, LogIn, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
-const DEFAULT_LOCATION = "New York";
+const DEFAULT_LOCATION = "auto:ip"; // Use WeatherAPI.com's IP lookup
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
 
 function getTimeOfDay(): string {
@@ -47,16 +47,25 @@ export default function HomePage() {
 
   React.useEffect(() => {
     const storedLocation = localStorage.getItem("weatherugo-location");
-    if (storedLocation) setLocation(storedLocation);
+    // If a specific location is stored, use it. Otherwise, stick with "auto:ip" default.
+    if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
+      setLocation(storedLocation);
+    } else {
+      setLocation(DEFAULT_LOCATION); // Ensure it's 'auto:ip' if nothing valid is stored
+    }
 
     const storedProfile = localStorage.getItem("weatherugo-familyProfile");
     if (storedProfile) setFamilyProfile(storedProfile);
     
+    // Initial loading will be true until the first fetch attempt
     setIsLoadingWeather(true); 
-  }, []);
+  }, []); // Runs once on mount
 
   React.useEffect(() => {
-    localStorage.setItem("weatherugo-location", location);
+    // Save location to localStorage, but ONLY if it's a resolved one (not "auto:ip")
+    if (location && location.toLowerCase() !== "auto:ip") {
+      localStorage.setItem("weatherugo-location", location);
+    }
   }, [location]);
 
   React.useEffect(() => {
@@ -70,27 +79,37 @@ export default function HomePage() {
       setWeatherData(null); 
       setOutfitSuggestions(null); 
       setActivitySuggestions(null); 
+
+      const locationForQuery = location; // Capture the location used for this specific fetch
+
       try {
-        const data = await fetchWeather(location, selectedDate);
+        const data = await fetchWeather(locationForQuery, selectedDate);
         if (data) {
             setWeatherData(data);
+
+            // If the query was 'auto:ip' and we received a resolved location different from 'auto:ip'
+            if (locationForQuery.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
+              setLocation(data.location); // Update UI state with the resolved location from API
+                                          // The useEffect for 'location' will save this to localStorage.
+            }
 
             if (isToday(selectedDate)) {
                 const todayStr = format(new Date(), "yyyy-MM-dd");
                 const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
                 if (lastKnownWeatherStr) {
                     const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
-                    if (lastKnown.location === location && lastKnown.date === todayStr) {
+                    // Use data.location here as it's the resolved location from the API
+                    if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
                         if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
                             toast({
                                 title: "Weather Update!",
-                                description: `Weather in ${location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
+                                description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
                             });
                         }
                     }
                 }
                 localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
-                    location: data.location, 
+                    location: data.location, // Store the resolved location
                     temperature: data.temperature, 
                     condition: data.condition,
                     date: todayStr 
@@ -99,10 +118,12 @@ export default function HomePage() {
         } else {
              toast({ 
                 title: "Error Fetching Weather", 
-                description: "Could not retrieve weather data. The service might be temporarily unavailable or there might be an issue with the location or API key configuration. Please try again later.", 
+                description: `Could not retrieve weather data for "${locationForQuery}". The service might be temporarily unavailable, the location might be invalid, or there could be an issue with the API key configuration. Please try again later or enter a different location.`, 
                 variant: "destructive" 
             });
             setWeatherData(null);
+            // If 'auto:ip' fails, user might want to manually enter a location.
+            // We don't reset location here, they can type over 'auto:ip' or the failed location.
         }
       } catch (error) {
         console.error("Failed to fetch weather:", error);
@@ -117,7 +138,7 @@ export default function HomePage() {
       }
     }
     getWeather();
-  }, [location, selectedDate, toast]);
+  }, [location, selectedDate, toast]); // location is a dependency, so if setLocation(data.location) runs, this effect will re-run with the new location.
 
   React.useEffect(() => {
     async function getSuggestions() {
@@ -133,7 +154,7 @@ export default function HomePage() {
           weatherCondition: weatherData.condition,
           temperature: weatherData.temperature,
           familyProfile: familyProfile,
-          location: weatherData.location,
+          location: weatherData.location, // Use resolved location from weatherData
         };
         const clothing = await suggestClothing(clothingInput);
         setOutfitSuggestions(clothing);
@@ -154,7 +175,7 @@ export default function HomePage() {
           temperature: weatherData.temperature,
           familyProfile: familyProfile,
           timeOfDay: getTimeOfDay(),
-          locationPreferences: weatherData.location,
+          locationPreferences: weatherData.location, // Use resolved location
         };
         const activities = await suggestActivities(activityInput);
         setActivitySuggestions(activities);
@@ -182,16 +203,15 @@ export default function HomePage() {
     }
   };
   
-  // Filter hourly forecast to show only future hours for today
   const getFilteredHourlyForecast = () => {
     if (!weatherData?.forecast) return [];
     if (!isToday(selectedDate)) return weatherData.forecast;
 
     const currentHour = getHours(new Date());
+    // WeatherAPI provides full 24-hour forecast for the 'dt'. 
+    // We filter for hours >= currentHour on the client for display.
     return weatherData.forecast.filter(item => {
-      // Assuming item.time is "H AM/PM" e.g. "1 PM", "10 AM"
-      // This parsing is a bit naive and might need improvement if time formats vary more
-      const itemHourMatch = item.time.match(/(\d+)\s*(AM|PM)/i);
+      const itemHourMatch = item.time.match(/(\d+)\s*(AM|PM)/i); // "1 PM", "10 AM"
       if (itemHourMatch) {
         let itemHour = parseInt(itemHourMatch[1]);
         const ampm = itemHourMatch[2].toUpperCase();
@@ -199,7 +219,16 @@ export default function HomePage() {
         if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight case
         return itemHour >= currentHour;
       }
-      return true; // If time format is unexpected, include it
+      // For time format "May 21, 1 AM", parse the hour part
+      const dateTimeHourMatch = item.time.match(/, (\d+)\s*(AM|PM)/i);
+      if (dateTimeHourMatch) {
+        let itemHour = parseInt(dateTimeHourMatch[1]);
+        const ampm = dateTimeHourMatch[2].toUpperCase();
+        if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
+        if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight case
+        return itemHour >= currentHour;
+      }
+      return true; 
     });
   };
 
@@ -208,7 +237,7 @@ export default function HomePage() {
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
         <LocationDateSelector
-          location={location}
+          location={location} // This will show "auto:ip" initially if that's the state
           onLocationChange={setLocation}
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
@@ -272,3 +301,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+      
