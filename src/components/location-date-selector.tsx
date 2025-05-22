@@ -23,18 +23,27 @@ interface LocationDateSelectorProps {
   onDateChange: (date: Date | undefined) => void;
 }
 
+const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return str;
+  // Check if the string is "auto:ip" (case-insensitive) to avoid capitalizing it
+  if (str.toLowerCase() === "auto:ip") {
+    return str;
+  }
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
 export function LocationDateSelector({
   location,
   onLocationChange,
   selectedDate,
   onDateChange,
 }: LocationDateSelectorProps) {
-  const [currentLocationInput, setCurrentLocationInput] = React.useState(location);
+  const [currentLocationInput, setCurrentLocationInput] = React.useState(capitalizeFirstLetter(location));
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [provisionalDate, setProvisionalDate] = React.useState<Date | undefined>(selectedDate);
 
   React.useEffect(() => {
-    setCurrentLocationInput(location);
+    setCurrentLocationInput(capitalizeFirstLetter(location));
   }, [location]);
 
   // Update provisionalDate if selectedDate prop changes from outside
@@ -45,6 +54,12 @@ export function LocationDateSelector({
   const handleLocationBlur = () => {
     if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
       onLocationChange(currentLocationInput);
+    } else if (currentLocationInput.trim() === "" && location !== "") {
+      // If input is cleared, reflect that change upwards if parent had a value
+      onLocationChange("");
+    } else {
+      // If input matches prop (possibly after capitalization), ensure display is capitalized
+       setCurrentLocationInput(capitalizeFirstLetter(location));
     }
   };
   
@@ -53,6 +68,8 @@ export function LocationDateSelector({
        if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
         onLocationChange(currentLocationInput);
       }
+       // Blur to trigger capitalization if needed
+       (e.target as HTMLInputElement).blur();
     }
   };
 
@@ -94,7 +111,7 @@ export function LocationDateSelector({
             onChange={(e) => setCurrentLocationInput(e.target.value)}
             onBlur={handleLocationBlur}
             onKeyDown={handleLocationKeyDown}
-            placeholder="E.g., New York, London"
+            placeholder="E.g., New York or auto:ip"
             className="mt-1"
           />
         </div>
