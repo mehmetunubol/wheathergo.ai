@@ -3,69 +3,114 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { auth, db } from '@/lib/firebase'; // Import Firebase auth and db
+import { 
+  onAuthStateChanged, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut,
+  User as FirebaseUser,
+  // signInWithRedirect, // Alternative for mobile
+  // OAuthProvider // For Apple, requires more setup
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+interface User {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL?: string | null; 
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (userType: 'google' | 'apple') => void;
-  logout: () => void;
-  user: { name: string } | null;
+  user: User | null;
+  loginWithGoogle: () => Promise<void>;
+  loginWithApple: () => Promise<void>; // Placeholder for now
+  logout: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ name: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // To prevent flicker on load
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    try {
-      const storedAuth = localStorage.getItem('weatherugo-auth');
-      if (storedAuth) {
-        const authData = JSON.parse(storedAuth);
-        setIsAuthenticated(authData.isAuthenticated);
-        setUser(authData.user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          // Create user document if it doesn't exist
+          await setDoc(userRef, {
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            createdAt: new Date().toISOString(),
+            photoURL: firebaseUser.photoURL,
+          });
+        }
+        setUser({ 
+          uid: firebaseUser.uid, 
+          displayName: firebaseUser.displayName, 
+          email: firebaseUser.email,
+          photoURL: firebaseUser.photoURL,
+        });
+      } else {
+        setUser(null);
       }
-    } catch (error) {
-      console.error("Failed to parse auth data from localStorage", error);
-      localStorage.removeItem('weatherugo-auth');
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = (userType: 'google' | 'apple') => {
-    const mockUser = { name: userType === 'google' ? 'Google User' : 'Apple User (Simulated)' };
-    setIsAuthenticated(true);
-    setUser(mockUser);
+  const loginWithGoogle = async () => {
+    setIsLoading(true);
+    const provider = new GoogleAuthProvider();
     try {
-      localStorage.setItem('weatherugo-auth', JSON.stringify({ isAuthenticated: true, user: mockUser }));
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged will handle setting user and redirecting if needed
+      router.push('/');
     } catch (error) {
-      console.error("Failed to save auth data to localStorage", error);
-    }
-    router.push('/');
-  };
-
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    try {
-      localStorage.removeItem('weatherugo-auth');
-    } catch (error) {
-      console.error("Failed to remove auth data from localStorage", error);
-    }
-    if (pathname !== '/login') {
-        router.push('/login');
+      console.error("Google login error:", error);
+      // Handle error (e.g., show toast)
+    } finally {
+      // setIsLoading(false); // onAuthStateChanged handles final loading state
     }
   };
   
-  if (isLoading) {
-    return null; 
-  }
+  const loginWithApple = async () => {
+    // Placeholder: Apple Sign-In is more complex and requires specific setup.
+    // For now, this can show a message or also trigger Google Sign-In for demo.
+    console.warn("Apple Sign-In is not fully implemented. Using Google Sign-In as a placeholder.");
+    await loginWithGoogle(); 
+  };
+
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await signOut(auth);
+      // onAuthStateChanged will set user to null
+       if (pathname !== '/login' && pathname !== '/') {
+        router.push('/');
+      } else if (pathname !== '/login') {
+        router.push('/login'); // Or simply router.push('/')
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+       // setIsLoading(false); // onAuthStateChanged handles final loading state
+    }
+  };
+  
+  const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, user }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, loginWithGoogle, loginWithApple, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link"; // Added for login link
+import Link from "next/link"; 
 import type { TravelPlanItem, NotificationFrequency } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,16 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye, Info, LogIn } from "lucide-react"; // Added LogIn
+import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye, Info, LogIn, AlertTriangle } from "lucide-react"; 
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
 import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog";
-import { useAuth } from "@/hooks/use-auth"; // Added useAuth
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added Alert components
+import { useAuth } from "@/hooks/use-auth"; 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
+import { db } from "@/lib/firebase";
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const DEFAULT_NOTIFICATION_TIME = "09:00"; // 9 AM
+const DEFAULT_NOTIFICATION_TIME = "09:00"; 
 const DEFAULT_NOTIFICATION_FREQUENCY: NotificationFrequency = "daily";
-const DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS = "An adult traveler.";
-
 
 const generateTimeOptions = () => {
   const options = [];
@@ -30,15 +31,10 @@ const generateTimeOptions = () => {
     const hourString = i.toString().padStart(2, "0");
     const value = `${hourString}:00`;
     let label;
-    if (i === 0) {
-      label = "12:00 AM (Midnight)";
-    } else if (i === 12) {
-      label = "12:00 PM (Noon)";
-    } else if (i < 12) {
-      label = `${i}:00 AM`;
-    } else {
-      label = `${i - 12}:00 PM`;
-    }
+    if (i === 0) label = "12:00 AM (Midnight)";
+    else if (i === 12) label = "12:00 PM (Noon)";
+    else if (i < 12) label = `${i}:00 AM`;
+    else label = `${i - 12}:00 PM`;
     options.push({ value, label });
   }
   return options;
@@ -62,70 +58,62 @@ export function TravelPlannerCard() {
   const [selectedPlanForDetails, setSelectedPlanForDetails] = React.useState<TravelPlanItem | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   
-  const [familyProfileForSuggestions, setFamilyProfileForSuggestions] = React.useState<string>(DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS);
+  const [isLoadingPlans, setIsLoadingPlans] = React.useState(true);
+  const [isAddingPlan, setIsAddingPlan] = React.useState(false);
 
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth(); // Get authentication status
+  const { isAuthenticated, user, isLoading: authIsLoading } = useAuth(); 
 
   React.useEffect(() => {
-    const storedTravelPlans = localStorage.getItem("weatherugo-travel-plans");
-    if (storedTravelPlans) {
-      try {
-        const parsedPlans = JSON.parse(storedTravelPlans) as TravelPlanItem[];
-        setTravelPlans(parsedPlans.map(plan => ({
-          ...plan,
-          startDate: plan.startDate,
-          endDate: plan.endDate,
-          notificationFrequency: plan.notificationFrequency || DEFAULT_NOTIFICATION_FREQUENCY,
-          tripContext: plan.tripContext || "",
-        })));
-      } catch (error) {
-        console.error("Failed to parse travel plans from localStorage", error);
-        setTravelPlans([]);
-      }
-    }
+    if (authIsLoading) return; // Wait for auth state to be determined
 
-    const storedFamilyProfile = localStorage.getItem("weatherugo-familyProfile");
-    if (storedFamilyProfile) {
-      setFamilyProfileForSuggestions(storedFamilyProfile);
-    }
+    if (isAuthenticated && user) {
+      setIsLoadingPlans(true);
+      const plansCollectionRef = collection(db, "users", user.uid, "travelPlans");
+      const q = query(plansCollectionRef, orderBy("startDate", "desc"));
 
-  }, []);
-
-  React.useEffect(() => {
-    localStorage.setItem("weatherugo-travel-plans", JSON.stringify(travelPlans));
-  }, [travelPlans]);
-
-  const handleAddTravelPlan = () => {
-    if (!newTripName.trim() || !newLocation.trim() || !newEmail.trim() || !newStartDate || !newEndDate) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all fields for the travel plan (except optional Trip Context).",
-        variant: "destructive",
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const plans: TravelPlanItem[] = [];
+        querySnapshot.forEach((doc) => {
+          plans.push({ id: doc.id, ...doc.data() } as TravelPlanItem);
+        });
+        setTravelPlans(plans);
+        setIsLoadingPlans(false);
+      }, (error) => {
+        console.error("Error fetching travel plans:", error);
+        toast({ title: "Error", description: "Could not load travel plans.", variant: "destructive" });
+        setIsLoadingPlans(false);
       });
+      return () => unsubscribe(); // Cleanup listener on unmount
+    } else {
+      // Handle unauthenticated state (e.g., clear plans or show message)
+      setTravelPlans([]);
+      setIsLoadingPlans(false);
+    }
+  }, [isAuthenticated, user, authIsLoading, toast]);
+
+
+  const handleAddTravelPlan = async () => {
+    if (!isAuthenticated || !user) {
+      toast({ title: "Login Required", description: "Please log in to add travel plans.", variant: "destructive" });
+      return;
+    }
+    if (!newTripName.trim() || !newLocation.trim() || !newEmail.trim() || !newStartDate || !newEndDate) {
+      toast({ title: "Missing Information", description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
       return;
     }
     if (isBefore(newEndDate, newStartDate)) {
-      toast({
-        title: "Invalid Date Range",
-        description: "End date cannot be before the start date.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid Date Range", description: "End date cannot be before the start date.", variant: "destructive" });
       return;
     }
 
+    setIsAddingPlan(true);
     const selectedTimeOption = timeOptions.find(option => option.value === newTime);
-
-    const newPlan: TravelPlanItem = {
-      id: Date.now().toString(),
+    const newPlanData = {
       tripName: newTripName.trim(),
       location: newLocation.trim(),
       email: newEmail.trim(),
@@ -134,30 +122,47 @@ export function TravelPlannerCard() {
       notificationTime: newTime,
       notificationTimeLabel: selectedTimeOption?.label || newTime,
       notificationFrequency: newNotificationFrequency,
-      tripContext: newTripContext.trim() || undefined,
+      tripContext: newTripContext.trim() || "", // Ensure empty string if undefined
+      userId: user.uid, // Store userId for potential future admin/sharing features
+      createdAt: new Date().toISOString(),
     };
-    setTravelPlans([...travelPlans, newPlan]);
-    setNewTripName("");
-    setNewLocation("");
-    setNewEmail("");
-    setNewStartDate(undefined);
-    setNewEndDate(undefined);
-    setNewTime(DEFAULT_NOTIFICATION_TIME);
-    setNewNotificationFrequency(DEFAULT_NOTIFICATION_FREQUENCY);
-    setNewTripContext("");
-    toast({
-      title: "Travel Plan Added",
-      description: `Notifications for ${newPlan.tripName} to ${newPlan.location} will be sent ${newPlan.notificationFrequency} to ${newPlan.email} at ${newPlan.notificationTimeLabel}.`,
-    });
+
+    try {
+      const plansCollectionRef = collection(db, "users", user.uid, "travelPlans");
+      await addDoc(plansCollectionRef, newPlanData);
+      
+      setNewTripName("");
+      setNewLocation("");
+      setNewEmail("");
+      setNewStartDate(undefined);
+      setNewEndDate(undefined);
+      setNewTime(DEFAULT_NOTIFICATION_TIME);
+      setNewNotificationFrequency(DEFAULT_NOTIFICATION_FREQUENCY);
+      setNewTripContext("");
+      toast({
+        title: "Travel Plan Added",
+        description: `Notifications for ${newPlanData.tripName} will be configured.`,
+      });
+    } catch (error) {
+      console.error("Error adding travel plan:", error);
+      toast({ title: "Error", description: "Could not add travel plan. Please try again.", variant: "destructive" });
+    } finally {
+      setIsAddingPlan(false);
+    }
   };
 
-  const handleDeleteTravelPlan = (id: string, event: React.MouseEvent) => {
+  const handleDeleteTravelPlan = async (id: string, event: React.MouseEvent) => {
     event.stopPropagation(); 
-    setTravelPlans(travelPlans.filter((plan) => plan.id !== id));
-    toast({
-      title: "Travel Plan Removed",
-      description: "The travel plan has been deleted.",
-    });
+    if (!isAuthenticated || !user) return;
+
+    try {
+      const planDocRef = doc(db, "users", user.uid, "travelPlans", id);
+      await deleteDoc(planDocRef);
+      toast({ title: "Travel Plan Removed", description: "The travel plan has been deleted." });
+    } catch (error) {
+      console.error("Error deleting travel plan:", error);
+      toast({ title: "Error", description: "Could not delete travel plan.", variant: "destructive" });
+    }
   };
 
   const handleViewDetails = (plan: TravelPlanItem) => {
@@ -165,6 +170,14 @@ export function TravelPlannerCard() {
     setIsDetailsDialogOpen(true);
   };
 
+  if (authIsLoading) {
+    return (
+      <Card className="shadow-lg">
+        <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+        <CardContent><Skeleton className="h-64 w-full" /></CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -174,60 +187,38 @@ export function TravelPlannerCard() {
             <Plane className="text-primary" /> My Travel Plans
           </CardTitle>
           <CardDescription>
-            Plan your trips and receive weather updates and suggestions via email during your travel. Click a plan to view summary or full suggestions.
+            Plan your trips and receive weather updates and suggestions.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {!isAuthenticated && (
+          {!isAuthenticated ? (
             <Alert variant="default" className="mb-6">
-              <LogIn className="h-5 w-5" />
-              <AlertTitle className="font-semibold">Save Your Plans!</AlertTitle>
+              <AlertTriangle className="h-5 w-5" />
+              <AlertTitle className="font-semibold">Log In to Manage Travel Plans</AlertTitle>
               <AlertDescription>
-                You are not currently logged in. Your travel plans are saved locally in your browser and will be lost if you clear your browser data or use a different device.
+                Please log in to save and manage your travel plans in the cloud. 
+                Your plans will be accessible across devices and notifications (simulated) can be enabled.
                 <br />
                 <Link href="/login" className="font-medium text-primary hover:underline">
                   Log in or Sign up
                 </Link>
-                {" "}to save your plans to your account and enable (simulated) email notifications.
               </AlertDescription>
             </Alert>
-          )}
-
+          ) : (
           <div className="space-y-4 p-4 border rounded-md bg-card">
             <h3 className="text-lg font-semibold flex items-center gap-2"><PlusCircle size={20} /> Add New Travel Plan</h3>
             
             <div>
               <Label htmlFor="trip-name">Trip Name</Label>
-              <Input
-                id="trip-name"
-                value={newTripName}
-                onChange={(e) => setNewTripName(e.target.value)}
-                placeholder="E.g., Summer Vacation, Business Trip"
-                className="mt-1"
-              />
+              <Input id="trip-name" value={newTripName} onChange={(e) => setNewTripName(e.target.value)} placeholder="E.g., Summer Vacation" className="mt-1" />
             </div>
-
             <div>
               <Label htmlFor="travel-location">Location</Label>
-              <Input
-                id="travel-location"
-                value={newLocation}
-                onChange={(e) => setNewLocation(e.target.value)}
-                placeholder="E.g., Paris, Tokyo"
-                className="mt-1"
-              />
+              <Input id="travel-location" value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="E.g., Paris, Tokyo" className="mt-1" />
             </div>
-
             <div>
-              <Label htmlFor="travel-email">Email Address</Label>
-              <Input
-                id="travel-email"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                className="mt-1"
-              />
+              <Label htmlFor="travel-email">Email Address (for notifications)</Label>
+              <Input id="travel-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="your.email@example.com" className="mt-1" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -241,19 +232,7 @@ export function TravelPlannerCard() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={newStartDate}
-                      onSelect={(date) => {
-                          setNewStartDate(date);
-                          setIsStartDatePickerOpen(false);
-                          if (date && newEndDate && isBefore(newEndDate, date)) {
-                              setNewEndDate(undefined);
-                          }
-                      }}
-                      disabled={(date) => isBefore(date, startOfDay(new Date()))} 
-                      initialFocus
-                    />
+                    <Calendar mode="single" selected={newStartDate} onSelect={(date) => { setNewStartDate(date); setIsStartDatePickerOpen(false); if (date && newEndDate && isBefore(newEndDate, date)) setNewEndDate(undefined); }} disabled={(date) => isBefore(date, startOfDay(new Date()))} initialFocus />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -267,18 +246,7 @@ export function TravelPlannerCard() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={newEndDate}
-                      onSelect={(date) => {
-                          setNewEndDate(date);
-                          setIsEndDatePickerOpen(false);
-                      }}
-                      disabled={(date) => 
-                          (newStartDate && isBefore(date, newStartDate)) || isBefore(date, startOfDay(new Date()))
-                      }
-                      initialFocus
-                    />
+                    <Calendar mode="single" selected={newEndDate} onSelect={(date) => { setNewEndDate(date); setIsEndDatePickerOpen(false); }} disabled={(date) => (newStartDate && isBefore(date, newStartDate)) || isBefore(date, startOfDay(new Date()))} initialFocus />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -288,53 +256,45 @@ export function TravelPlannerCard() {
               <div>
                 <Label htmlFor="travel-time">Notification Time</Label>
                 <Select value={newTime} onValueChange={setNewTime}>
-                  <SelectTrigger id="travel-time" className="w-full mt-1">
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger id="travel-time" className="w-full mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
+                  <SelectContent>{timeOptions.map((option) => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="notification-frequency">Notification Frequency</Label>
                 <Select value={newNotificationFrequency} onValueChange={(value) => setNewNotificationFrequency(value as NotificationFrequency)}>
-                  <SelectTrigger id="notification-frequency" className="w-full mt-1">
-                    <SelectValue placeholder="Select frequency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                  </SelectContent>
+                  <SelectTrigger id="notification-frequency" className="w-full mt-1"><SelectValue placeholder="Select frequency" /></SelectTrigger>
+                  <SelectContent><SelectItem value="daily">Daily</SelectItem><SelectItem value="weekly">Weekly</SelectItem></SelectContent>
                 </Select>
               </div>
             </div>
             
             <div>
               <Label htmlFor="trip-context">Trip-Specific Context (Optional)</Label>
-              <Textarea
-                id="trip-context"
-                value={newTripContext}
-                onChange={(e) => setNewTripContext(e.target.value)}
-                placeholder="E.g., Business meetings during the day, casual evenings. Prefer indoor activities. Need wheelchair accessible options."
-                className="mt-1 min-h-[80px]"
-              />
+              <Textarea id="trip-context" value={newTripContext} onChange={(e) => setNewTripContext(e.target.value)} placeholder="E.g., Business meetings, prefer indoor activities." className="mt-1 min-h-[80px]" />
             </div>
 
-            <Button onClick={handleAddTravelPlan} className="w-full">
-              <PlusCircle className="mr-2" /> Add Travel Plan
+            <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan}>
+              {isAddingPlan ? "Adding..." : <><PlusCircle className="mr-2" /> Add Travel Plan</>}
             </Button>
           </div>
+          )}
 
           <div className="space-y-3">
              <h3 className="text-lg font-semibold flex items-center gap-2 pt-4 border-t"><ListChecks size={20} /> Your Travel Plans</h3>
-            {travelPlans.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No travel plans added yet. Click "Add New Travel Plan" to get started.</p>
-            ) : (
+            {isLoadingPlans && isAuthenticated && (
+                <div className="space-y-3">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                </div>
+            )}
+            {!isLoadingPlans && isAuthenticated && travelPlans.length === 0 && (
+              <p className="text-sm text-muted-foreground">No travel plans added yet.</p>
+            )}
+            {!isAuthenticated && !authIsLoading && (
+                 <p className="text-sm text-muted-foreground">Log in to see your saved travel plans.</p>
+            )}
+            {!isLoadingPlans && isAuthenticated && (
               <ul className="space-y-3">
                 {travelPlans.map((plan) => {
                   const startDate = parseISO(plan.startDate);
@@ -344,9 +304,7 @@ export function TravelPlannerCard() {
                     key={plan.id} 
                     className="p-4 border rounded-md bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleViewDetails(plan)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleViewDetails(plan)}
+                    role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleViewDetails(plan)}
                   >
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
                       <div className="text-sm flex-grow space-y-0.5">
@@ -357,38 +315,13 @@ export function TravelPlannerCard() {
                           <CalendarDays size={12} /> 
                           {isValid(startDate) ? format(startDate, "MMM d, yyyy") : "Invalid date"} - {isValid(endDate) ? format(endDate, "MMM d, yyyy") : "Invalid date"}
                         </p>
-                        <p className="text-muted-foreground text-xs flex items-center gap-1.5">
-                          <Clock size={12} /> At {plan.notificationTimeLabel || plan.notificationTime}
-                        </p>
-                        <p className="text-muted-foreground text-xs flex items-center gap-1.5 capitalize">
-                          <Repeat size={12} /> {plan.notificationFrequency}
-                        </p>
-                        {plan.tripContext && (
-                          <p className="text-muted-foreground text-xs flex items-start gap-1.5 pt-1">
-                            <Info size={12} className="mt-0.5 shrink-0" /> 
-                            <span className="italic truncate">Context: {plan.tripContext.length > 50 ? `${plan.tripContext.substring(0, 50)}...` : plan.tripContext}</span>
-                          </p>
-                        )}
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Clock size={12} /> At {plan.notificationTimeLabel || plan.notificationTime}</p>
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5 capitalize"><Repeat size={12} /> {plan.notificationFrequency}</p>
+                        {plan.tripContext && (<p className="text-muted-foreground text-xs flex items-start gap-1.5 pt-1"><Info size={12} className="mt-0.5 shrink-0" /> <span className="italic truncate">Context: {plan.tripContext.length > 50 ? `${plan.tripContext.substring(0, 50)}...` : plan.tripContext}</span></p>)}
                       </div>
                       <div className="flex items-center self-end sm:self-center space-x-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}}
-                            aria-label="View summary" 
-                            className="px-2 py-1 h-auto text-xs"
-                          >
-                            <Eye className="mr-1.5 h-3 w-3" /> View
-                          </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => handleDeleteTravelPlan(plan.id, e)}
-                          aria-label="Delete travel plan"
-                           className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}} aria-label="View summary" className="px-2 py-1 h-auto text-xs"><Eye className="mr-1.5 h-3 w-3" /> View</Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteTravelPlan(plan.id, e)} aria-label="Delete travel plan" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   </li>
@@ -399,7 +332,7 @@ export function TravelPlannerCard() {
         </CardContent>
          <CardFooter>
           <p className="text-xs text-muted-foreground">
-            Notifications for your trips are processed conceptually. In a real app, a backend service would handle email dispatch and suggestion generation.
+            Daily/Weekly email notifications with suggestions are simulated. Full functionality would require a backend service.
           </p>
         </CardFooter>
       </Card>

@@ -16,10 +16,13 @@ import { format, isToday, getHours } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, LogIn, Sparkles } from "lucide-react";
+import { Plane, LogIn, Sparkles, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const DEFAULT_LOCATION = "auto:ip"; // Use WeatherAPI.com's IP lookup
+const DEFAULT_LOCATION = "auto:ip"; 
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
 
 function getTimeOfDay(): string {
@@ -41,56 +44,79 @@ export default function HomePage() {
   const [isLoadingWeather, setIsLoadingWeather] = React.useState(true);
   const [isLoadingOutfit, setIsLoadingOutfit] = React.useState(false);
   const [isLoadingActivity, setIsLoadingActivity] = React.useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
+
 
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
+
+  // Effect for fetching family profile
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      if (!authIsLoading) { // Ensure auth state is determined
+        setIsLoadingProfile(true);
+        if (isAuthenticated && user) {
+          try {
+            const profileRef = doc(db, "users", user.uid, "profile", "mainProfile");
+            const docSnap = await getDoc(profileRef);
+            if (docSnap.exists()) {
+              setFamilyProfile(docSnap.data().description || DEFAULT_FAMILY_PROFILE);
+            } else {
+              setFamilyProfile(DEFAULT_FAMILY_PROFILE); // Set default if not in DB
+            }
+          } catch (error) {
+            console.error("Error fetching family profile from Firestore:", error);
+            setFamilyProfile(DEFAULT_FAMILY_PROFILE); // Fallback on error
+          }
+        } else {
+          // Not authenticated, load from localStorage or use default
+          const storedProfile = localStorage.getItem("weatherugo-familyProfile");
+          setFamilyProfile(storedProfile || DEFAULT_FAMILY_PROFILE);
+        }
+        setIsLoadingProfile(false);
+      }
+    };
+    loadProfile();
+  }, [isAuthenticated, user, authIsLoading]);
+
 
   React.useEffect(() => {
     const storedLocation = localStorage.getItem("weatherugo-location");
-    // If a specific location is stored, use it. Otherwise, stick with "auto:ip" default.
     if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
       setLocation(storedLocation);
     } else {
-      setLocation(DEFAULT_LOCATION); // Ensure it's 'auto:ip' if nothing valid is stored
+      setLocation(DEFAULT_LOCATION); 
     }
-
-    const storedProfile = localStorage.getItem("weatherugo-familyProfile");
-    if (storedProfile) setFamilyProfile(storedProfile);
-    
-    // Initial loading will be true until the first fetch attempt
-    setIsLoadingWeather(true); 
-  }, []); // Runs once on mount
+    // Initial weather loading is true until first fetch attempt completes
+  }, []); 
 
   React.useEffect(() => {
-    // Save location to localStorage, but ONLY if it's a resolved one (not "auto:ip")
     if (location && location.toLowerCase() !== "auto:ip") {
       localStorage.setItem("weatherugo-location", location);
     }
   }, [location]);
 
-  React.useEffect(() => {
-    localStorage.setItem("weatherugo-familyProfile", familyProfile);
-  }, [familyProfile]);
+  // Removed familyProfile localStorage saving here, as it's handled by FamilyProfileEditor
+  // and primarily driven by Firestore for authenticated users.
 
   React.useEffect(() => {
     async function getWeather() {
-      if (!location || !selectedDate) return;
+      if (!location || !selectedDate || authIsLoading || isLoadingProfile) return; 
+      // Wait for auth and profile loading to complete before fetching weather dependent suggestions.
+      
       setIsLoadingWeather(true);
       setWeatherData(null); 
       setOutfitSuggestions(null); 
       setActivitySuggestions(null); 
 
-      const locationForQuery = location; // Capture the location used for this specific fetch
+      const locationForQuery = location; 
 
       try {
         const data = await fetchWeather(locationForQuery, selectedDate);
         if (data) {
             setWeatherData(data);
-
-            // If the query was 'auto:ip' and we received a resolved location different from 'auto:ip'
             if (locationForQuery.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
-              setLocation(data.location); // Update UI state with the resolved location from API
-                                          // The useEffect for 'location' will save this to localStorage.
+              setLocation(data.location); 
             }
 
             if (isToday(selectedDate)) {
@@ -98,7 +124,6 @@ export default function HomePage() {
                 const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
                 if (lastKnownWeatherStr) {
                     const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
-                    // Use data.location here as it's the resolved location from the API
                     if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
                         if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
                             toast({
@@ -109,7 +134,7 @@ export default function HomePage() {
                     }
                 }
                 localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
-                    location: data.location, // Store the resolved location
+                    location: data.location, 
                     temperature: data.temperature, 
                     condition: data.condition,
                     date: todayStr 
@@ -122,8 +147,6 @@ export default function HomePage() {
                 variant: "destructive" 
             });
             setWeatherData(null);
-            // If 'auto:ip' fails, user might want to manually enter a location.
-            // We don't reset location here, they can type over 'auto:ip' or the failed location.
         }
       } catch (error) {
         console.error("Failed to fetch weather:", error);
@@ -138,11 +161,11 @@ export default function HomePage() {
       }
     }
     getWeather();
-  }, [location, selectedDate, toast]); // location is a dependency, so if setLocation(data.location) runs, this effect will re-run with the new location.
+  }, [location, selectedDate, toast, authIsLoading, isLoadingProfile]); // Added authIsLoading, isLoadingProfile
 
   React.useEffect(() => {
     async function getSuggestions() {
-      if (!weatherData || !familyProfile) return;
+      if (!weatherData || !familyProfile || authIsLoading || isLoadingProfile) return;
 
       setIsLoadingOutfit(true);
       setIsLoadingActivity(true);
@@ -154,15 +177,15 @@ export default function HomePage() {
           weatherCondition: weatherData.condition,
           temperature: weatherData.temperature,
           familyProfile: familyProfile,
-          location: weatherData.location, // Use resolved location from weatherData
+          location: weatherData.location, 
         };
         const clothing = await suggestClothing(clothingInput);
         setOutfitSuggestions(clothing);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to get outfit suggestions:", error);
         toast({
           title: "Outfit Suggestion Error",
-          description: "Could not fetch outfit suggestions. The AI service may be temporarily unavailable. Please try again later.",
+          description: error.message || "Could not fetch outfit suggestions. The AI service may be temporarily unavailable. Please try again later.",
           variant: "destructive",
         });
       } finally {
@@ -175,15 +198,15 @@ export default function HomePage() {
           temperature: weatherData.temperature,
           familyProfile: familyProfile,
           timeOfDay: getTimeOfDay(),
-          locationPreferences: weatherData.location, // Use resolved location
+          locationPreferences: weatherData.location, 
         };
         const activities = await suggestActivities(activityInput);
         setActivitySuggestions(activities);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to get activity suggestions:", error);
         toast({
           title: "Activity Suggestion Error",
-          description: "Could not fetch activity suggestions. The AI service may be temporarily unavailable. Please try again later.",
+          description: error.message || "Could not fetch activity suggestions. The AI service may be temporarily unavailable. Please try again later.",
           variant: "destructive",
         });
       } finally {
@@ -191,10 +214,10 @@ export default function HomePage() {
       }
     }
 
-    if (weatherData) {
+    if (weatherData && !isLoadingProfile) { // Ensure profile is loaded
       getSuggestions();
     }
-  }, [weatherData, familyProfile, toast]);
+  }, [weatherData, familyProfile, toast, authIsLoading, isLoadingProfile]); // Added authIsLoading, isLoadingProfile
 
 
   const handleDateChange = (date: Date | undefined) => {
@@ -203,48 +226,64 @@ export default function HomePage() {
     }
   };
   
+  const handleProfileUpdate = (newProfile: string) => {
+    setFamilyProfile(newProfile); // Update local state, which will be used by suggestions
+  };
+
   const getFilteredHourlyForecast = () => {
     if (!weatherData?.forecast) return [];
     if (!isToday(selectedDate)) return weatherData.forecast;
 
     const currentHour = getHours(new Date());
-    // WeatherAPI provides full 24-hour forecast for the 'dt'. 
-    // We filter for hours >= currentHour on the client for display.
     return weatherData.forecast.filter(item => {
-      const itemHourMatch = item.time.match(/(\d+)\s*(AM|PM)/i); // "1 PM", "10 AM"
+      const itemHourMatch = item.time.match(/(\d+)\s*(AM|PM)/i); 
       if (itemHourMatch) {
         let itemHour = parseInt(itemHourMatch[1]);
         const ampm = itemHourMatch[2].toUpperCase();
         if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
-        if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight case
+        if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
         return itemHour >= currentHour;
       }
-      // For time format "May 21, 1 AM", parse the hour part
       const dateTimeHourMatch = item.time.match(/, (\d+)\s*(AM|PM)/i);
       if (dateTimeHourMatch) {
         let itemHour = parseInt(dateTimeHourMatch[1]);
         const ampm = dateTimeHourMatch[2].toUpperCase();
         if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
-        if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight case
+        if (ampm === 'AM' && itemHour === 12) itemHour = 0;
         return itemHour >= currentHour;
       }
       return true; 
     });
   };
 
+  // Show skeleton for the whole page if auth or profile is loading initially.
+  if (authIsLoading || isLoadingProfile) {
+    return (
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          <Skeleton className="h-[230px] w-full" />
+          <Skeleton className="h-[230px] w-full" />
+        </div>
+        <Skeleton className="h-[200px] w-full" />
+        <Skeleton className="h-[150px] w-full" />
+        <Skeleton className="h-[180px] w-full" />
+        <Skeleton className="h-[180px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
         <LocationDateSelector
-          location={location} // This will show "auto:ip" initially if that's the state
+          location={location} 
           onLocationChange={setLocation}
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
         />
         <FamilyProfileEditor
-          profile={familyProfile}
-          onProfileSave={setFamilyProfile}
+          profile={familyProfile} // Pass the current familyProfile state
+          onProfileSave={handleProfileUpdate} // Parent updates its state
         />
       </div>
 
@@ -301,5 +340,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-      

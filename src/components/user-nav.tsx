@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -13,20 +14,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, User as UserIcon, Settings, CreditCard } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, CreditCard, LogIn } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function UserNav() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <Skeleton className="h-8 w-8 rounded-full" />;
+  }
 
   if (!isAuthenticated || !user) {
     return (
-      <Link href="/login">
-        <Button variant="ghost">Login</Button>
+      <Link href="/login" passHref>
+        <Button variant="ghost">
+          <LogIn className="mr-2 h-4 w-4" />
+          Login
+        </Button>
       </Link>
     );
   }
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null) => {
+    if (!name) return "U";
     const names = name.split(' ');
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
@@ -39,20 +49,20 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            {/* Placeholder for user image - could use placehold.co or a generic user icon */}
-            <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(user.name)}`} alt={user.name} data-ai-hint="user avatar" />
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png?text=${getInitials(user.displayName)}`} alt={user.displayName || "User"} data-ai-hint="user avatar" />
+            <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {/* Placeholder for user email or role */}
-              user@example.com 
-            </p>
+            <p className="text-sm font-medium leading-none">{user.displayName || "User"}</p>
+            {user.email && (
+              <p className="text-xs leading-none text-muted-foreground">
+                {user.email}
+              </p>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -71,10 +81,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => {
-          logout();
-          // router.push('/login'); // Optional: redirect on logout
-        }}>
+        <DropdownMenuItem onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
