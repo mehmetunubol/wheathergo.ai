@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link"; 
+import Link from "next/link";
 import type { TravelPlanItem, NotificationFrequency } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,16 +13,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye, Info, LogIn, AlertTriangle } from "lucide-react"; 
+import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPin, Edit3, Repeat, Eye, Info, LogIn, AlertTriangle } from "lucide-react";
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
 import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog";
-import { useAuth } from "@/hooks/use-auth"; 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
+import { useAuth } from "@/hooks/use-auth";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, addDoc, query, getDocs, deleteDoc, doc, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const DEFAULT_NOTIFICATION_TIME = "09:00"; 
+const DEFAULT_NOTIFICATION_TIME = "09:00";
 const DEFAULT_NOTIFICATION_FREQUENCY: NotificationFrequency = "daily";
 
 const generateTimeOptions = () => {
@@ -57,12 +57,12 @@ export function TravelPlannerCard() {
 
   const [selectedPlanForDetails, setSelectedPlanForDetails] = React.useState<TravelPlanItem | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
-  
+
   const [isLoadingPlans, setIsLoadingPlans] = React.useState(true);
   const [isAddingPlan, setIsAddingPlan] = React.useState(false);
 
   const { toast } = useToast();
-  const { isAuthenticated, user, isLoading: authIsLoading } = useAuth(); 
+  const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
 
   React.useEffect(() => {
     if (authIsLoading) return; // Wait for auth state to be determined
@@ -117,20 +117,21 @@ export function TravelPlannerCard() {
       tripName: newTripName.trim(),
       location: newLocation.trim(),
       email: newEmail.trim(),
-      startDate: newStartDate.toISOString(),
-      endDate: newEndDate.toISOString(),
+      // Firestore handles Timestamps better than ISO strings for queries, but Date objects are fine for `addDoc`
+      startDate: newStartDate.toISOString(), // Keep as ISO for consistency with type, Firestore converts to Timestamp
+      endDate: newEndDate.toISOString(),   // Keep as ISO for consistency with type, Firestore converts to Timestamp
       notificationTime: newTime,
       notificationTimeLabel: selectedTimeOption?.label || newTime,
       notificationFrequency: newNotificationFrequency,
-      tripContext: newTripContext.trim() || "", // Ensure empty string if undefined
+      tripContext: newTripContext.trim() || "",
       userId: user.uid, // Store userId for potential future admin/sharing features
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(), // Firestore server timestamp is better for production
     };
 
     try {
       const plansCollectionRef = collection(db, "users", user.uid, "travelPlans");
       await addDoc(plansCollectionRef, newPlanData);
-      
+
       setNewTripName("");
       setNewLocation("");
       setNewEmail("");
@@ -144,7 +145,7 @@ export function TravelPlannerCard() {
         description: `Notifications for ${newPlanData.tripName} will be configured.`,
       });
     } catch (error) {
-      console.error("Error adding travel plan:", error);
+      console.error("Error adding travel plan to Firestore:", error);
       toast({ title: "Error", description: "Could not add travel plan. Please try again.", variant: "destructive" });
     } finally {
       setIsAddingPlan(false);
@@ -152,15 +153,18 @@ export function TravelPlannerCard() {
   };
 
   const handleDeleteTravelPlan = async (id: string, event: React.MouseEvent) => {
-    event.stopPropagation(); 
-    if (!isAuthenticated || !user) return;
+    event.stopPropagation();
+    if (!isAuthenticated || !user) {
+      toast({ title: "Login Required", description: "Please log in to delete travel plans.", variant: "destructive" });
+      return;
+    }
 
     try {
       const planDocRef = doc(db, "users", user.uid, "travelPlans", id);
       await deleteDoc(planDocRef);
       toast({ title: "Travel Plan Removed", description: "The travel plan has been deleted." });
     } catch (error) {
-      console.error("Error deleting travel plan:", error);
+      console.error("Error deleting travel plan from Firestore:", error);
       toast({ title: "Error", description: "Could not delete travel plan.", variant: "destructive" });
     }
   };
@@ -196,8 +200,9 @@ export function TravelPlannerCard() {
               <AlertTriangle className="h-5 w-5" />
               <AlertTitle className="font-semibold">Log In to Manage Travel Plans</AlertTitle>
               <AlertDescription>
-                Please log in to save and manage your travel plans in the cloud. 
+                Please log in to save and manage your travel plans in the cloud.
                 Your plans will be accessible across devices and notifications (simulated) can be enabled.
+                If you add plans now, they will be stored locally and may be lost.
                 <br />
                 <Link href="/login" className="font-medium text-primary hover:underline">
                   Log in or Sign up
@@ -207,7 +212,7 @@ export function TravelPlannerCard() {
           ) : (
           <div className="space-y-4 p-4 border rounded-md bg-card">
             <h3 className="text-lg font-semibold flex items-center gap-2"><PlusCircle size={20} /> Add New Travel Plan</h3>
-            
+
             <div>
               <Label htmlFor="trip-name">Trip Name</Label>
               <Input id="trip-name" value={newTripName} onChange={(e) => setNewTripName(e.target.value)} placeholder="E.g., Summer Vacation" className="mt-1" />
@@ -268,13 +273,13 @@ export function TravelPlannerCard() {
                 </Select>
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="trip-context">Trip-Specific Context (Optional)</Label>
               <Textarea id="trip-context" value={newTripContext} onChange={(e) => setNewTripContext(e.target.value)} placeholder="E.g., Business meetings, prefer indoor activities." className="mt-1 min-h-[80px]" />
             </div>
 
-            <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan}>
+            <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan || !isAuthenticated}>
               {isAddingPlan ? "Adding..." : <><PlusCircle className="mr-2" /> Add Travel Plan</>}
             </Button>
           </div>
@@ -300,8 +305,8 @@ export function TravelPlannerCard() {
                   const startDate = parseISO(plan.startDate);
                   const endDate = parseISO(plan.endDate);
                   return (
-                  <li 
-                    key={plan.id} 
+                  <li
+                    key={plan.id}
                     className="p-4 border rounded-md bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleViewDetails(plan)}
                     role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleViewDetails(plan)}
@@ -312,7 +317,7 @@ export function TravelPlannerCard() {
                         <p className="text-muted-foreground flex items-center gap-1.5"><MapPin size={12} /> {plan.location}</p>
                         <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Mail size={12} /> {plan.email}</p>
                         <p className="text-muted-foreground text-xs flex items-center gap-1.5">
-                          <CalendarDays size={12} /> 
+                          <CalendarDays size={12} />
                           {isValid(startDate) ? format(startDate, "MMM d, yyyy") : "Invalid date"} - {isValid(endDate) ? format(endDate, "MMM d, yyyy") : "Invalid date"}
                         </p>
                         <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Clock size={12} /> At {plan.notificationTimeLabel || plan.notificationTime}</p>

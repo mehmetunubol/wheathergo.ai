@@ -45,6 +45,7 @@ export default function TripDetailsPage() {
 
     const potentialSegments: TripSegmentSuggestions[] = [];
 
+    // Always add start date
     potentialSegments.push({
       date: startDate,
       id: 'start',
@@ -52,9 +53,12 @@ export default function TripDetailsPage() {
       weatherData: null, clothingSuggestions: null, activitySuggestions: null, isLoading: true, error: null
     });
 
-    if (duration >= 2) { 
-      const middleOffset = Math.floor(duration / 2.0); 
+    // Add middle date if duration is >= 2 (meaning at least 3 days trip: start, middle, end)
+    // and middle is distinct from start and end.
+    if (duration >= 2) { // For a 3-day trip (0,1,2), duration is 2. Mid offset = 1.
+      const middleOffset = Math.floor(duration / 2.0); // Ensure it's an integer
       const middleDateCand = startOfDay(addDays(startDate, middleOffset));
+
       if (!isSameDay(middleDateCand, startDate) && !isSameDay(middleDateCand, endDate)) {
         potentialSegments.push({
           date: middleDateCand,
@@ -65,6 +69,7 @@ export default function TripDetailsPage() {
       }
     }
     
+    // Add end date if it's different from start date
     if (!isSameDay(endDate, startDate)) {
       potentialSegments.push({
         date: endDate,
@@ -74,13 +79,15 @@ export default function TripDetailsPage() {
       });
     }
     
+    // Ensure uniqueness by date string, prioritizing start/middle/end IDs if dates coincide
+    // (e.g. for a 1 or 2 day trip where "middle" might align with "start" or "end")
     const uniqueSegmentsMap = new Map<string, TripSegmentSuggestions>();
     potentialSegments.forEach(segment => {
         const dateStr = format(segment.date, 'yyyy-MM-dd');
         if (!uniqueSegmentsMap.has(dateStr) || 
-            (segment.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'start') ||
-            (segment.id === 'end' && uniqueSegmentsMap.get(dateStr)?.id !== 'end') ||
-            (segment.id === 'middle' && uniqueSegmentsMap.get(dateStr)?.id !== 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'middle') 
+            (segment.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'start') || // Prefer 'start' if date is same
+            (segment.id === 'end' && uniqueSegmentsMap.get(dateStr)?.id !== 'end' && uniqueSegmentsMap.get(dateStr)?.id !== 'start') || // Prefer 'end' if not start
+            (segment.id === 'middle' && uniqueSegmentsMap.get(dateStr)?.id !== 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'middle'  && uniqueSegmentsMap.get(dateStr)?.id !== 'end') // Prefer 'middle' if not start or end
         ) {
             uniqueSegmentsMap.set(dateStr, segment);
         }
@@ -88,7 +95,7 @@ export default function TripDetailsPage() {
 
     return Array.from(uniqueSegmentsMap.values())
       .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .map(dp => ({ ...dp, isLoading: true, error: null }));
+      .map(dp => ({ ...dp, isLoading: true, error: null })); // Reset loading/error states
 
   }, [plan]);
 
@@ -104,6 +111,7 @@ export default function TripDetailsPage() {
         return;
       }
 
+      setOverallLoading(true); // Ensure overall loading is true at the start of data fetching
       try {
         // Fetch Family Profile
         const profileRef = doc(db, "users", user.uid, "profile", "mainProfile");
@@ -120,14 +128,17 @@ export default function TripDetailsPage() {
 
         if (planSnap.exists()) {
           setPlan({ id: planSnap.id, ...planSnap.data() } as TravelPlanItem);
+          setPageError(null); // Clear any previous error
         } else {
           setPageError("Travel plan not found or you do not have access.");
-          setOverallLoading(false);
+          setPlan(null); // Clear plan if not found
         }
       } catch (error) {
-        console.error("Error loading trip data:", error);
+        console.error("Error loading trip data from Firestore:", error);
         setPageError("Error loading travel plan data from the cloud.");
-        setOverallLoading(false);
+        setPlan(null);
+      } finally {
+        // Overall loading will be set to false after segments are processed
       }
     };
     loadTripData();
@@ -135,7 +146,16 @@ export default function TripDetailsPage() {
 
 
   React.useEffect(() => {
-    if (!plan || !user) return; // Ensure plan and user are loaded
+    if (!plan || !user || !familyProfile) { // Ensure plan, user, and familyProfile are loaded
+        if (isAuthenticated && !plan && !pageError && !authIsLoading) { 
+            // This means user is auth, but plan fetch might still be in progress or failed silently
+            // setOverallLoading might still be true if plan hasn't resolved yet.
+        } else if (!isAuthenticated && !authIsLoading) {
+            setOverallLoading(false); // Not logged in, nothing to load for segments.
+        }
+        return;
+    }
+
 
     const initialSegments = getUniqueDateSegments();
     setSegments(initialSegments);
@@ -144,7 +164,7 @@ export default function TripDetailsPage() {
         setOverallLoading(false);
         return;
     }
-    setOverallLoading(true); 
+    // setOverallLoading(true); // This is handled by the outer loadTripData effect.
 
     const fetchAllSegmentData = async () => {
       let combinedProfileForAI = `Global Profile: ${familyProfile}.`;
@@ -164,21 +184,22 @@ export default function TripDetailsPage() {
             setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: segmentError, isLoading: false, weatherData: null } : s));
             return { ...segment, error: segmentError, isLoading: false, weatherData: null };
           }
+          // Update segment with weather data immediately for responsiveness
           setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, weatherData: weather } : s));
 
           try {
             const clothingInput = {
               weatherCondition: weather.condition,
               temperature: weather.temperature,
-              familyProfile: combinedProfileForAI, 
+              familyProfile: combinedProfileForAI,
               location: plan.location,
             };
             clothing = await suggestClothing(clothingInput);
             setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, clothingSuggestions: clothing } : s));
           } catch (aiError: any) {
-            console.error(`Error fetching clothing suggestions for segment ${segment.id}:`, aiError);
-            clothing = null; 
-            if (!segmentError) segmentError = "AI clothing suggestions are currently unavailable for this day.";
+            console.error(`Error fetching clothing suggestions for segment ${segment.id} (${format(segment.date, "yyyy-MM-dd")}):`, aiError);
+            clothing = null;
+            if (!segmentError) segmentError = "AI clothing suggestions are currently unavailable for this day. Please try again later.";
              setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, clothingSuggestions: null, error: segmentError } : s));
           }
           
@@ -187,21 +208,21 @@ export default function TripDetailsPage() {
               weatherCondition: weather.condition,
               temperature: weather.temperature,
               familyProfile: combinedProfileForAI,
-              timeOfDay: "day", 
+              timeOfDay: "day", // Assuming 'day' for general trip suggestions
               locationPreferences: plan.location,
             };
             activities = await suggestActivities(activityInput);
             setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, activitySuggestions: activities } : s));
           } catch (aiError: any) {
-            console.error(`Error fetching activity suggestions for segment ${segment.id}:`, aiError);
-            activities = null; 
-            if (!segmentError) segmentError = "AI activity suggestions are currently unavailable for this day.";
+            console.error(`Error fetching activity suggestions for segment ${segment.id} (${format(segment.date, "yyyy-MM-dd")}):`, aiError);
+            activities = null;
+            if (!segmentError) segmentError = "AI activity suggestions are currently unavailable for this day. Please try again later.";
             setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, activitySuggestions: null, error: segmentError } : s));
           }
           
           setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, isLoading: false, error: segmentError } : s));
           return { ...segment, weatherData: weather, clothingSuggestions: clothing, activitySuggestions: activities, isLoading: false, error: segmentError };
-        } catch (err: any) { 
+        } catch (err: any) {
           console.error(`Error fetching weather data for segment ${segment.id} (${format(segment.date, "yyyy-MM-dd")}):`, err);
           segmentError = "Weather data for this day is currently unavailable. Suggestions cannot be loaded.";
           setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: segmentError, isLoading: false, weatherData: null } : s));
@@ -210,37 +231,38 @@ export default function TripDetailsPage() {
       });
       
       await Promise.all(promises);
-      setOverallLoading(false);
+      setOverallLoading(false); // All segments processed, set overall loading to false
     };
     
     fetchAllSegmentData();
 
-  }, [plan, user, familyProfile, getUniqueDateSegments]); // Added user to dependencies
+  }, [plan, user, familyProfile, getUniqueDateSegments]);
 
 
   const generateShareText = () => {
     if (!plan) return "Plan details are not loaded.";
-    if (segments.some(s => s.isLoading || !s.weatherData)) return "Suggestions are loading or weather data is incomplete for some days.";
-    
+    if (segments.some(s => s.isLoading || (!s.weatherData && !s.error) )) return "Suggestions are loading or weather data is incomplete for some days.";
+
     let text = `Weatherugo Guide - Travel Plan: ${plan.tripName} to ${plan.location}\n`;
     text += `Dates: ${format(parseISO(plan.startDate), "PPP")} - ${format(parseISO(plan.endDate), "PPP")}\n`;
     if (plan.tripContext) text += `Trip Notes: ${plan.tripContext}\n`;
     text += `\nFamily Profile Used for Suggestions: ${familyProfile}\n\n`;
 
     segments.forEach(segment => {
-      if (segment.weatherData) { 
-        text += `--- ${segment.label} ---\n`;
+      text += `--- ${segment.label} ---\n`;
+      if (segment.weatherData) {
         text += `Weather: ${segment.weatherData.temperature}°C, ${segment.weatherData.condition} (${segment.weatherData.description})\n`;
         if (segment.clothingSuggestions) text += `Outfit Ideas: ${segment.clothingSuggestions.suggestions.join(", ") || "N/A"}\n`;
-        else text += `Outfit Ideas: Suggestions currently unavailable.\n`;
+        else text += `Outfit Ideas: Suggestions currently unavailable for this day.\n`;
         if (segment.activitySuggestions) {
           text += `Activity Ideas:\n`;
           text += `  Indoor: ${segment.activitySuggestions.indoorActivities.join(", ") || "N/A"}\n`;
           text += `  Outdoor: ${segment.activitySuggestions.outdoorActivities.join(", ") || "N/A"}\n\n`;
-        } else text += `Activity Ideas: Suggestions currently unavailable.\n\n`;
+        } else text += `Activity Ideas: Suggestions currently unavailable for this day.\n\n`;
       } else if (segment.error) {
-         text += `--- ${segment.label} ---\n`;
-         text += `Weather and suggestions for this day are currently unavailable due to: ${segment.error}\n\n`;
+         text += `Weather and suggestions for this day are currently unavailable: ${segment.error}\n\n`;
+      } else {
+         text += `Weather data or suggestions are still loading for this day.\n\n`;
       }
     });
     return text;
@@ -278,23 +300,32 @@ export default function TripDetailsPage() {
       });
     }
   };
-  
-  const allSegmentsWeatherDataLoaded = !overallLoading && segments.length > 0 && segments.every(s => !s.isLoading && s.weatherData !== null);
-  const someSuggestionsFailed = segments.some(s => s.weatherData && (!s.clothingSuggestions || !s.activitySuggestions) && !s.isLoading);
+
+  const allSegmentsWeatherDataLoaded = !overallLoading && segments.length > 0 && segments.every(s => (!s.isLoading && s.weatherData !== null) || s.error);
+  const someSuggestionsFailed = segments.some(s => s.weatherData && (!s.clothingSuggestions || !s.activitySuggestions) && !s.isLoading && !s.error?.includes("Weather data"));
 
 
-  if (authIsLoading || overallLoading && !plan) { // Show loading skeletons if auth or initial plan data is loading
+  if (authIsLoading || (overallLoading && !plan && !pageError)) {
      return (
         <div className="space-y-4 mt-4 py-4">
             <Skeleton className="h-10 w-1/4 mb-4" />
-            <Skeleton className="h-32 w-full rounded-lg" />
-            <Skeleton className="h-12 w-1/2 mt-6 mb-3" />
-            <div className="space-y-3 p-1">
-              <Skeleton className="h-10 w-full rounded-md" />
-              <Skeleton className="h-24 w-full rounded-md" />
-              <Skeleton className="h-10 w-full rounded-md" />
-              <Skeleton className="h-24 w-full rounded-md" />
-            </div>
+            <Card className="shadow-xl">
+              <CardHeader className="bg-primary/10 rounded-t-lg p-6">
+                  <Skeleton className="h-8 w-3/4" />
+                  <Skeleton className="h-4 w-1/2 mt-2" />
+                  <Skeleton className="h-4 w-1/2 mt-1" />
+                  <Skeleton className="h-4 w-1/2 mt-1" />
+              </CardHeader>
+              <CardContent className="pt-6">
+                  <Skeleton className="h-8 w-1/2 mb-3" />
+                  <div className="space-y-3 p-1">
+                    <Skeleton className="h-10 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                    <Skeleton className="h-10 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                  </div>
+              </CardContent>
+            </Card>
         </div>
      );
   }
@@ -310,8 +341,8 @@ export default function TripDetailsPage() {
       </Card>
     );
   }
-  
-  if (!plan) { // This case should ideally be covered by pageError if fetching failed
+
+  if (!plan && !overallLoading) { // This case should ideally be covered by pageError if fetching failed
     return (
          <Card className="mt-4 shadow-lg">
             <CardHeader><CardTitle>Loading Plan Details...</CardTitle></CardHeader>
@@ -321,6 +352,12 @@ export default function TripDetailsPage() {
          </Card>
     );
   }
+  
+  // Render this part only if plan is loaded
+  if (!plan) {
+    return null; // Or a more specific loading/error state if plan is expected but not yet loaded
+  }
+
 
   return (
     <div className="space-y-6 py-4">
@@ -341,15 +378,15 @@ export default function TripDetailsPage() {
             </CardHeader>
             <CardContent className="pt-6">
                 <h2 className="text-xl font-semibold mb-3">Daily Itinerary & AI Suggestions</h2>
-                
-                {overallLoading && segments.length === 0 && (
+
+                {overallLoading && segments.length === 0 && ( // Show this skeleton only if overall an initial segments are loading
                   <div className="space-y-3 p-1">
                     <Skeleton className="h-10 w-full rounded-md" />
                     <Skeleton className="h-24 w-full rounded-md" />
                   </div>
                 )}
 
-                {!overallLoading && segments.length === 0 && (
+                {!overallLoading && segments.length === 0 && plan && ( // If done loading and still no segments, but plan exists
                     <div className="text-center py-8 my-4 border rounded-md bg-card">
                         <Info size={48} className="mx-auto text-muted-foreground mb-2" />
                         <p className="text-muted-foreground">No suggestion segments to display for this trip duration.</p>
@@ -366,7 +403,7 @@ export default function TripDetailsPage() {
                             <span className="flex-1 text-left">{segment.label}</span>
                             {segment.isLoading && <Skeleton className="h-5 w-20 ml-auto" />}
                             {segment.error && !segment.weatherData && <AlertCircle className="h-5 w-5 text-destructive ml-auto" title="Weather data failed"/>}
-                            {segment.error && segment.weatherData && <Info className="h-5 w-5 text-amber-600 ml-auto" title="AI suggestions failed"/>}
+                            {segment.error && segment.weatherData && <Info className="h-5 w-5 text-amber-600 ml-auto" title="AI suggestions failed for this day"/>}
                             </AccordionTrigger>
                             <AccordionContent className="pt-0 pb-4 space-y-4 border border-t-0 rounded-b-md shadow-sm bg-card overflow-hidden">
                                 <div className="p-4">
@@ -376,12 +413,12 @@ export default function TripDetailsPage() {
                                     <Skeleton className="h-4 w-3/4" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" />
                                     </div>
                                 )}
-                                {segment.error && !segment.weatherData && (
+                                {segment.error && !segment.weatherData && ( // Error specifically for weather data loading
                                     <div className="text-destructive p-4 border border-destructive/50 rounded-md bg-destructive/10">
                                     <p className="font-medium">Error loading data for this day:</p><p className="text-sm">{segment.error}</p>
                                     </div>
                                 )}
-                                {segment.weatherData && (
+                                {segment.weatherData && ( // Weather data loaded, proceed to show it and suggestions (or errors for suggestions)
                                     <div className="p-1 border rounded-md bg-background/80 shadow-inner">
                                         <div className="flex items-center justify-between mb-3 pb-3 border-b">
                                             <div className="flex items-center gap-2">
@@ -395,6 +432,7 @@ export default function TripDetailsPage() {
                                                 <p>Humidity: {segment.weatherData.humidity}%</p><p>Wind: {segment.weatherData.windSpeed} km/h</p>
                                             </div>
                                         </div>
+                                        {/* Error specifically for AI suggestions after weather data loaded */}
                                         {segment.error && (segment.clothingSuggestions === null || segment.activitySuggestions === null) && (
                                             <div className="text-amber-700 p-3 my-2 border border-amber-300 rounded-md bg-amber-50 text-sm">
                                                 <p><Info size={16} className="inline mr-1" /> {segment.error}</p>
@@ -423,7 +461,7 @@ export default function TripDetailsPage() {
 
                 {!overallLoading && segments.length > 0 && (someSuggestionsFailed || !allSegmentsWeatherDataLoaded) && (
                     <div className="text-center py-4 text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200 mt-4">
-                        <p><Info size={16} className="inline mr-1" /> 
+                        <p><Info size={16} className="inline mr-1" />
                         { !allSegmentsWeatherDataLoaded ? "Some weather data could not be loaded. Suggestions might be incomplete." : "Some AI suggestions could not be generated. Weather data is available."}
                         </p>
                     </div>
