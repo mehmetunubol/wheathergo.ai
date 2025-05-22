@@ -164,47 +164,51 @@ export default function HomePage() {
 
       if (!weatherFromCache) {
         setIsLoadingWeather(true);
-        setWeatherData(null); // Clear old data before fetching
+        setWeatherData(null); 
         try {
           const data = await fetchWeather(location, selectedDate);
-          if (data) {
-            setWeatherData(data);
-            currentFetchedWeatherData = data;
-            localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
-            if (location.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
-              setLocation(data.location); 
-            }
-            // Toast for significant weather change (only for today)
-            if (isToday(selectedDate)) {
-              const todayStr = format(new Date(), "yyyy-MM-dd");
-              const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
-              if (lastKnownWeatherStr) {
-                  const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
-                  if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
-                      if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
-                          toast({
-                              title: "Weather Update!",
-                              description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
-                          });
-                      }
-                  }
-              }
-              localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
-                  location: data.location, 
-                  temperature: data.temperature, 
-                  condition: data.condition,
-                  date: todayStr 
-              }));
-            }
-
-          } else {
-            toast({ title: "Error Fetching Weather", description: `Could not retrieve weather data for "${location}". The service might be temporarily unavailable, the location might be invalid, or there could be an issue with the API key configuration. Please try again later or enter a different location.`, variant: "destructive" });
-            currentFetchedWeatherData = null;
-            setWeatherData(null);
+          setWeatherData(data);
+          currentFetchedWeatherData = data;
+          localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
+          if (location.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
+            setLocation(data.location); 
           }
-        } catch (error) {
-          console.error("Failed to fetch weather:", error);
-          toast({ title: "Error Fetching Weather", description: "An unexpected error occurred while fetching weather data. Please check your connection or try again.", variant: "destructive" });
+          if (isToday(selectedDate)) {
+            const todayStr = format(new Date(), "yyyy-MM-dd");
+            const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
+            if (lastKnownWeatherStr) {
+                const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
+                if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
+                    if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
+                        toast({
+                            title: "Weather Update!",
+                            description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
+                        });
+                    }
+                }
+            }
+            localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
+                location: data.location, 
+                temperature: data.temperature, 
+                condition: data.condition,
+                date: todayStr 
+            }));
+          }
+        } catch (error: any) {
+          console.error(`Client-side fetch weather error for "${location}":`, error.message);
+          let toastDescription = `Could not retrieve weather data for "${location}". Please try a different location or check again later.`;
+          if (error.message && error.message.toLowerCase().includes("no matching location found")) {
+             toastDescription = `No weather data found for "${location}". Please ensure the location is correct.`;
+          } else if (error.message && error.message.toLowerCase().includes("api key")) {
+             toastDescription = `Could not retrieve weather data: API key issue. Please contact support.`;
+          } else if (error.message) {
+             toastDescription = `Could not retrieve weather data: ${error.message}.`;
+          }
+          toast({ 
+            title: "Weather Data Error", 
+            description: toastDescription, 
+            variant: "destructive" 
+          });
           currentFetchedWeatherData = null;
           setWeatherData(null);
         } finally {
@@ -314,10 +318,6 @@ export default function HomePage() {
 
     const currentHour = getHours(new Date());
     return weatherData.forecast.filter(item => {
-        // Time from WeatherAPI is "YYYY-MM-DD HH:MM" or just "HH:MM" for hourly items
-        // We formatted it to "h a" or "MMM d, h a" in fetchWeather
-        // Need to parse it back or use the original full time if available
-        // For simplicity, assuming item.time is like "3 PM" or "11 AM"
         const timeParts = item.time.match(/(\d+)(?::\d+)?\s*(AM|PM)/i);
         if (timeParts) {
             let itemHour = parseInt(timeParts[1]);
@@ -326,17 +326,14 @@ export default function HomePage() {
             if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
             return itemHour >= currentHour;
         }
-        // Fallback if parsing "h a" fails, attempt to parse from a full ISO-like string
-        // This part might be complex if item.time doesn't contain date info when it's for "next day" in 24h forecast
+        // Fallback for safety, though WeatherAPI usually provides 'h a' format via our mapping
         try {
-          const itemDate = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/, ':00')}`);
-          if (isValid(itemDate)) {
-            return getHours(itemDate) >= currentHour;
+          const fullItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/i, ':00')}`);
+          if (isValid(fullItemTime)) {
+            return getHours(fullItemTime) >= currentHour;
           }
-        } catch {
-          // ignore parsing error
-        }
-        return true; // Fallback: include if unsure
+        } catch { /* ignore parsing error for fallback */ }
+        return true; 
     });
   };
 
