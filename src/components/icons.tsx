@@ -1,6 +1,6 @@
 
 import type { LucideProps } from 'lucide-react';
-import { Sun, Cloud, CloudRain, CloudSnow, CloudSun, CloudFog, Zap, Wind, Moon, Snowflake, CloudLightning, Cloudy, Haze, Umbrella, CloudDrizzle, MoonCloud } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, CloudSun, CloudFog, Zap, Wind, Moon, Snowflake, CloudLightning, Cloudy, Haze, Umbrella, CloudDrizzle, CloudMoon } from 'lucide-react';
 
 interface WeatherIconMap {
   [key: string]: React.FC<LucideProps>;
@@ -13,7 +13,7 @@ export const WeatherIcons: WeatherIconMap = {
   "1000": Sun, // Sunny / Clear (Day default)
   "1000_night": Moon, // Clear (Night)
   "1003": CloudSun, // Partly cloudy (Day default)
-  "1003_night": MoonCloud, // Partly cloudy (Night)
+  "1003_night": CloudMoon, // Partly cloudy (Night)
   "1006": Cloud, // Cloudy
   "1009": Cloudy, // Overcast
   "1030": CloudFog, // Mist
@@ -65,7 +65,7 @@ export const WeatherIcons: WeatherIconMap = {
   "Sunny": Sun,
   "Clear_night": Moon,
   "Clear": Sun, 
-  "Partly cloudy_night": MoonCloud,
+  "Partly cloudy_night": CloudMoon,
   "Partly cloudy": CloudSun,
   "Cloudy": Cloud,
   "Overcast": Cloudy,
