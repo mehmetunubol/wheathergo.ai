@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, MapPin, Check, X as XIcon } from "lucide-react";
+import { format, parse } from "date-fns";
+import { Calendar as CalendarIcon, MapPin, Check, X as XIcon, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,6 @@ interface LocationDateSelectorProps {
 
 const capitalizeFirstLetter = (str: string): string => {
   if (!str) return str;
-  // Check if the string is "auto:ip" (case-insensitive) to avoid capitalizing it
   if (str.toLowerCase() === "auto:ip") {
     return str;
   }
@@ -40,25 +39,27 @@ export function LocationDateSelector({
 }: LocationDateSelectorProps) {
   const [currentLocationInput, setCurrentLocationInput] = React.useState(capitalizeFirstLetter(location));
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
-  const [provisionalDate, setProvisionalDate] = React.useState<Date | undefined>(selectedDate);
+  
+  // Provisional states for within the popover
+  const [provisionalDatePart, setProvisionalDatePart] = React.useState<Date | undefined>(selectedDate);
+  const [provisionalTimePart, setProvisionalTimePart] = React.useState<string>(format(selectedDate, "HH:mm"));
 
   React.useEffect(() => {
     setCurrentLocationInput(capitalizeFirstLetter(location));
   }, [location]);
 
-  // Update provisionalDate if selectedDate prop changes from outside
+  // Update provisional states if selectedDate prop changes from outside
   React.useEffect(() => {
-    setProvisionalDate(selectedDate);
+    setProvisionalDatePart(selectedDate);
+    setProvisionalTimePart(format(selectedDate, "HH:mm"));
   }, [selectedDate]);
 
   const handleLocationBlur = () => {
     if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
       onLocationChange(currentLocationInput);
     } else if (currentLocationInput.trim() === "" && location !== "") {
-      // If input is cleared, reflect that change upwards if parent had a value
       onLocationChange("");
     } else {
-      // If input matches prop (possibly after capitalization), ensure display is capitalized
        setCurrentLocationInput(capitalizeFirstLetter(location));
     }
   };
@@ -68,25 +69,37 @@ export function LocationDateSelector({
        if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
         onLocationChange(currentLocationInput);
       }
-       // Blur to trigger capitalization if needed
        (e.target as HTMLInputElement).blur();
     }
   };
 
-  const handleConfirmDate = () => {
-    onDateChange(provisionalDate);
+  const handleConfirmDateTime = () => {
+    if (provisionalDatePart) {
+      const [hours, minutes] = provisionalTimePart.split(':').map(Number);
+      const newCombinedDate = new Date(
+        provisionalDatePart.getFullYear(),
+        provisionalDatePart.getMonth(),
+        provisionalDatePart.getDate(),
+        hours,
+        minutes
+      );
+      onDateChange(newCombinedDate);
+    }
     setIsCalendarOpen(false);
   };
 
-  const handleCancelDate = () => {
-    setProvisionalDate(selectedDate); // Reset to the last confirmed date
+  const handleCancelDateTime = () => {
+    // Reset provisional states to the last confirmed selectedDate
+    setProvisionalDatePart(selectedDate);
+    setProvisionalTimePart(format(selectedDate, "HH:mm"));
     setIsCalendarOpen(false);
   };
 
   const handlePopoverOpenChange = (open: boolean) => {
     if (open) {
-      // When opening, ensure provisional date is the current selected date
-      setProvisionalDate(selectedDate);
+      // When opening, ensure provisional states are synced with current selectedDate
+      setProvisionalDatePart(selectedDate);
+      setProvisionalTimePart(format(selectedDate, "HH:mm"));
     }
     setIsCalendarOpen(open);
   };
@@ -96,7 +109,7 @@ export function LocationDateSelector({
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <MapPin className="text-primary" />
-          Location & Date
+          Location & Date/Time
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -116,34 +129,45 @@ export function LocationDateSelector({
           />
         </div>
         <div>
-          <Label htmlFor="date" className="text-sm font-medium">
-            Date
+          <Label htmlFor="date-time" className="text-sm font-medium">
+            Date & Time
           </Label>
           <Popover open={isCalendarOpen} onOpenChange={handlePopoverOpenChange}>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
+                id="date-time"
                 className={cn(
                   "w-full justify-start text-left font-normal mt-1",
                   !selectedDate && "text-muted-foreground"
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                {selectedDate ? format(selectedDate, "PPP, p") : <span>Pick a date and time</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={provisionalDate}
-                onSelect={setProvisionalDate}
+                selected={provisionalDatePart}
+                onSelect={setProvisionalDatePart}
                 initialFocus
               />
+              <div className="p-3 border-t border-border">
+                <Label htmlFor="time-select" className="text-sm font-medium">Select Time</Label>
+                <Input 
+                  id="time-select"
+                  type="time" 
+                  value={provisionalTimePart}
+                  onChange={(e) => setProvisionalTimePart(e.target.value)}
+                  className="mt-1 w-full"
+                />
+              </div>
               <div className="p-2 border-t border-border flex justify-end space-x-2">
-                <Button variant="ghost" size="sm" onClick={handleCancelDate}>
+                <Button variant="ghost" size="sm" onClick={handleCancelDateTime}>
                   <XIcon className="mr-1 h-4 w-4" /> Cancel
                 </Button>
-                <Button variant="default" size="sm" onClick={handleConfirmDate}>
+                <Button variant="default" size="sm" onClick={handleConfirmDateTime}>
                   <Check className="mr-1 h-4 w-4" /> Confirm
                 </Button>
               </div>

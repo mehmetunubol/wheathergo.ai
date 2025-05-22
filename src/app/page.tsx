@@ -26,8 +26,8 @@ const DEFAULT_LOCATION = "auto:ip";
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
 const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
-function getTimeOfDay(): string {
-  const hour = new Date().getHours();
+function getTimeOfDay(dateWithTime: Date): string {
+  const hour = getHours(dateWithTime);
   if (hour < 12) return "morning";
   if (hour < 18) return "afternoon";
   return "evening";
@@ -35,7 +35,7 @@ function getTimeOfDay(): string {
 
 export default function HomePage() {
   const [location, setLocation] = React.useState<string>(DEFAULT_LOCATION);
-  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); // Default to current date & time
   const [familyProfile, setFamilyProfile] = React.useState<string>(DEFAULT_FAMILY_PROFILE);
   
   const [weatherData, setWeatherData] = React.useState<WeatherData | null>(null);
@@ -66,43 +66,37 @@ export default function HomePage() {
             if (data.lastLocation) {
               setLocation(data.lastLocation);
             } else {
+              // Fallback to localStorage if not in Firestore for some reason, then default
               const storedLocation = localStorage.getItem("weatherugo-location");
-              if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-                setLocation(storedLocation);
-              } else {
-                setLocation(DEFAULT_LOCATION);
-              }
+              setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
             }
             if (data.lastSelectedDate) {
               const parsedDate = parseISO(data.lastSelectedDate);
               if (isValid(parsedDate)) {
                 setSelectedDate(parsedDate);
+              } else {
+                setSelectedDate(new Date()); // Default to now if stored date is invalid
               }
+            } else {
+              setSelectedDate(new Date()); // Default to now if no date stored
             }
           } else {
+             // No preferences in Firestore, try localStorage for location, default date to now
             const storedLocation = localStorage.getItem("weatherugo-location");
-            if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-              setLocation(storedLocation);
-            } else {
-              setLocation(DEFAULT_LOCATION);
-            }
+            setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
+            setSelectedDate(new Date());
           }
         } else {
+          // Not authenticated, use localStorage for location, default date to now
           const storedLocation = localStorage.getItem("weatherugo-location");
-          if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-            setLocation(storedLocation);
-          } else {
-            setLocation(DEFAULT_LOCATION);
-          }
+          setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
+          setSelectedDate(new Date());
         }
       } catch (error) { 
         console.error("Error during preferences loading:", error);
         const storedLocation = localStorage.getItem("weatherugo-location");
-        if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-          setLocation(storedLocation);
-        } else {
-          setLocation(DEFAULT_LOCATION);
-        }
+        setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
+        setSelectedDate(new Date());
       } finally { 
         setIsLoadingPreferences(false);
       }
@@ -135,12 +129,12 @@ export default function HomePage() {
       if (authIsLoading || isLoadingProfile || isLoadingPreferences) return;
       if (!location || !selectedDate) return;
 
-      const formattedDate = format(selectedDate, "yyyy-MM-dd");
+      const formattedDateForAPI = format(selectedDate, "yyyy-MM-dd"); // WeatherAPI uses date part for 'dt'
       const currentTime = new Date().getTime();
       let currentFetchedWeatherData: WeatherData | null = null;
 
       // --- Weather Data Fetching/Caching ---
-      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDate}`;
+      const weatherCacheKey = `weatherugo-cache-weather-${location}-${format(selectedDate, "yyyy-MM-dd-HH")}`; // Include hour in key
       const cachedWeatherString = localStorage.getItem(weatherCacheKey);
       let weatherFromCache = false;
 
@@ -166,14 +160,15 @@ export default function HomePage() {
         setIsLoadingWeather(true);
         setWeatherData(null); 
         try {
-          const data = await fetchWeather(location, selectedDate);
+          // Pass the full selectedDate (with time) to fetchWeather
+          const data = await fetchWeather(location, selectedDate); 
           setWeatherData(data);
           currentFetchedWeatherData = data;
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
           if (location.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
             setLocation(data.location); 
           }
-          if (isToday(selectedDate)) {
+          if (isToday(selectedDate)) { // Check date part only
             const todayStr = format(new Date(), "yyyy-MM-dd");
             const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
             if (lastKnownWeatherStr) {
@@ -196,13 +191,9 @@ export default function HomePage() {
           }
         } catch (error: any) {
           console.error(`Client-side fetch weather error for "${location}":`, error.message);
-          let toastDescription = `Could not retrieve weather data for "${location}". Please try a different location or check again later.`;
-          if (error.message && error.message.toLowerCase().includes("no matching location found")) {
-             toastDescription = `No weather data found for "${location}". Please ensure the location is correct.`;
-          } else if (error.message && error.message.toLowerCase().includes("api key")) {
+          let toastDescription = error.message || `Could not retrieve weather data for "${location}". Please try a different location or check again later.`;
+          if (error.message && error.message.toLowerCase().includes("api key")) {
              toastDescription = `Could not retrieve weather data: API key issue. Please contact support.`;
-          } else if (error.message) {
-             toastDescription = `Could not retrieve weather data: ${error.message}.`;
           }
           toast({ 
             title: "Weather Data Error", 
@@ -218,9 +209,9 @@ export default function HomePage() {
 
       // --- Suggestions Fetching/Caching (only if weather data is available) ---
       if (currentFetchedWeatherData && familyProfile) {
-        const currentTOD = getTimeOfDay();
-        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDate}-${familyProfile}`;
-        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDate}-${familyProfile}-${currentTOD}`;
+        const currentTOD = getTimeOfDay(selectedDate); // Use selectedDate (with time) for time of day
+        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForAPI}-${getHours(selectedDate)}-${familyProfile}`;
+        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForAPI}-${getHours(selectedDate)}-${familyProfile}-${currentTOD}`;
 
         // Outfit Suggestions
         const cachedOutfitString = localStorage.getItem(outfitCacheKey);
@@ -302,6 +293,8 @@ export default function HomePage() {
   const handleDateChange = React.useCallback((date: Date | undefined) => {
     if (date) {
       setSelectedDate(date);
+    } else {
+      setSelectedDate(new Date()); // Fallback to now if undefined
     }
   }, []);
   
@@ -314,26 +307,28 @@ export default function HomePage() {
   const getFilteredHourlyForecast = () => {
     if (!weatherData?.forecast) return [];
     
-    if (!isToday(selectedDate)) return weatherData.forecast;
+    if (!isToday(selectedDate)) return weatherData.forecast; // Show all hours for future/past dates
 
-    const currentHour = getHours(new Date());
+    // For today, filter based on the time part of selectedDate
+    const currentHourToDisplayFrom = getHours(selectedDate); 
     return weatherData.forecast.filter(item => {
-        const timeParts = item.time.match(/(\d+)(?::\d+)?\s*(AM|PM)/i);
+        // Assuming item.time is "HH AM/PM" or "H AM/PM" from weather-api.ts's 24h logic
+        const timeParts = item.time.match(/(\d+)(?::\d+)?\s*(AM|PM)/i); // Updated to match H AM/PM too
         if (timeParts) {
             let itemHour = parseInt(timeParts[1]);
             const ampm = timeParts[2].toUpperCase();
             if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
-            if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
-            return itemHour >= currentHour;
+            if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight
+            return itemHour >= currentHourToDisplayFrom;
         }
-        // Fallback for safety, though WeatherAPI usually provides 'h a' format via our mapping
+        // Fallback for safety, though not expected with current weather-api.ts
         try {
           const fullItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/i, ':00')}`);
           if (isValid(fullItemTime)) {
-            return getHours(fullItemTime) >= currentHour;
+            return getHours(fullItemTime) >= currentHourToDisplayFrom;
           }
         } catch { /* ignore parsing error for fallback */ }
-        return true; 
+        return true; // Show if parsing fails to be safe
     });
   };
 
@@ -373,7 +368,7 @@ export default function HomePage() {
         <HourlyForecastCard
           forecastData={getFilteredHourlyForecast()}
           isLoading={isLoadingWeather}
-          date={selectedDate}
+          date={selectedDate} // Pass the full date with time
         />
       )}
       
@@ -382,7 +377,7 @@ export default function HomePage() {
           outfitSuggestions={outfitSuggestions}
           isOutfitLoading={isLoadingOutfit}
           activitySuggestions={activitySuggestions}
-          isActivityLoading={isLoadingActivity}
+          isActivityLoading={isActivityLoading}
         />
       )}
 
