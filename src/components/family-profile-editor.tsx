@@ -7,17 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-
+// Removed Alert and AlertDescription import as we are using Tooltip now
 
 interface FamilyProfileEditorProps {
-  profile: string; // This will now be an initial value, actual state managed internally
-  onProfileSave: (profile: string) => void; // Callback for parent to update its state if needed
+  profile: string; 
+  onProfileSave: (profile: string) => void; 
 }
 
 export function FamilyProfileEditor({
@@ -38,10 +38,11 @@ export function FamilyProfileEditor({
           const profileRef = doc(db, "users", user.uid, "profile", "mainProfile");
           const docSnap = await getDoc(profileRef);
           if (docSnap.exists()) {
-            setCurrentProfile(docSnap.data().description || "");
-            onProfileSave(docSnap.data().description || ""); // Notify parent
+            const profileData = docSnap.data().description || "";
+            setCurrentProfile(profileData);
+            onProfileSave(profileData); 
           } else {
-            setCurrentProfile(initialProfile); // Use initial if nothing in DB
+            setCurrentProfile(initialProfile); 
             onProfileSave(initialProfile);
           }
         } catch (error) {
@@ -51,14 +52,12 @@ export function FamilyProfileEditor({
             description: "Could not load your family profile from the cloud.",
             variant: "destructive",
           });
-          setCurrentProfile(initialProfile); // Fallback to initial
+          setCurrentProfile(initialProfile); 
           onProfileSave(initialProfile);
         } finally {
           setIsLoading(false);
         }
       } else if (!authIsLoading) {
-        // Not authenticated or user object not yet available, but auth loading finished
-        // Use localStorage or default
         const storedProfile = localStorage.getItem("weatherugo-familyProfile");
         const profileToSet = storedProfile || initialProfile;
         setCurrentProfile(profileToSet);
@@ -70,12 +69,12 @@ export function FamilyProfileEditor({
     if (!authIsLoading) {
       fetchProfile();
     }
+    // onProfileSave is wrapped in useCallback in parent, initialProfile is stable
   }, [user, isAuthenticated, authIsLoading, toast, initialProfile, onProfileSave]);
 
 
   const handleSave = async () => {
     if (!isAuthenticated || !user) {
-      // Save to localStorage if not authenticated
       localStorage.setItem("weatherugo-familyProfile", currentProfile);
       onProfileSave(currentProfile);
       toast({
@@ -89,7 +88,7 @@ export function FamilyProfileEditor({
     try {
       const profileRef = doc(db, "users", user.uid, "profile", "mainProfile");
       await setDoc(profileRef, { description: currentProfile, updatedAt: new Date().toISOString() }, { merge: true });
-      onProfileSave(currentProfile); // Notify parent of the change
+      onProfileSave(currentProfile); 
       toast({
         title: "Profile Saved",
         description: "Your family profile has been updated in the cloud.",
@@ -123,6 +122,17 @@ export function FamilyProfileEditor({
     );
   }
 
+  const profileTextarea = (
+    <Textarea
+      id="family-profile"
+      value={currentProfile}
+      onChange={(e) => setCurrentProfile(e.target.value)}
+      placeholder="E.g., Two adults, one 2-year-old baby sensitive to cold, one dog."
+      className="mt-1 min-h-[100px]"
+      disabled={isSaving}
+    />
+  );
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -132,25 +142,31 @@ export function FamilyProfileEditor({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {!isAuthenticated && (
-          <Alert variant="default" className="mb-4 text-sm">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              You are not logged in. Profile changes will be saved locally to this browser.
-            </AlertDescription>
-          </Alert>
-        )}
         <Label htmlFor="family-profile" className="text-sm font-medium">
           Describe your family members (e.g., ages, sensitivities, pets)
         </Label>
-        <Textarea
-          id="family-profile"
-          value={currentProfile}
-          onChange={(e) => setCurrentProfile(e.target.value)}
-          placeholder="E.g., Two adults, one 2-year-old baby sensitive to cold, one dog."
-          className="mt-1 min-h-[100px]"
-          disabled={isSaving}
-        />
+        {!isAuthenticated ? (
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {profileTextarea}
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start" className="bg-background border-border shadow-lg p-3 max-w-xs">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-semibold text-foreground">Not Logged In</p>
+                    <p className="text-muted-foreground">
+                      Profile changes will be saved locally to this browser. Log in to save to the cloud for access across devices.
+                    </p>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          profileTextarea
+        )}
       </CardContent>
       <CardFooter>
         <Button onClick={handleSave} className="w-full" disabled={isSaving || isLoading}>
