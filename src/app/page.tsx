@@ -71,8 +71,8 @@ export default function HomePage() {
       if (authIsLoading) return; // Wait for auth state to be known
 
       setIsLoadingPreferences(true);
-      if (isAuthenticated && user) {
-        try {
+      try { // Added try block here
+        if (isAuthenticated && user) {
           const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
           const docSnap = await getDoc(prefsRef);
           if (docSnap.exists()) {
@@ -103,9 +103,8 @@ export default function HomePage() {
               setLocation(DEFAULT_LOCATION);
             }
           }
-        } catch (error) {
-          console.error("Error fetching user preferences from Firestore:", error);
-          // Fallback to localStorage for location if Firestore fails
+        } else {
+          // Not authenticated, load location from localStorage
           const storedLocation = localStorage.getItem("weatherugo-location");
           if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             setLocation(storedLocation);
@@ -113,16 +112,18 @@ export default function HomePage() {
             setLocation(DEFAULT_LOCATION);
           }
         }
-      } else {
-        // Not authenticated, load location from localStorage
+      } catch (error) { // Added catch block here
+        console.error("Error during preferences loading:", error);
+        // Fallback to defaults or localStorage in case of any error
         const storedLocation = localStorage.getItem("weatherugo-location");
         if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
           setLocation(storedLocation);
         } else {
           setLocation(DEFAULT_LOCATION);
         }
+      } finally { // Ensure isLoadingPreferences is always set to false
+        setIsLoadingPreferences(false);
       }
-      setIsLoadingPreferences(false);
     };
     loadPreferences();
   }, [isAuthenticated, user, authIsLoading]);
@@ -141,7 +142,7 @@ export default function HomePage() {
 
   // Effect for saving selectedDate
   React.useEffect(() => {
-    if (isAuthenticated && user && !isLoadingPreferences && !authIsLoading) { // Ensure preferences are loaded before saving
+    if (isAuthenticated && user && !isLoadingPreferences && !authIsLoading && selectedDate) { // Ensure preferences are loaded & date is valid
       const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
       setDoc(prefsRef, { lastSelectedDate: selectedDate.toISOString() }, { merge: true })
         .catch(error => console.error("Error saving selectedDate to Firestore:", error));
@@ -152,7 +153,8 @@ export default function HomePage() {
   React.useEffect(() => {
     async function getWeather() {
       // Wait for auth, profile, and preferences loading to complete.
-      if (!location || !selectedDate || authIsLoading || isLoadingProfile || isLoadingPreferences) return; 
+      if (authIsLoading || isLoadingProfile || isLoadingPreferences) return; 
+      if (!location || !selectedDate) return;
       
       setIsLoadingWeather(true);
       setWeatherData(null); 
@@ -212,7 +214,7 @@ export default function HomePage() {
       }
     }
     getWeather();
-  }, [location, selectedDate, toast, authIsLoading, isLoadingProfile, isLoadingPreferences]); // Added isLoadingPreferences
+  }, [location, selectedDate, toast, authIsLoading, isLoadingProfile, isLoadingPreferences]);
 
   React.useEffect(() => {
     async function getSuggestions() {
@@ -271,45 +273,44 @@ export default function HomePage() {
   }, [weatherData, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences]);
 
 
-  const handleDateChange = (date: Date | undefined) => {
+  const handleDateChange = React.useCallback((date: Date | undefined) => {
     if (date) {
       setSelectedDate(date);
     }
-  };
+  }, []); // setSelectedDate is stable
   
-  const handleProfileUpdate = (newProfile: string) => {
+  const handleProfileUpdate = React.useCallback((newProfile: string) => {
     setFamilyProfile(newProfile); 
     setIsLoadingProfile(false); // Consider profile loaded once parent is notified
-  };
+  }, []); // setFamilyProfile and setIsLoadingProfile are stable
+
 
   const getFilteredHourlyForecast = () => {
     if (!weatherData?.forecast) return [];
+    
+    // If the selected date is not today, show all 24 hours for that date
     if (!isToday(selectedDate)) return weatherData.forecast;
 
+    // If it is today, filter for hours from the current hour onwards
     const currentHour = getHours(new Date());
     return weatherData.forecast.filter(item => {
-      // Format from WeatherAPI is "YYYY-MM-DD HH:MM"
-      const itemHourMatch = item.time.match(/(\d{4}-\d{2}-\d{2})\s(\d{2}):\d{2}/);
-      if (itemHourMatch) {
-        const itemDateStr = itemHourMatch[1];
-        const itemHour = parseInt(itemHourMatch[2]);
-        
-        // Only consider hours from the current day part of the 24h forecast
-        if (format(parseISO(itemDateStr), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')) {
-          return itemHour >= currentHour;
+        // WeatherAPI time format for hourly is "YYYY-MM-DD HH:MM"
+        const itemDateTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/ (AM|PM)/, ':00')}`); // Reconstruct ISO
+        if (!isValid(itemDateTime)) { // Basic check if parsing failed
+            // Attempt to parse "H AM/PM" format as fallback
+            const timeOnlyMatch = item.time.match(/(\d+)\s*(AM|PM)/i);
+            if (timeOnlyMatch) {
+                let itemHour = parseInt(timeOnlyMatch[1]);
+                const ampm = timeOnlyMatch[2].toUpperCase();
+                if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
+                if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight
+                return itemHour >= currentHour;
+            }
+            return true; // Fallback: include if unsure
         }
-        return true; // For hours that fall on the next day (in a 24h forecast crossing midnight)
-      }
-      // Fallback for "h a" format if API changes or for older data structure (less likely with current WeatherAPI)
-      const timeOnlyMatch = item.time.match(/(\d+)\s*(AM|PM)/i); 
-      if (timeOnlyMatch) {
-        let itemHour = parseInt(timeOnlyMatch[1]);
-        const ampm = timeOnlyMatch[2].toUpperCase();
-        if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
-        if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
-        return itemHour >= currentHour;
-      }
-      return true; 
+        
+        const itemHourOnSelectedDate = getHours(itemDateTime);
+        return itemHourOnSelectedDate >= currentHour;
     });
   };
 
@@ -398,4 +399,4 @@ export default function HomePage() {
   );
 }
 
-      
+    
