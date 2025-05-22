@@ -10,7 +10,7 @@ import { SuggestionsTabs } from "@/components/suggestions-tabs";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import type { WeatherData, LastKnownWeather } from "@/types";
+import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday, getHours, isValid, parseISO } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const DEFAULT_LOCATION = "auto:ip";
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
+const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
 function getTimeOfDay(): string {
   const hour = new Date().getHours();
@@ -41,23 +42,19 @@ export default function HomePage() {
   const [outfitSuggestions, setOutfitSuggestions] = React.useState<ClothingSuggestionsOutput | null>(null);
   const [activitySuggestions, setActivitySuggestions] = React.useState<ActivitySuggestionsOutput | null>(null);
 
-  const [isLoadingWeather, setIsLoadingWeather] = React.useState(true); // For weather API calls
-  const [isLoadingOutfit, setIsLoadingOutfit] = React.useState(false);  // For outfit AI suggestions
-  const [isLoadingActivity, setIsLoadingActivity] = React.useState(false); // For activity AI suggestions
+  const [isLoadingWeather, setIsLoadingWeather] = React.useState(true);
+  const [isLoadingOutfit, setIsLoadingOutfit] = React.useState(false);
+  const [isLoadingActivity, setIsLoadingActivity] = React.useState(false);
   
-  // isLoadingProfile indicates if the family profile (needed for suggestions) has been loaded/set by FamilyProfileEditor
   const [isLoadingProfile, setIsLoadingProfile] = React.useState(true); 
-  // isLoadingPreferences indicates if stored location/date have been loaded
   const [isLoadingPreferences, setIsLoadingPreferences] = React.useState(true); 
 
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
 
-
-  // Effect for loading user preferences (location, selectedDate) from Firestore or localStorage
   React.useEffect(() => {
     const loadPreferences = async () => {
-      if (authIsLoading) return; // Wait for auth state to be known
+      if (authIsLoading) return;
 
       setIsLoadingPreferences(true);
       try { 
@@ -113,7 +110,6 @@ export default function HomePage() {
     loadPreferences();
   }, [isAuthenticated, user, authIsLoading]);
 
-  // Effect for saving location
   React.useEffect(() => {
     if (location && location.toLowerCase() !== "auto:ip") {
       localStorage.setItem("weatherugo-location", location);
@@ -125,7 +121,6 @@ export default function HomePage() {
     }
   }, [location, isAuthenticated, user, isLoadingPreferences, authIsLoading]);
 
-  // Effect for saving selectedDate
   React.useEffect(() => {
     if (isAuthenticated && user && !isLoadingPreferences && !authIsLoading && selectedDate) { 
       const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
@@ -137,116 +132,163 @@ export default function HomePage() {
 
   React.useEffect(() => {
     async function getWeatherAndSuggestions() {
-      // Wait for auth, profile, and preferences loading to complete.
-      if (authIsLoading || isLoadingProfile || isLoadingPreferences) return; 
+      if (authIsLoading || isLoadingProfile || isLoadingPreferences) return;
       if (!location || !selectedDate) return;
-      
-      setIsLoadingWeather(true);
-      setWeatherData(null); 
-      setOutfitSuggestions(null); 
-      setActivitySuggestions(null); 
 
-      const locationForQuery = location; 
+      const formattedDate = format(selectedDate, "yyyy-MM-dd");
+      const currentTime = new Date().getTime();
+      let currentFetchedWeatherData: WeatherData | null = null;
 
-      let fetchedWeatherData: WeatherData | null = null;
+      // --- Weather Data Fetching/Caching ---
+      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDate}`;
+      const cachedWeatherString = localStorage.getItem(weatherCacheKey);
+      let weatherFromCache = false;
 
-      try {
-        const data = await fetchWeather(locationForQuery, selectedDate);
-        if (data) {
-            fetchedWeatherData = data;
-            setWeatherData(data);
-            if (locationForQuery.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
-              setLocation(data.location); 
+      if (cachedWeatherString) {
+        try {
+          const cached: CachedWeatherData = JSON.parse(cachedWeatherString);
+          if (currentTime - cached.timestamp < CACHE_DURATION_MS) {
+            setWeatherData(cached.data);
+            currentFetchedWeatherData = cached.data;
+            setIsLoadingWeather(false);
+            weatherFromCache = true;
+            if (location.toLowerCase() === "auto:ip" && cached.data.location && cached.data.location.toLowerCase() !== "auto:ip") {
+              setLocation(cached.data.location);
             }
-
-            if (isToday(selectedDate)) {
-                const todayStr = format(new Date(), "yyyy-MM-dd");
-                const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
-                if (lastKnownWeatherStr) {
-                    const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
-                    if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
-                        if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
-                            toast({
-                                title: "Weather Update!",
-                                description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
-                            });
-                        }
-                    }
-                }
-                localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
-                    location: data.location, 
-                    temperature: data.temperature, 
-                    condition: data.condition,
-                    date: todayStr 
-                }));
-            }
-        } else {
-             toast({ 
-                title: "Error Fetching Weather", 
-                description: `Could not retrieve weather data for "${locationForQuery}". The service might be temporarily unavailable, the location might be invalid, or there could be an issue with the API key configuration. Please try again later or enter a different location.`, 
-                variant: "destructive" 
-            });
-            setWeatherData(null);
+          }
+        } catch (e) {
+          console.error("Failed to parse cached weather data", e);
+          localStorage.removeItem(weatherCacheKey);
         }
-      } catch (error) {
-        console.error("Failed to fetch weather:", error);
-        toast({ 
-            title: "Error Fetching Weather", 
-            description: "An unexpected error occurred while fetching weather data. Please check your connection or try again.", 
-            variant: "destructive" 
-        });
-        setWeatherData(null);
-      } finally {
-        setIsLoadingWeather(false);
       }
 
-      // Fetch suggestions only if weather data was successfully fetched
-      if (fetchedWeatherData && familyProfile) {
-        setIsLoadingOutfit(true);
-        setIsLoadingActivity(true);
+      if (!weatherFromCache) {
+        setIsLoadingWeather(true);
+        setWeatherData(null); // Clear old data before fetching
+        try {
+          const data = await fetchWeather(location, selectedDate);
+          if (data) {
+            setWeatherData(data);
+            currentFetchedWeatherData = data;
+            localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
+            if (location.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
+              setLocation(data.location); 
+            }
+            // Toast for significant weather change (only for today)
+            if (isToday(selectedDate)) {
+              const todayStr = format(new Date(), "yyyy-MM-dd");
+              const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
+              if (lastKnownWeatherStr) {
+                  const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
+                  if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
+                      if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
+                          toast({
+                              title: "Weather Update!",
+                              description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
+                          });
+                      }
+                  }
+              }
+              localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
+                  location: data.location, 
+                  temperature: data.temperature, 
+                  condition: data.condition,
+                  date: todayStr 
+              }));
+            }
+
+          } else {
+            toast({ title: "Error Fetching Weather", description: `Could not retrieve weather data for "${location}". The service might be temporarily unavailable, the location might be invalid, or there could be an issue with the API key configuration. Please try again later or enter a different location.`, variant: "destructive" });
+            currentFetchedWeatherData = null;
+            setWeatherData(null);
+          }
+        } catch (error) {
+          console.error("Failed to fetch weather:", error);
+          toast({ title: "Error Fetching Weather", description: "An unexpected error occurred while fetching weather data. Please check your connection or try again.", variant: "destructive" });
+          currentFetchedWeatherData = null;
+          setWeatherData(null);
+        } finally {
+          setIsLoadingWeather(false);
+        }
+      }
+
+      // --- Suggestions Fetching/Caching (only if weather data is available) ---
+      if (currentFetchedWeatherData && familyProfile) {
+        const currentTOD = getTimeOfDay();
+        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDate}-${familyProfile}`;
+        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDate}-${familyProfile}-${currentTOD}`;
+
+        // Outfit Suggestions
+        const cachedOutfitString = localStorage.getItem(outfitCacheKey);
+        let outfitFromCache = false;
+        if (cachedOutfitString) {
+          try {
+            const cached: CachedOutfitSuggestions = JSON.parse(cachedOutfitString);
+            if (currentTime - cached.timestamp < CACHE_DURATION_MS) {
+              setOutfitSuggestions(cached.data);
+              setIsLoadingOutfit(false);
+              outfitFromCache = true;
+            }
+          } catch (e) {
+            console.error("Failed to parse cached outfit suggestions", e);
+            localStorage.removeItem(outfitCacheKey);
+          }
+        }
+
+        if (!outfitFromCache) {
+          setIsLoadingOutfit(true);
+          setOutfitSuggestions(null);
+          try {
+            const clothingInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: familyProfile, location: currentFetchedWeatherData.location };
+            const clothing = await suggestClothing(clothingInput);
+            setOutfitSuggestions(clothing);
+            localStorage.setItem(outfitCacheKey, JSON.stringify({ timestamp: currentTime, data: clothing }));
+          } catch (error: any) {
+            console.error("Failed to get outfit suggestions:", error);
+            toast({ title: "Outfit Suggestion Error", description: error.message || "Could not fetch outfit suggestions. AI service may be unavailable.", variant: "destructive" });
+          } finally {
+            setIsLoadingOutfit(false);
+          }
+        }
+
+        // Activity Suggestions
+        const cachedActivityString = localStorage.getItem(activityCacheKey);
+        let activityFromCache = false;
+        if (cachedActivityString) {
+          try {
+            const cached: CachedActivitySuggestions = JSON.parse(cachedActivityString);
+            if (currentTime - cached.timestamp < CACHE_DURATION_MS) {
+              setActivitySuggestions(cached.data);
+              setIsLoadingActivity(false);
+              activityFromCache = true;
+            }
+          } catch (e) {
+            console.error("Failed to parse cached activity suggestions", e);
+            localStorage.removeItem(activityCacheKey);
+          }
+        }
+        
+        if (!activityFromCache) {
+          setIsLoadingActivity(true);
+          setActivitySuggestions(null);
+          try {
+            const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: familyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location };
+            const activities = await suggestActivities(activityInput);
+            setActivitySuggestions(activities);
+            localStorage.setItem(activityCacheKey, JSON.stringify({ timestamp: currentTime, data: activities }));
+          } catch (error: any) {
+            console.error("Failed to get activity suggestions:", error);
+            toast({ title: "Activity Suggestion Error", description: error.message || "Could not fetch activity suggestions. AI service may be unavailable.", variant: "destructive" });
+          } finally {
+            setIsLoadingActivity(false);
+          }
+        }
+      } else {
+        // No weather data, so clear suggestions and set loading to false
         setOutfitSuggestions(null);
         setActivitySuggestions(null);
-
-        try {
-          const clothingInput = {
-            weatherCondition: fetchedWeatherData.condition,
-            temperature: fetchedWeatherData.temperature,
-            familyProfile: familyProfile,
-            location: fetchedWeatherData.location, 
-          };
-          const clothing = await suggestClothing(clothingInput);
-          setOutfitSuggestions(clothing);
-        } catch (error: any) {
-          console.error("Failed to get outfit suggestions:", error);
-          toast({
-            title: "Outfit Suggestion Error",
-            description: error.message || "Could not fetch outfit suggestions. The AI service may be temporarily unavailable. Please try again later.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingOutfit(false);
-        }
-
-        try {
-          const activityInput = {
-            weatherCondition: fetchedWeatherData.condition,
-            temperature: fetchedWeatherData.temperature,
-            familyProfile: familyProfile,
-            timeOfDay: getTimeOfDay(),
-            locationPreferences: fetchedWeatherData.location, 
-          };
-          const activities = await suggestActivities(activityInput);
-          setActivitySuggestions(activities);
-        } catch (error: any) {
-          console.error("Failed to get activity suggestions:", error);
-          toast({
-            title: "Activity Suggestion Error",
-            description: error.message || "Could not fetch activity suggestions. The AI service may be temporarily unavailable. Please try again later.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingActivity(false);
-        }
+        setIsLoadingOutfit(false);
+        setIsLoadingActivity(false);
       }
     }
     getWeatherAndSuggestions();
@@ -272,6 +314,10 @@ export default function HomePage() {
 
     const currentHour = getHours(new Date());
     return weatherData.forecast.filter(item => {
+        // Time from WeatherAPI is "YYYY-MM-DD HH:MM" or just "HH:MM" for hourly items
+        // We formatted it to "h a" or "MMM d, h a" in fetchWeather
+        // Need to parse it back or use the original full time if available
+        // For simplicity, assuming item.time is like "3 PM" or "11 AM"
         const timeParts = item.time.match(/(\d+)(?::\d+)?\s*(AM|PM)/i);
         if (timeParts) {
             let itemHour = parseInt(timeParts[1]);
@@ -280,28 +326,31 @@ export default function HomePage() {
             if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
             return itemHour >= currentHour;
         }
-        // Fallback for "HH:MM" format from WeatherAPI if date part is stripped
-        const isoAttempt = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/ (AM|PM)/, ':00')}`);
-         if (isValid(isoAttempt)) {
-             return getHours(isoAttempt) >= currentHour;
-         }
+        // Fallback if parsing "h a" fails, attempt to parse from a full ISO-like string
+        // This part might be complex if item.time doesn't contain date info when it's for "next day" in 24h forecast
+        try {
+          const itemDate = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/, ':00')}`);
+          if (isValid(itemDate)) {
+            return getHours(itemDate) >= currentHour;
+          }
+        } catch {
+          // ignore parsing error
+        }
         return true; // Fallback: include if unsure
     });
   };
 
-  // Show skeleton for the whole page if auth or preferences are loading initially.
-  // isLoadingProfile is handled by the fact that suggestions won't load until it's false.
   if (authIsLoading || isLoadingPreferences) {
     return (
       <div className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
-          <Skeleton className="h-[230px] w-full" /> {/* LocationDateSelector placeholder */}
-          <Skeleton className="h-[230px] w-full" /> {/* FamilyProfileEditor placeholder */}
+          <Skeleton className="h-[230px] w-full" />
+          <Skeleton className="h-[230px] w-full" />
         </div>
-        <Skeleton className="h-[200px] w-full" /> {/* CurrentWeatherCard placeholder */}
-        <Skeleton className="h-[150px] w-full" /> {/* HourlyForecastCard placeholder */}
-        <Skeleton className="h-[180px] w-full" /> {/* SuggestionsTabs placeholder */}
-        <Skeleton className="h-[180px] w-full" /> {/* Ad Card placeholder */}
+        <Skeleton className="h-[200px] w-full" />
+        <Skeleton className="h-[150px] w-full" />
+        <Skeleton className="h-[180px] w-full" />
+        <Skeleton className="h-[180px] w-full" />
       </div>
     );
   }
@@ -315,7 +364,7 @@ export default function HomePage() {
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
         />
-        <FamilyProfileEditor // This component handles its own internal skeleton
+        <FamilyProfileEditor
           profile={familyProfile} 
           onProfileSave={handleProfileUpdate} 
         />
@@ -323,7 +372,6 @@ export default function HomePage() {
 
       <CurrentWeatherCard weatherData={weatherData} isLoading={isLoadingWeather} />
       
-      { /* Only show hourly forecast if weatherData exists or is loading, and a date is selected */ }
       { (weatherData || isLoadingWeather) && selectedDate && (
         <HourlyForecastCard
           forecastData={getFilteredHourlyForecast()}
@@ -332,8 +380,7 @@ export default function HomePage() {
         />
       )}
       
-      { /* Only show suggestions if weatherData exists or suggestions are loading */ }
-      {(weatherData || isLoadingOutfit || isLoadingActivity) && (
+      {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather /* Show tabs if weather is loading too */) && (
         <SuggestionsTabs
           outfitSuggestions={outfitSuggestions}
           isOutfitLoading={isLoadingOutfit}

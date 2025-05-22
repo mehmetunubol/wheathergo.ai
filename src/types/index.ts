@@ -76,3 +76,12 @@ export interface TripSegmentSuggestions {
   source?: 'stored' | 'newly-fetched'; // To track where the data came from
 }
 
+// Cache types for homepage
+export interface CachedItem<T> {
+  timestamp: number;
+  data: T;
+}
+
+export type CachedWeatherData = CachedItem<WeatherData>;
+export type CachedOutfitSuggestions = CachedItem<ClothingSuggestionsOutput>;
+export type CachedActivitySuggestions = CachedItem<ActivitySuggestionsOutput>;
