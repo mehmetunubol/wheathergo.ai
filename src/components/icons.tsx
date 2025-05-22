@@ -1,54 +1,35 @@
 
 import type { LucideProps } from 'lucide-react';
-import { Sun, Cloud, CloudRain, CloudSnow, CloudSun, CloudFog, Zap, Wind, Moon, Snowflake, CloudLightning, Cloudy, Haze, Umbrella, CloudDrizzle } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, CloudSun, CloudFog, Zap, Wind, Moon, Snowflake, CloudLightning, Cloudy, Haze, Umbrella, CloudDrizzle, MoonCloud } from 'lucide-react';
 
 interface WeatherIconMap {
   [key: string]: React.FC<LucideProps>;
 }
 
-// Combined map for OpenWeatherMap (alpha codes) and WeatherAPI.com (numeric codes as strings)
+// Combined map for WeatherAPI.com (numeric codes as strings)
+// Day/Night specific icons are handled in getWeatherIcon logic
 export const WeatherIcons: WeatherIconMap = {
-  // OpenWeatherMap Codes (example)
-  "01d": Sun, 
-  "01n": Moon, 
-  "02d": CloudSun,
-  "02n": CloudSun, // Assuming CloudSun for few clouds at night too
-  "03d": Cloud,
-  "03n": Cloud,
-  "04d": Cloudy, // Broken clouds - more distinct 'Cloudy' icon
-  "04n": Cloudy,
-  "09d": CloudDrizzle, // Shower rain - Drizzle icon
-  "09n": CloudDrizzle,
-  "10d": CloudRain,
-  "10n": CloudRain,
-  "11d": CloudLightning, // Thunderstorm - More specific icon
-  "11n": CloudLightning,
-  "13d": Snowflake, // Snow - More specific icon
-  "13n": Snowflake,
-  "50d": Haze, // Mist/Fog - Haze icon
-  "50n": Haze,
-
   // WeatherAPI.com Condition Codes (numeric, converted to string keys)
-  // Day icons primarily, night variations can be added if API provides distinct night codes
-  // or if logic elsewhere determines day/night. For simplicity, using day-equivalent icons.
-  "1000": Sun, // Sunny / Clear
-  "1003": CloudSun, // Partly cloudy
+  "1000": Sun, // Sunny / Clear (Day default)
+  "1000_night": Moon, // Clear (Night)
+  "1003": CloudSun, // Partly cloudy (Day default)
+  "1003_night": MoonCloud, // Partly cloudy (Night)
   "1006": Cloud, // Cloudy
-  "1009": Cloudy, // Overcast (using Cloudy as it's similar visual)
+  "1009": Cloudy, // Overcast
   "1030": CloudFog, // Mist
   "1063": CloudDrizzle, // Patchy rain possible
   "1066": CloudSnow, // Patchy snow possible
-  "1069": CloudDrizzle, // Patchy sleet possible (using drizzle for sleet)
+  "1069": CloudDrizzle, // Patchy sleet possible
   "1072": CloudDrizzle, // Patchy freezing drizzle possible
   "1087": CloudLightning, // Thundery outbreaks possible
   "1114": CloudSnow, // Blowing snow
-  "1117": Snowflake, // Blizzard (using Snowflake, could be Wind + Snowflake if combined)
+  "1117": Snowflake, // Blizzard
   "1135": CloudFog, // Fog
   "1147": CloudFog, // Freezing fog
   "1150": CloudDrizzle, // Patchy light drizzle
   "1153": CloudDrizzle, // Light drizzle
   "1168": CloudDrizzle, // Freezing drizzle
-  "1171": CloudRain, // Heavy freezing drizzle (using rain as primary visual)
+  "1171": CloudRain, // Heavy freezing drizzle
   "1180": CloudDrizzle, // Patchy light rain
   "1183": CloudRain, // Light rain
   "1186": CloudRain, // Moderate rain at times
@@ -57,8 +38,8 @@ export const WeatherIcons: WeatherIconMap = {
   "1195": CloudRain, // Heavy rain
   "1198": CloudRain, // Light freezing rain
   "1201": CloudRain, // Moderate or heavy freezing rain
-  "1204": CloudDrizzle, // Light sleet (using drizzle)
-  "1207": CloudRain, // Moderate or heavy sleet (using rain)
+  "1204": CloudDrizzle, // Light sleet
+  "1207": CloudRain, // Moderate or heavy sleet
   "1210": CloudSnow, // Patchy light snow
   "1213": CloudSnow, // Light snow
   "1216": CloudSnow, // Patchy moderate snow
@@ -69,8 +50,8 @@ export const WeatherIcons: WeatherIconMap = {
   "1240": CloudRain, // Light rain shower
   "1243": CloudRain, // Moderate or heavy rain shower
   "1246": CloudRain, // Torrential rain shower
-  "1249": CloudDrizzle, // Light sleet showers (using drizzle)
-  "1252": CloudRain, // Moderate or heavy sleet showers (using rain)
+  "1249": CloudDrizzle, // Light sleet showers
+  "1252": CloudRain, // Moderate or heavy sleet showers
   "1255": CloudSnow, // Light snow showers
   "1258": CloudSnow, // Moderate or heavy snow showers
   "1261": Snowflake, // Light showers of ice pellets
@@ -80,40 +61,63 @@ export const WeatherIcons: WeatherIconMap = {
   "1279": CloudLightning, // Patchy light snow with thunder
   "1282": CloudLightning, // Moderate or heavy snow with thunder
   
-  // Fallback generic text conditions (can be from either API if code mapping fails)
+  // Fallback generic text conditions
   "Sunny": Sun,
-  "Clear": Sun, // WeatherAPI sometimes uses 'Clear' for night
+  "Clear_night": Moon,
+  "Clear": Sun, 
+  "Partly cloudy_night": MoonCloud,
   "Partly cloudy": CloudSun,
   "Cloudy": Cloud,
   "Overcast": Cloudy,
   "Mist": CloudFog,
   "Fog": CloudFog,
+  "Haze": Haze,
   "Rain": CloudRain,
   "Drizzle": CloudDrizzle,
   "Snow": Snowflake,
   "Thunderstorm": CloudLightning,
-  "Sleet": CloudDrizzle, // Simplified
-  "Default": Cloud, // Default fallback
+  "Sleet": CloudDrizzle,
+  "Default": Cloud,
 };
 
-export const getWeatherIcon = (conditionCode: string | undefined, fallbackConditionText: string = "Default"): React.FC<LucideProps> => {
+export const getWeatherIcon = (
+  conditionCode: string | undefined,
+  fallbackConditionText: string = "Default",
+  isDay?: boolean // Optional: true for day, false for night
+): React.FC<LucideProps> => {
+  
+  // Handle specific day/night variations based on code and isDay
+  if (conditionCode === "1000") {
+    return isDay === false ? WeatherIcons["1000_night"] : WeatherIcons["1000"];
+  }
+  if (conditionCode === "1003") {
+    return isDay === false ? WeatherIcons["1003_night"] : WeatherIcons["1003"];
+  }
+
+  // Standard code mapping
   if (conditionCode && WeatherIcons[conditionCode]) {
     return WeatherIcons[conditionCode];
   }
-  // Try mapping common text if code is not found or undefined
+
+  // Text-based fallback with isDay consideration
   const normalizedFallback = fallbackConditionText.toLowerCase();
-  if (normalizedFallback.includes("sun") || normalizedFallback.includes("clear")) return Sun;
-  if (normalizedFallback.includes("partly cloudy")) return CloudSun;
-  if (normalizedFallback.includes("overcast") || normalizedFallback.includes("cloud")) return Cloud; // Prioritize Cloudy for Overcast
-  if (normalizedFallback.includes("mist") || normalizedFallback.includes("fog") || normalizedFallback.includes("haze")) return CloudFog; // Haze for mist/fog
+  if (normalizedFallback.includes("clear")) {
+    return isDay === false ? WeatherIcons["Clear_night"] : WeatherIcons["Clear"];
+  }
+  if (normalizedFallback.includes("partly cloudy")) {
+    return isDay === false ? WeatherIcons["Partly cloudy_night"] : WeatherIcons["Partly cloudy"];
+  }
+  if (normalizedFallback.includes("sun") && isDay !== false) return Sun; // Ensure it's not night for "sunny"
+  
+  // General text fallbacks (less specific to day/night unless handled above)
+  if (normalizedFallback.includes("overcast") || normalizedFallback.includes("cloud")) return Cloud;
+  if (normalizedFallback.includes("mist") || normalizedFallback.includes("fog")) return CloudFog;
+  if (normalizedFallback.includes("haze")) return Haze;
   if (normalizedFallback.includes("drizzle")) return CloudDrizzle;
-  if (normalizedFallback.includes("rain") || normalizedFallback.includes("shower")) return CloudRain; // Umbrella for rain/shower
+  if (normalizedFallback.includes("rain") || normalizedFallback.includes("shower")) return CloudRain;
   if (normalizedFallback.includes("thunder")) return CloudLightning;
   if (normalizedFallback.includes("snow") || normalizedFallback.includes("blizzard")) return Snowflake;
   if (normalizedFallback.includes("sleet")) return CloudDrizzle;
 
-
-  // Final fallback using the map with text keys or the ultimate 'Default'
   return WeatherIcons[fallbackConditionText] || WeatherIcons["Default"] || Cloud;
 };
-

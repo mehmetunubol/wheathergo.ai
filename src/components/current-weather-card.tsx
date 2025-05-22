@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { WeatherData } from "@/types";
@@ -53,7 +54,7 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
     );
   }
 
-  const IconComponent = getWeatherIcon(weatherData.conditionCode, weatherData.condition);
+  const IconComponent = getWeatherIcon(weatherData.conditionCode, weatherData.condition, weatherData.isDay);
   const formattedDate = format(new Date(weatherData.date), "EEEE, MMMM do, yyyy");
 
   return (
@@ -69,7 +70,7 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
-          <IconComponent size={64} className="text-accent" data-ai-hint={`${weatherData.condition} weather`} />
+          <IconComponent size={64} className="text-accent" data-ai-hint={`${weatherData.condition} weather ${weatherData.isDay ? "day" : "night"}`} />
           <div className="text-right">
             <p className="text-5xl font-bold">{weatherData.temperature}°C</p>
             <p className="text-muted-foreground capitalize">{weatherData.description}</p>

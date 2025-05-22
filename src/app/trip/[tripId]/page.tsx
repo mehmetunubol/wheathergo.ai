@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft, Mail, Clock, Repeat } from "lucide-react";
-import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isSameDay } from "date-fns";
+import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft, Mail, Clock, Repeat, RefreshCw, Edit3, Eye, AlertTriangle } from "lucide-react";
+import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isSameDay, isValid, isBefore } from "date-fns";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
@@ -18,7 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getWeatherIcon } from "@/components/icons";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS = "An adult traveler.";
 
@@ -31,11 +32,12 @@ export default function TripDetailsPage() {
   const [plan, setPlan] = React.useState<TravelPlanItem | null>(null);
   const [familyProfile, setFamilyProfile] = React.useState<string>(DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS);
   
-  // UI state for segments, including loading/error status
   const [segments, setSegments] = React.useState<TripSegmentSuggestions[]>([]);
   
-  const [overallLoading, setOverallLoading] = React.useState(true); // For initial plan and profile load
+  const [overallLoading, setOverallLoading] = React.useState(true);
   const [pageError, setPageError] = React.useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = React.useState(false);
+
 
   const { toast } = useToast();
 
@@ -45,8 +47,7 @@ export default function TripDetailsPage() {
     const startDate = startOfDay(parseISO(currentPlan.startDate));
     const endDate = startOfDay(parseISO(currentPlan.endDate));
     
-    // Ensure dates are valid before proceeding
-    if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (!isValid(startDate) || !isValid(endDate)) {
         console.error("Invalid start or end date in travel plan:", currentPlan);
         setPageError("Invalid date format in travel plan. Cannot display suggestions.");
         return [];
@@ -64,7 +65,7 @@ export default function TripDetailsPage() {
     });
 
     // Middle Date
-    if (duration >= 2) { // Only for trips of 3 days or longer (e.g., 0, 1, 2 -> duration is 2)
+    if (duration >= 2) { 
       const middleOffset = Math.floor(duration / 2.0);
       const middleDateCand = startOfDay(addDays(startDate, middleOffset));
       if (!isSameDay(middleDateCand, startDate) && !isSameDay(middleDateCand, endDate)) {
@@ -101,11 +102,10 @@ export default function TripDetailsPage() {
 
     return Array.from(uniqueSegmentsMap.values())
                 .sort((a, b) => a.date.getTime() - b.date.getTime())
-                .map(s => ({ ...s, isLoading: true, error: null, source: undefined })); // Initialize UI state
+                .map(s => ({ ...s, isLoading: true, error: null, source: undefined }));
 
   }, []);
 
-  // Effect to load initial plan and family profile
   React.useEffect(() => {
     const loadTripData = async () => {
       if (authIsLoading || !tripId) return;
@@ -144,92 +144,109 @@ export default function TripDetailsPage() {
   }, [tripId, user, isAuthenticated, authIsLoading, router]);
 
 
-  // Effect to process segments (load from store or fetch new)
   React.useEffect(() => {
     if (overallLoading || !plan || !user || !familyProfile) {
       return;
     }
 
     const relevantSegmentsForUI = getUniqueDateSegments(plan);
-    setSegments(relevantSegmentsForUI); // Initialize UI segments with loading states
+    // Initialize UI segments with loading states first
+    setSegments(prevSegments => {
+        // Preserve any already loaded data if not regenerating
+        if (!isRegenerating && prevSegments.length === relevantSegmentsForUI.length) {
+            return prevSegments.map((ps, index) => ({
+                ...relevantSegmentsForUI[index], // Take new labels/dates
+                weatherData: ps.weatherData, // Keep old data if present
+                clothingSuggestions: ps.clothingSuggestions,
+                activitySuggestions: ps.activitySuggestions,
+                isLoading: isRegenerating ? true : ps.isLoading, // Force loading if regenerating
+                error: isRegenerating ? null : ps.error,
+                source: isRegenerating ? undefined : ps.source,
+            }));
+        }
+        return relevantSegmentsForUI;
+    });
 
     const processAllSegments = async () => {
       const planDocRef = doc(db, "users", user.uid, "travelPlans", tripId);
-      let newStoredSuggestionsArray: StoredTripSegmentData[] = [...(plan.storedSuggestions || [])];
+      let newStoredSuggestionsArray: StoredTripSegmentData[] = isRegenerating ? [] : [...(plan.storedSuggestions || [])];
       let wasFirestoreUpdated = false;
 
       const combinedProfileForAI = `Global Profile: ${familyProfile}. ${plan.tripContext ? `Trip Notes: ${plan.tripContext.trim()}` : 'Trip Notes: None provided.'}`;
 
       const segmentPromises = relevantSegmentsForUI.map(async (uiSegment) => {
-        const existingStoredSegment = plan.storedSuggestions?.find(
+        let segmentDataToUse: Partial<TripSegmentSuggestions> = { isLoading: true, error: null };
+
+        const existingStoredSegment = !isRegenerating ? plan.storedSuggestions?.find(
           (ss) => ss.segmentId === uiSegment.id && isSameDay(parseISO(ss.date), uiSegment.date)
-        );
+        ) : undefined;
 
         if (existingStoredSegment) {
-          setSegments(prev => prev.map(s => s.id === uiSegment.id ? { 
-            ...s, 
+          segmentDataToUse = { 
             weatherData: existingStoredSegment.weatherData,
             clothingSuggestions: existingStoredSegment.clothingSuggestions,
             activitySuggestions: existingStoredSegment.activitySuggestions,
-            isLoading: false, 
-            error: null,
-            source: 'stored' 
-          } : s));
-          return; // Use stored data
-        }
-
-        // No stored data, or it's stale (add staleness check later if needed), fetch new
-        try {
-          const weather = await fetchWeather(plan.location, uiSegment.date);
-          if (!weather) {
-            throw new Error("Weather data unavailable.");
-          }
-          setSegments(prev => prev.map(s => s.id === uiSegment.id ? { ...s, weatherData: weather } : s));
-
-          let clothing: ClothingSuggestionsOutput | null = null;
-          let activities: ActivitySuggestionsOutput | null = null;
-          let segmentError: string | null = null;
-
+            isLoading: false, error: null, source: 'stored' 
+          };
+        } else {
+          // No stored data, or regenerating, fetch new
           try {
-            clothing = await suggestClothing({ weatherCondition: weather.condition, temperature: weather.temperature, familyProfile: combinedProfileForAI, location: plan.location });
-          } catch (aiError: any) { 
-            console.error(`Error fetching clothing suggestions for segment ${uiSegment.id}:`, aiError);
-            segmentError = "AI clothing suggestions unavailable.";
-          }
-          setSegments(prev => prev.map(s => s.id === uiSegment.id ? { ...s, clothingSuggestions: clothing } : s));
-          
-          try {
-            activities = await suggestActivities({ weatherCondition: weather.condition, temperature: weather.temperature, familyProfile: combinedProfileForAI, timeOfDay: "day", locationPreferences: plan.location });
-          } catch (aiError: any) { 
-            console.error(`Error fetching activity suggestions for segment ${uiSegment.id}:`, aiError);
-            if (segmentError) segmentError += " Activity suggestions also unavailable."; else segmentError = "AI activity suggestions unavailable.";
-          }
-          setSegments(prev => prev.map(s => s.id === uiSegment.id ? { ...s, activitySuggestions: activities, isLoading: false, error: segmentError, source: 'newly-fetched' } : s));
-          
-          // If successful and all suggestions are present, prepare for storage
-          if (weather && clothing && activities) {
-            const newSegmentDataToStore: StoredTripSegmentData = {
-              segmentId: uiSegment.id,
-              date: uiSegment.date.toISOString(),
-              weatherData: weather,
-              clothingSuggestions: clothing,
-              activitySuggestions: activities,
-              fetchedAt: new Date().toISOString(),
-            };
-            // Update or add to newStoredSuggestionsArray
-            const existingIndex = newStoredSuggestionsArray.findIndex(s => s.segmentId === uiSegment.id && isSameDay(parseISO(s.date), uiSegment.date));
-            if (existingIndex > -1) {
-              newStoredSuggestionsArray[existingIndex] = newSegmentDataToStore;
-            } else {
-              newStoredSuggestionsArray.push(newSegmentDataToStore);
+            const weather = await fetchWeather(plan.location, uiSegment.date);
+            if (!weather) {
+              throw new Error("Weather data unavailable.");
             }
-            wasFirestoreUpdated = true;
-          }
+            segmentDataToUse.weatherData = weather;
 
-        } catch (err: any) {
-          console.error(`Error processing segment ${uiSegment.id}:`, err);
-          setSegments(prev => prev.map(s => s.id === uiSegment.id ? { ...s, isLoading: false, error: err.message || "Failed to load data for this day." } : s));
+            let clothing: ClothingSuggestionsOutput | null = null;
+            let activities: ActivitySuggestionsOutput | null = null;
+            let segmentError: string | null = null;
+
+            try {
+              clothing = await suggestClothing({ weatherCondition: weather.condition, temperature: weather.temperature, familyProfile: combinedProfileForAI, location: plan.location });
+            } catch (aiError: any) { 
+              console.error(`Error fetching clothing suggestions for segment ${uiSegment.id}:`, aiError);
+              segmentError = "AI clothing suggestions unavailable.";
+            }
+            segmentDataToUse.clothingSuggestions = clothing;
+            
+            try {
+              activities = await suggestActivities({ weatherCondition: weather.condition, temperature: weather.temperature, familyProfile: combinedProfileForAI, timeOfDay: "day", locationPreferences: plan.location });
+            } catch (aiError: any) { 
+              console.error(`Error fetching activity suggestions for segment ${uiSegment.id}:`, aiError);
+              if (segmentError) segmentError += " Activity suggestions also unavailable."; else segmentError = "AI activity suggestions unavailable.";
+            }
+            segmentDataToUse.activitySuggestions = activities;
+            segmentDataToUse.isLoading = false;
+            segmentDataToUse.error = segmentError;
+            segmentDataToUse.source = 'newly-fetched';
+            
+            if (weather && clothing && activities && segmentError === null) { // Only store if all parts are successful
+              const newSegmentDataToStore: StoredTripSegmentData = {
+                segmentId: uiSegment.id,
+                date: uiSegment.date.toISOString(),
+                weatherData: weather,
+                clothingSuggestions: clothing,
+                activitySuggestions: activities,
+                fetchedAt: new Date().toISOString(),
+              };
+              
+              const existingIndex = newStoredSuggestionsArray.findIndex(s => s.segmentId === uiSegment.id && isSameDay(parseISO(s.date), uiSegment.date));
+              if (existingIndex > -1) {
+                newStoredSuggestionsArray[existingIndex] = newSegmentDataToStore;
+              } else {
+                newStoredSuggestionsArray.push(newSegmentDataToStore);
+              }
+              wasFirestoreUpdated = true;
+            }
+
+          } catch (err: any) {
+            console.error(`Error processing segment ${uiSegment.id}:`, err);
+            segmentDataToUse.isLoading = false;
+            segmentDataToUse.error = err.message || "Failed to load data for this day.";
+          }
         }
+        
+        setSegments(prev => prev.map(s => s.id === uiSegment.id ? { ...s, ...segmentDataToUse } : s));
       });
 
       await Promise.all(segmentPromises);
@@ -237,20 +254,33 @@ export default function TripDetailsPage() {
       if (wasFirestoreUpdated) {
         try {
           await updateDoc(planDocRef, { storedSuggestions: newStoredSuggestionsArray });
-          // Optionally, update local 'plan' state to reflect stored suggestions
           setPlan(prevPlan => prevPlan ? { ...prevPlan, storedSuggestions: newStoredSuggestionsArray } : null);
           console.log("Successfully updated Firestore with new suggestions.");
+          if (isRegenerating) {
+            toast({ title: "Suggestions Regenerated", description: "Fresh suggestions have been fetched and saved."});
+          }
         } catch (firestoreError) {
           console.error("Failed to update Firestore with suggestions:", firestoreError);
           toast({ title: "Storage Error", description: "Could not save new suggestions to the cloud.", variant: "destructive"});
         }
       }
+      if (isRegenerating) {
+          setIsRegenerating(false);
+      }
     };
     
     processAllSegments();
 
-  }, [plan, user, familyProfile, getUniqueDateSegments, overallLoading, tripId, toast]); // Added tripId and toast
+  }, [plan, user, familyProfile, getUniqueDateSegments, overallLoading, tripId, toast, isRegenerating]);
 
+
+  const handleRegenerateSuggestions = async () => {
+    if (!plan || !user) return;
+    const confirmed = window.confirm("Are you sure you want to regenerate all suggestions for this trip? This will fetch fresh data and overwrite any stored suggestions.");
+    if (confirmed) {
+        setIsRegenerating(true); // This will trigger the useEffect to refetch everything
+    }
+  };
 
   const generateShareText = () => {
     if (!plan) return "Plan details are not loaded.";
@@ -315,11 +345,11 @@ export default function TripDetailsPage() {
   };
   
   const allSegmentsProcessed = segments.length > 0 && segments.every(s => !s.isLoading);
-  const someSuggestionsFailed = allSegmentsProcessed && segments.some(s => s.weatherData && (!s.clothingSuggestions || !s.activitySuggestions) && !s.error?.includes("Weather data unavailable"));
+  const someSuggestionsFailed = allSegmentsProcessed && segments.some(s => s.weatherData && (!s.clothingSuggestions || !s.activitySuggestions) && !s.error?.includes("Weather data unavailable."));
   const someWeatherFailed = allSegmentsProcessed && segments.some(s => !s.weatherData && s.error);
 
 
-  if (authIsLoading || overallLoading) { // Simplified initial loading check
+  if (authIsLoading || overallLoading) {
      return (
         <div className="space-y-4 mt-4 py-4">
             <Skeleton className="h-10 w-1/4 mb-4" />
@@ -356,7 +386,7 @@ export default function TripDetailsPage() {
     );
   }
 
-  if (!plan) { // If overallLoading is false and plan is still null, it means it wasn't found or an error occurred handled by pageError.
+  if (!plan) {
     return (
          <Card className="mt-4 shadow-lg">
             <CardHeader><CardTitle>Loading Plan Details...</CardTitle></CardHeader>
@@ -398,7 +428,7 @@ export default function TripDetailsPage() {
                 {segments.length > 0 && (
                   <Accordion type="multiple" defaultValue={segments.map(s => s.id)} className="w-full space-y-1 p-0 md:p-1 flex-1 min-h-0">
                     {segments.map((segment) => {
-                        const WeatherIcon = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition) : CloudSun;
+                        const WeatherIconToUse = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition, segment.weatherData.isDay) : CloudSun;
                         return (
                         <AccordionItem value={segment.id} key={segment.id} className="border-b-0">
                             <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0 pr-3">
@@ -416,15 +446,17 @@ export default function TripDetailsPage() {
                                     </div>
                                 )}
                                 {segment.error && !segment.weatherData && ( 
-                                    <div className="text-destructive p-4 border border-destructive/50 rounded-md bg-destructive/10">
-                                    <p className="font-medium">Error loading data for this day:</p><p className="text-sm">{segment.error}</p>
-                                    </div>
+                                    <Alert variant="destructive" className="my-2">
+                                      <AlertTriangle className="h-4 w-4" />
+                                      <AlertTitle>Error Loading Data</AlertTitle>
+                                      <AlertDescription>{segment.error}</AlertDescription>
+                                    </Alert>
                                 )}
                                 {segment.weatherData && (
                                     <div className="p-1 border rounded-md bg-background/80 shadow-inner">
                                         <div className="flex items-center justify-between mb-3 pb-3 border-b">
                                             <div className="flex items-center gap-2">
-                                                <WeatherIcon size={32} className="text-accent" data-ai-hint={`${segment.weatherData.condition} weather`} />
+                                                <WeatherIconToUse size={32} className="text-accent" data-ai-hint={`${segment.weatherData.condition} weather ${segment.weatherData.isDay ? "day" : "night"}`} />
                                                 <div>
                                                     <p className="text-xl font-bold">{segment.weatherData.temperature}°C</p>
                                                     <p className="text-xs text-muted-foreground capitalize">{segment.weatherData.description}</p>
@@ -435,19 +467,21 @@ export default function TripDetailsPage() {
                                             </div>
                                         </div>
                                         {segment.error && (segment.clothingSuggestions === null || segment.activitySuggestions === null) && (
-                                            <div className="text-amber-700 p-3 my-2 border border-amber-300 rounded-md bg-amber-50 text-sm">
-                                                <p><Info size={16} className="inline mr-1" /> {segment.error}</p>
-                                            </div>
+                                            <Alert variant="default" className="my-2 border-amber-300 bg-amber-50 text-amber-700 [&>svg~*]:pl-7 [&>svg]:text-amber-600">
+                                                <Info className="h-4 w-4" />
+                                                <AlertTitle className="font-semibold">Suggestion Error</AlertTitle>
+                                                <AlertDescription>{segment.error}</AlertDescription>
+                                            </Alert>
                                         )}
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div>
                                             <h4 className="font-semibold mb-1 text-md flex items-center gap-1.5"><Thermometer size={18}/> Outfit Ideas</h4>
-                                            {segment.clothingSuggestions ? (segment.clothingSuggestions.suggestions.length > 0 ? (<ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.clothingSuggestions.suggestions.map((item, index) => (<li key={`cloth-${segment.id}-${index}`}>{item}</li>))}</ul>) : <p className="text-sm text-muted-foreground">No specific outfits suggested.</p>) : (segment.isLoading ? <Skeleton className="h-10 w-full"/> :<p className="text-sm text-muted-foreground">Outfit suggestions unavailable.</p>)}
+                                            {segment.isLoading && !segment.clothingSuggestions ? <Skeleton className="h-10 w-full"/> : (segment.clothingSuggestions ? (segment.clothingSuggestions.suggestions.length > 0 ? (<ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.clothingSuggestions.suggestions.map((item, index) => (<li key={`cloth-${segment.id}-${index}`}>{item}</li>))}</ul>) : <p className="text-sm text-muted-foreground">No specific outfits suggested.</p>) : <p className="text-sm text-muted-foreground">Outfit suggestions unavailable.</p>)}
                                             {segment.clothingSuggestions?.reasoning && <p className="text-xs text-muted-foreground italic mt-1">{segment.clothingSuggestions.reasoning}</p>}
                                             </div>
                                             <div>
                                             <h4 className="font-semibold mb-1 text-md flex items-center gap-1.5"><CloudSun size={18}/> Activity Ideas</h4>
-                                            {segment.activitySuggestions ? (<>{segment.activitySuggestions.indoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1">Indoor:</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.indoorActivities.map((item, index) => (<li key={`indoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{segment.activitySuggestions.outdoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1">Outdoor:</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.outdoorActivities.map((item, index) => (<li key={`outdoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{(segment.activitySuggestions.indoorActivities.length === 0 && segment.activitySuggestions.outdoorActivities.length === 0) && (<p className="text-sm text-muted-foreground">No activities suggested.</p>)}</>) : (segment.isLoading ? <Skeleton className="h-10 w-full"/> : <p className="text-sm text-muted-foreground">Activity suggestions unavailable.</p>)}
+                                            {segment.isLoading && !segment.activitySuggestions ? <Skeleton className="h-10 w-full"/> : (segment.activitySuggestions ? (<>{segment.activitySuggestions.indoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1">Indoor:</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.indoorActivities.map((item, index) => (<li key={`indoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{segment.activitySuggestions.outdoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1">Outdoor:</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.outdoorActivities.map((item, index) => (<li key={`outdoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{(segment.activitySuggestions.indoorActivities.length === 0 && segment.activitySuggestions.outdoorActivities.length === 0) && (<p className="text-sm text-muted-foreground">No activities suggested.</p>)}</>) : <p className="text-sm text-muted-foreground">Activity suggestions unavailable.</p>)}
                                             </div>
                                         </div>
                                     </div>
@@ -461,20 +495,24 @@ export default function TripDetailsPage() {
                 )}
 
                 {(allSegmentsProcessed && (someSuggestionsFailed || someWeatherFailed)) && (
-                    <div className="text-center py-4 text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200 mt-4">
-                        <p><Info size={16} className="inline mr-1" />
+                     <Alert variant="default" className="mt-4 border-amber-300 bg-amber-50 text-amber-700 [&>svg~*]:pl-7 [&>svg]:text-amber-600">
+                        <Info className="h-4 w-4" />
+                        <AlertTitle className="font-semibold">Partial Data</AlertTitle>
+                        <AlertDescription>
                         { someWeatherFailed ? "Some weather data could not be loaded. Suggestions might be incomplete." : "Some AI suggestions could not be generated. Weather data is available."}
-                        </p>
-                    </div>
+                        </AlertDescription>
+                    </Alert>
                 )}
 
                 <div className="flex justify-end space-x-2 mt-6 pt-6 border-t">
-                    <Button onClick={handleDownload} disabled={!allSegmentsProcessed || segments.length === 0}><Download className="mr-2 h-4 w-4" /> Download</Button>
-                    <Button onClick={handleShare} disabled={!allSegmentsProcessed || segments.length === 0}><Share2 className="mr-2 h-4 w-4" /> Share</Button>
+                    <Button variant="outline" onClick={handleRegenerateSuggestions} disabled={!allSegmentsProcessed || segments.length === 0 || isRegenerating || overallLoading || pageError !== null || segments.some(s => s.isLoading)}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> {isRegenerating ? "Regenerating..." : "Regenerate Suggestions"}
+                    </Button>
+                    <Button onClick={handleDownload} disabled={!allSegmentsProcessed || segments.length === 0 || isRegenerating}><Download className="mr-2 h-4 w-4" /> Download</Button>
+                    <Button onClick={handleShare} disabled={!allSegmentsProcessed || segments.length === 0 || isRegenerating}><Share2 className="mr-2 h-4 w-4" /> Share</Button>
                 </div>
             </CardContent>
         </Card>
     </div>
   );
 }
-

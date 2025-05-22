@@ -9,6 +9,7 @@ export interface HourlyForecastData {
   condition: string; // "Sunny", "Cloudy", etc.
   conditionCode: string; // Icon code
   icon?: React.FC<LucideProps>; // Optional: pre-resolved icon component
+  isDay?: boolean; // Optional: true if daytime, false if nighttime
 }
 
 export interface WeatherData {
@@ -20,6 +21,7 @@ export interface WeatherData {
   location: string;
   date: string; // ISO string for the forecast date
   description: string;
+  isDay?: boolean; // Optional: true if daytime, false if nighttime
   forecast?: HourlyForecastData[];
 }
 
@@ -85,3 +87,4 @@ export interface CachedItem<T> {
 export type CachedWeatherData = CachedItem<WeatherData>;
 export type CachedOutfitSuggestions = CachedItem<ClothingSuggestionsOutput>;
 export type CachedActivitySuggestions = CachedItem<ActivitySuggestionsOutput>;
+
