@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft, Edit3, Mail, Clock, Repeat } from "lucide-react"; // Added Edit3, Mail, Clock, Repeat
+import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft, Edit3, Mail, Clock, Repeat } from "lucide-react";
 import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isWithinInterval, isBefore, isSameDay } from "date-fns";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
@@ -37,7 +37,7 @@ export default function TripDetailsPage() {
 
     const startDate = startOfDay(parseISO(plan.startDate));
     const endDate = startOfDay(parseISO(plan.endDate));
-    const duration = differenceInCalendarDays(endDate, startDate); // Duration is 0 for a 1-day trip
+    const duration = differenceInCalendarDays(endDate, startDate);
 
     const potentialSegments: TripSegmentSuggestions[] = [];
 
@@ -49,7 +49,7 @@ export default function TripDetailsPage() {
     });
 
     if (duration >= 2) { // Middle day only makes sense for trips of 3 days or longer (duration >=2)
-      const middleOffset = Math.floor(duration / 2.0); // For 5 day trip (duration 4), middleOffset = 2, date = start + 2
+      const middleOffset = Math.floor(duration / 2.0); 
       const middleDateCand = startOfDay(addDays(startDate, middleOffset));
       if (!isSameDay(middleDateCand, startDate) && !isSameDay(middleDateCand, endDate)) {
         potentialSegments.push({
@@ -70,14 +70,13 @@ export default function TripDetailsPage() {
       });
     }
     
-    // Ensure uniqueness by date string, prioritizing start/middle/end IDs if multiple fall on same day (unlikely with this logic)
     const uniqueSegmentsMap = new Map<string, TripSegmentSuggestions>();
     potentialSegments.forEach(segment => {
         const dateStr = format(segment.date, 'yyyy-MM-dd');
         if (!uniqueSegmentsMap.has(dateStr) || 
             (segment.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'start') ||
             (segment.id === 'end' && uniqueSegmentsMap.get(dateStr)?.id !== 'end') ||
-            (segment.id === 'middle' && uniqueSegmentsMap.get(dateStr)?.id === 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'middle') // Prefer middle over start if same
+            (segment.id === 'middle' && uniqueSegmentsMap.get(dateStr)?.id !== 'start' && uniqueSegmentsMap.get(dateStr)?.id !== 'middle') 
         ) {
             uniqueSegmentsMap.set(dateStr, segment);
         }
@@ -85,7 +84,7 @@ export default function TripDetailsPage() {
 
     return Array.from(uniqueSegmentsMap.values())
       .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .map(dp => ({ ...dp, isLoading: true, error: null })); // Ensure isLoading is reset
+      .map(dp => ({ ...dp, isLoading: true, error: null }));
 
   }, [plan]);
 
@@ -136,42 +135,66 @@ export default function TripDetailsPage() {
 
     const fetchAllSegmentData = async () => {
       const baseFamilyProfileForAI = familyProfile || DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS;
-      let combinedProfileForAI = baseFamilyProfileForAI;
+      let combinedProfileForAI = `Global Profile: ${baseFamilyProfileForAI}.`;
       if (plan.tripContext && plan.tripContext.trim() !== "") {
-        combinedProfileForAI += `\n\nTrip-Specific Details: ${plan.tripContext.trim()}`;
+        combinedProfileForAI += ` Trip Notes: ${plan.tripContext.trim()}`;
       } else {
-        combinedProfileForAI += `\n\nTrip-Specific Details: None provided.`;
+        combinedProfileForAI += ` Trip Notes: None provided.`;
       }
 
       const promises = initialSegments.map(async (segment) => {
+        let weather, clothing, activities;
+        let segmentError: string | null = null;
         try {
-          const weather = await fetchWeather(plan.location, segment.date);
+          weather = await fetchWeather(plan.location, segment.date);
+          if (!weather) {
+            segmentError = "Weather data for this day is currently unavailable. Suggestions cannot be loaded.";
+            setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: segmentError, isLoading: false, weatherData: null } : s));
+            return { ...segment, error: segmentError, isLoading: false, weatherData: null };
+          }
           setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, weatherData: weather } : s));
 
-          const clothingInput = {
-            weatherCondition: weather.condition,
-            temperature: weather.temperature,
-            familyProfile: combinedProfileForAI, // Use combined profile
-            location: plan.location,
-          };
-          const clothing = await suggestClothing(clothingInput);
-          setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, clothingSuggestions: clothing } : s));
+          try {
+            const clothingInput = {
+              weatherCondition: weather.condition,
+              temperature: weather.temperature,
+              familyProfile: combinedProfileForAI, 
+              location: plan.location,
+            };
+            clothing = await suggestClothing(clothingInput);
+            setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, clothingSuggestions: clothing } : s));
+          } catch (aiError: any) {
+            console.error(`Error fetching clothing suggestions for segment ${segment.id}:`, aiError);
+            clothing = null; // Ensure it's null on error
+            // Don't overwrite weather error if that already happened
+            if (!segmentError) segmentError = "AI clothing suggestions are currently unavailable for this day. Please try again later.";
+             setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, clothingSuggestions: null, error: segmentError } : s));
+          }
           
-          const activityInput = {
-            weatherCondition: weather.condition,
-            temperature: weather.temperature,
-            familyProfile: combinedProfileForAI, // Use combined profile
-            timeOfDay: "day", 
-            locationPreferences: plan.location,
-          };
-          const activities = await suggestActivities(activityInput);
-          setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, activitySuggestions: activities, isLoading: false } : s));
-          return { ...segment, weatherData: weather, clothingSuggestions: clothing, activitySuggestions: activities, isLoading: false, error: null };
-        } catch (err: any) {
-          console.error(`Error fetching data for segment ${segment.id} (${format(segment.date, "yyyy-MM-dd")}):`, err);
-          const userFriendlyMessage = "AI suggestions are currently unavailable for this day. Please try again later.";
-          setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: userFriendlyMessage, isLoading: false } : s));
-          return { ...segment, error: userFriendlyMessage, isLoading: false };
+          try {
+            const activityInput = {
+              weatherCondition: weather.condition,
+              temperature: weather.temperature,
+              familyProfile: combinedProfileForAI,
+              timeOfDay: "day", 
+              locationPreferences: plan.location,
+            };
+            activities = await suggestActivities(activityInput);
+            setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, activitySuggestions: activities } : s));
+          } catch (aiError: any) {
+            console.error(`Error fetching activity suggestions for segment ${segment.id}:`, aiError);
+            activities = null; // Ensure it's null on error
+            if (!segmentError) segmentError = "AI activity suggestions are currently unavailable for this day. Please try again later.";
+            setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, activitySuggestions: null, error: segmentError } : s));
+          }
+          
+          setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, isLoading: false, error: segmentError } : s));
+          return { ...segment, weatherData: weather, clothingSuggestions: clothing, activitySuggestions: activities, isLoading: false, error: segmentError };
+        } catch (err: any) { // Catch errors from fetchWeather itself
+          console.error(`Error fetching weather data for segment ${segment.id} (${format(segment.date, "yyyy-MM-dd")}):`, err);
+          segmentError = "Weather data for this day is currently unavailable. Suggestions cannot be loaded.";
+          setSegments(prev => prev.map(s => s.id === segment.id ? { ...s, error: segmentError, isLoading: false, weatherData: null } : s));
+          return { ...segment, error: segmentError, isLoading: false, weatherData: null };
         }
       });
       
@@ -185,7 +208,9 @@ export default function TripDetailsPage() {
 
 
   const generateShareText = () => {
-    if (!plan || segments.some(s => s.isLoading || s.error)) return "Suggestions are loading or incomplete.";
+    if (!plan) return "Plan details are not loaded.";
+    // Check if any segment is still loading or if weather data is missing for any segment
+    if (segments.some(s => s.isLoading || !s.weatherData)) return "Suggestions are loading or weather data is incomplete for some days.";
     
     let text = `Weatherugo Guide - Travel Plan: ${plan.tripName} to ${plan.location}\n`;
     text += `Dates: ${format(parseISO(plan.startDate), "PPP")} - ${format(parseISO(plan.endDate), "PPP")}\n`;
@@ -194,15 +219,25 @@ export default function TripDetailsPage() {
     }
     text += `\nFamily Profile Used for Suggestions: ${familyProfile || DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS}\n\n`;
 
-
     segments.forEach(segment => {
-      if (segment.weatherData && segment.clothingSuggestions && segment.activitySuggestions) {
+      if (segment.weatherData) { // Only include segments where weather data was successfully fetched
         text += `--- ${segment.label} ---\n`;
         text += `Weather: ${segment.weatherData.temperature}°C, ${segment.weatherData.condition} (${segment.weatherData.description})\n`;
-        text += `Outfit Ideas: ${segment.clothingSuggestions.suggestions.join(", ") || "N/A"}\n`;
-        text += `Activity Ideas:\n`;
-        text += `  Indoor: ${segment.activitySuggestions.indoorActivities.join(", ") || "N/A"}\n`;
-        text += `  Outdoor: ${segment.activitySuggestions.outdoorActivities.join(", ") || "N/A"}\n\n`;
+        if (segment.clothingSuggestions) {
+          text += `Outfit Ideas: ${segment.clothingSuggestions.suggestions.join(", ") || "N/A"}\n`;
+        } else {
+          text += `Outfit Ideas: Suggestions currently unavailable.\n`;
+        }
+        if (segment.activitySuggestions) {
+          text += `Activity Ideas:\n`;
+          text += `  Indoor: ${segment.activitySuggestions.indoorActivities.join(", ") || "N/A"}\n`;
+          text += `  Outdoor: ${segment.activitySuggestions.outdoorActivities.join(", ") || "N/A"}\n\n`;
+        } else {
+          text += `Activity Ideas: Suggestions currently unavailable.\n\n`;
+        }
+      } else if (segment.error) {
+         text += `--- ${segment.label} ---\n`;
+         text += `Weather and suggestions for this day are currently unavailable due to: ${segment.error}\n\n`;
       }
     });
     return text;
@@ -233,7 +268,6 @@ export default function TripDetailsPage() {
         toast({ title: "Shared Successfully" });
       } catch (error) {
         console.error("Error sharing:", error);
-        // Don't toast if user cancelled share (AbortError)
         if ((error as DOMException)?.name !== 'AbortError') {
           toast({ title: "Share Failed", variant: "destructive" });
         }
@@ -247,7 +281,9 @@ export default function TripDetailsPage() {
     }
   };
   
-  const allSegmentsLoadedSuccessfully = !overallLoading && segments.length > 0 && segments.every(s => !s.isLoading && !s.error);
+  const allSegmentsWeatherDataLoaded = !overallLoading && segments.length > 0 && segments.every(s => !s.isLoading && s.weatherData !== null);
+  const someSuggestionsFailed = segments.some(s => s.weatherData && (!s.clothingSuggestions || !s.activitySuggestions) && !s.isLoading);
+
 
   if (pageError) {
     return (
@@ -267,7 +303,7 @@ export default function TripDetailsPage() {
     );
   }
 
-  if (!plan && overallLoading) { // Overall loading state for the plan itself
+  if (!plan && overallLoading) { 
      return (
         <div className="space-y-4 mt-4">
             <Skeleton className="h-12 w-1/2" />
@@ -283,7 +319,7 @@ export default function TripDetailsPage() {
      );
   }
   
-  if (!plan) { // Plan not found after loading attempt
+  if (!plan) { 
     return (
          <Card className="mt-4 shadow-lg">
             <CardHeader><CardTitle>Loading Plan Details...</CardTitle></CardHeader>
@@ -303,7 +339,7 @@ export default function TripDetailsPage() {
         </Button>
 
         <Card className="shadow-xl">
-            <CardHeader className="bg-primary/10 rounded-t-lg">
+            <CardHeader className="bg-primary/10 rounded-t-lg p-6">
                 <CardTitle className="text-2xl flex items-center gap-3">
                     <Plane className="text-primary" /> {plan.tripName}
                 </CardTitle>
@@ -324,7 +360,7 @@ export default function TripDetailsPage() {
             <CardContent className="pt-6">
                 <h2 className="text-xl font-semibold mb-3">Daily Itinerary & AI Suggestions</h2>
                 
-                {overallLoading && segments.length === 0 && ( // Skeletons for initial segment loading
+                {overallLoading && segments.length === 0 && (
                   <div className="space-y-3 p-1">
                     <Skeleton className="h-10 w-full rounded-md" />
                     <Skeleton className="h-24 w-full rounded-md" />
@@ -349,7 +385,8 @@ export default function TripDetailsPage() {
                             <AccordionTrigger className="text-lg font-semibold hover:no-underline bg-card hover:bg-muted/80 px-4 py-3 rounded-md border shadow-sm data-[state=open]:rounded-b-none data-[state=open]:border-b-0 pr-3">
                             <span className="flex-1 text-left">{segment.label}</span>
                             {segment.isLoading && <Skeleton className="h-5 w-20 ml-auto" />}
-                            {segment.error && <AlertCircle className="h-5 w-5 text-destructive ml-auto" />}
+                            {segment.error && !segment.weatherData && <AlertCircle className="h-5 w-5 text-destructive ml-auto" title="Weather data failed to load"/>}
+                            {segment.error && segment.weatherData && <Info className="h-5 w-5 text-amber-600 ml-auto" title="AI suggestions failed or partially failed"/>}
                             </AccordionTrigger>
                             <AccordionContent className="pt-0 pb-4 space-y-4 border border-t-0 rounded-b-md shadow-sm bg-card overflow-hidden">
                                 <div className="p-4">
@@ -364,67 +401,79 @@ export default function TripDetailsPage() {
                                     <Skeleton className="h-16 w-full" />
                                     </div>
                                 )}
-                                {segment.error && (
+                                {segment.error && !segment.weatherData && ( // Critical error: no weather
                                     <div className="text-destructive p-4 border border-destructive/50 rounded-md bg-destructive/10">
-                                    <p className="font-medium">Error loading suggestions:</p>
+                                    <p className="font-medium">Error loading data for this day:</p>
                                     <p className="text-sm">{segment.error}</p>
                                     </div>
                                 )}
-                                {!segment.isLoading && !segment.error && segment.weatherData && segment.clothingSuggestions && segment.activitySuggestions && (
+                                {segment.weatherData && ( // Weather data loaded, now check suggestions
                                     <div className="p-1 border rounded-md bg-background/80 shadow-inner">
-                                    <div className="flex items-center justify-between mb-3 pb-3 border-b">
-                                        <div className="flex items-center gap-2">
-                                            <WeatherIcon size={32} className="text-accent" data-ai-hint={`${segment.weatherData.condition} weather`} />
-                                            <div>
-                                                <p className="text-xl font-bold">{segment.weatherData.temperature}°C</p>
-                                                <p className="text-xs text-muted-foreground capitalize">{segment.weatherData.description}</p>
+                                        <div className="flex items-center justify-between mb-3 pb-3 border-b">
+                                            <div className="flex items-center gap-2">
+                                                <WeatherIcon size={32} className="text-accent" data-ai-hint={`${segment.weatherData.condition} weather`} />
+                                                <div>
+                                                    <p className="text-xl font-bold">{segment.weatherData.temperature}°C</p>
+                                                    <p className="text-xs text-muted-foreground capitalize">{segment.weatherData.description}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right text-sm">
+                                                <p>Humidity: {segment.weatherData.humidity}%</p>
+                                                <p>Wind: {segment.weatherData.windSpeed} km/h</p>
                                             </div>
                                         </div>
-                                        <div className="text-right text-sm">
-                                            <p>Humidity: {segment.weatherData.humidity}%</p>
-                                            <p>Wind: {segment.weatherData.windSpeed} km/h</p>
-                                        </div>
-                                    </div>
 
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        <div>
-                                        <h4 className="font-semibold mb-1 text-md flex items-center gap-1.5"><Thermometer size={18}/> Outfit Ideas</h4>
-                                        {segment.clothingSuggestions.suggestions.length > 0 ? (
-                                            <ul className="list-disc list-inside space-y-0.5 text-sm pl-1">
-                                            {segment.clothingSuggestions.suggestions.map((item, index) => (
-                                                <li key={`cloth-${segment.id}-${index}`}>{item}</li>
-                                            ))}
-                                            </ul>
-                                        ) : <p className="text-sm text-muted-foreground">No specific outfits suggested.</p>}
-                                        {segment.clothingSuggestions.reasoning && <p className="text-xs text-muted-foreground italic mt-1">{segment.clothingSuggestions.reasoning}</p>}
-                                        </div>
-                                        <div>
-                                        <h4 className="font-semibold mb-1 text-md flex items-center gap-1.5"><CloudSun size={18}/> Activity Ideas</h4>
-                                        {segment.activitySuggestions.indoorActivities.length > 0 && (
-                                            <>
-                                            <p className="text-sm font-medium mt-1">Indoor:</p>
-                                            <ul className="list-disc list-inside space-y-0.5 text-sm pl-1">
-                                                {segment.activitySuggestions.indoorActivities.map((item, index) => (
-                                                <li key={`indoor-${segment.id}-${index}`}>{item}</li>
+                                        {segment.error && (segment.clothingSuggestions === null || segment.activitySuggestions === null) && ( // AI suggestions failed
+                                            <div className="text-amber-700 p-3 my-2 border border-amber-300 rounded-md bg-amber-50 text-sm">
+                                                <p><Info size={16} className="inline mr-1" /> {segment.error}</p>
+                                            </div>
+                                        )}
+
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                            <h4 className="font-semibold mb-1 text-md flex items-center gap-1.5"><Thermometer size={18}/> Outfit Ideas</h4>
+                                            {segment.clothingSuggestions ? (
+                                                segment.clothingSuggestions.suggestions.length > 0 ? (
+                                                <ul className="list-disc list-inside space-y-0.5 text-sm pl-1">
+                                                {segment.clothingSuggestions.suggestions.map((item, index) => (
+                                                    <li key={`cloth-${segment.id}-${index}`}>{item}</li>
                                                 ))}
-                                            </ul>
-                                            </>
-                                        )}
-                                        {segment.activitySuggestions.outdoorActivities.length > 0 && (
-                                            <>
-                                            <p className="text-sm font-medium mt-1">Outdoor:</p>
-                                            <ul className="list-disc list-inside space-y-0.5 text-sm pl-1">
-                                                {segment.activitySuggestions.outdoorActivities.map((item, index) => (
-                                                <li key={`outdoor-${segment.id}-${index}`}>{item}</li>
-                                                ))}
-                                            </ul>
-                                            </>
-                                        )}
-                                        {(segment.activitySuggestions.indoorActivities.length === 0 && segment.activitySuggestions.outdoorActivities.length === 0) && (
-                                            <p className="text-sm text-muted-foreground">No activities suggested.</p>
-                                        )}
+                                                </ul>
+                                                ) : <p className="text-sm text-muted-foreground">No specific outfits suggested.</p>
+                                            ) : <p className="text-sm text-muted-foreground">Outfit suggestions currently unavailable.</p>}
+                                            {segment.clothingSuggestions?.reasoning && <p className="text-xs text-muted-foreground italic mt-1">{segment.clothingSuggestions.reasoning}</p>}
+                                            </div>
+                                            <div>
+                                            <h4 className="font-semibold mb-1 text-md flex items-center gap-1.5"><CloudSun size={18}/> Activity Ideas</h4>
+                                            {segment.activitySuggestions ? (
+                                                <>
+                                                {segment.activitySuggestions.indoorActivities.length > 0 && (
+                                                    <>
+                                                    <p className="text-sm font-medium mt-1">Indoor:</p>
+                                                    <ul className="list-disc list-inside space-y-0.5 text-sm pl-1">
+                                                        {segment.activitySuggestions.indoorActivities.map((item, index) => (
+                                                        <li key={`indoor-${segment.id}-${index}`}>{item}</li>
+                                                        ))}
+                                                    </ul>
+                                                    </>
+                                                )}
+                                                {segment.activitySuggestions.outdoorActivities.length > 0 && (
+                                                    <>
+                                                    <p className="text-sm font-medium mt-1">Outdoor:</p>
+                                                    <ul className="list-disc list-inside space-y-0.5 text-sm pl-1">
+                                                        {segment.activitySuggestions.outdoorActivities.map((item, index) => (
+                                                        <li key={`outdoor-${segment.id}-${index}`}>{item}</li>
+                                                        ))}
+                                                    </ul>
+                                                    </>
+                                                )}
+                                                {(segment.activitySuggestions.indoorActivities.length === 0 && segment.activitySuggestions.outdoorActivities.length === 0) && (
+                                                    <p className="text-sm text-muted-foreground">No activities suggested.</p>
+                                                )}
+                                                </>
+                                            ) : <p className="text-sm text-muted-foreground">Activity suggestions currently unavailable.</p>}
+                                            </div>
                                         </div>
-                                    </div>
                                     </div>
                                 )}
                                 </div>
@@ -435,17 +484,22 @@ export default function TripDetailsPage() {
                     </Accordion>
                 )}
 
-                {!overallLoading && segments.length > 0 && !allSegmentsLoadedSuccessfully && (
+                {!overallLoading && segments.length > 0 && (someSuggestionsFailed || !allSegmentsWeatherDataLoaded) && (
                     <div className="text-center py-4 text-sm text-amber-700 bg-amber-50 p-3 rounded-md border border-amber-200 mt-4">
-                        <p><Info size={16} className="inline mr-1" /> Some suggestions might still be loading or encountered an error. Please check each section.</p>
+                        <p><Info size={16} className="inline mr-1" /> 
+                        { !allSegmentsWeatherDataLoaded 
+                            ? "Some weather data could not be loaded. Suggestions might be incomplete."
+                            : "Some AI suggestions could not be generated. Weather data is available."
+                        }
+                        </p>
                     </div>
                 )}
 
                 <div className="flex justify-end space-x-2 mt-6 pt-6 border-t">
-                    <Button onClick={handleDownload} disabled={!allSegmentsLoadedSuccessfully}>
+                    <Button onClick={handleDownload} disabled={!allSegmentsWeatherDataLoaded}>
                         <Download className="mr-2 h-4 w-4" /> Download
                     </Button>
-                    <Button onClick={handleShare} disabled={!allSegmentsLoadedSuccessfully}>
+                    <Button onClick={handleShare} disabled={!allSegmentsWeatherDataLoaded}>
                         <Share2 className="mr-2 h-4 w-4" /> Share
                     </Button>
                 </div>
@@ -454,3 +508,4 @@ export default function TripDetailsPage() {
     </div>
   );
 }
+

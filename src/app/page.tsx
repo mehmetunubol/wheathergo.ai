@@ -12,7 +12,7 @@ import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clot
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
 import type { WeatherData, LastKnownWeather } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { format, isToday } from "date-fns";
+import { format, isToday, parseISO, getHours } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,32 +72,45 @@ export default function HomePage() {
       setActivitySuggestions(null); 
       try {
         const data = await fetchWeather(location, selectedDate);
-        setWeatherData(data);
+        if (data) {
+            setWeatherData(data);
 
-        if (isToday(selectedDate)) {
-            const todayStr = format(new Date(), "yyyy-MM-dd");
-            const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
-            if (lastKnownWeatherStr) {
-                const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
-                if (lastKnown.location === location && lastKnown.date === todayStr) {
-                    if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
-                        toast({
-                            title: "Weather Update!",
-                            description: `Weather in ${location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
-                        });
+            if (isToday(selectedDate)) {
+                const todayStr = format(new Date(), "yyyy-MM-dd");
+                const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
+                if (lastKnownWeatherStr) {
+                    const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
+                    if (lastKnown.location === location && lastKnown.date === todayStr) {
+                        if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
+                            toast({
+                                title: "Weather Update!",
+                                description: `Weather in ${location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
+                            });
+                        }
                     }
                 }
+                localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
+                    location: data.location, 
+                    temperature: data.temperature, 
+                    condition: data.condition,
+                    date: todayStr 
+                }));
             }
-            localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
-                location: data.location, 
-                temperature: data.temperature, 
-                condition: data.condition,
-                date: todayStr 
-            }));
+        } else {
+             toast({ 
+                title: "Error Fetching Weather", 
+                description: "Could not retrieve weather data. The service might be temporarily unavailable or there might be an issue with the location or API key configuration. Please try again later.", 
+                variant: "destructive" 
+            });
+            setWeatherData(null);
         }
       } catch (error) {
         console.error("Failed to fetch weather:", error);
-        toast({ title: "Error Fetching Weather", description: "Could not fetch weather data. Please check your connection or try again.", variant: "destructive" });
+        toast({ 
+            title: "Error Fetching Weather", 
+            description: "An unexpected error occurred while fetching weather data. Please check your connection or try again.", 
+            variant: "destructive" 
+        });
         setWeatherData(null);
       } finally {
         setIsLoadingWeather(false);
@@ -112,6 +125,8 @@ export default function HomePage() {
 
       setIsLoadingOutfit(true);
       setIsLoadingActivity(true);
+      setOutfitSuggestions(null);
+      setActivitySuggestions(null);
 
       try {
         const clothingInput = {
@@ -124,7 +139,6 @@ export default function HomePage() {
         setOutfitSuggestions(clothing);
       } catch (error) {
         console.error("Failed to get outfit suggestions:", error);
-        setOutfitSuggestions(null);
         toast({
           title: "Outfit Suggestion Error",
           description: "Could not fetch outfit suggestions. The AI service may be temporarily unavailable. Please try again later.",
@@ -146,7 +160,6 @@ export default function HomePage() {
         setActivitySuggestions(activities);
       } catch (error) {
         console.error("Failed to get activity suggestions:", error);
-        setActivitySuggestions(null);
         toast({
           title: "Activity Suggestion Error",
           description: "Could not fetch activity suggestions. The AI service may be temporarily unavailable. Please try again later.",
@@ -168,6 +181,28 @@ export default function HomePage() {
       setSelectedDate(date);
     }
   };
+  
+  // Filter hourly forecast to show only future hours for today
+  const getFilteredHourlyForecast = () => {
+    if (!weatherData?.forecast) return [];
+    if (!isToday(selectedDate)) return weatherData.forecast;
+
+    const currentHour = getHours(new Date());
+    return weatherData.forecast.filter(item => {
+      // Assuming item.time is "H AM/PM" e.g. "1 PM", "10 AM"
+      // This parsing is a bit naive and might need improvement if time formats vary more
+      const itemHourMatch = item.time.match(/(\d+)\s*(AM|PM)/i);
+      if (itemHourMatch) {
+        let itemHour = parseInt(itemHourMatch[1]);
+        const ampm = itemHourMatch[2].toUpperCase();
+        if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
+        if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight case
+        return itemHour >= currentHour;
+      }
+      return true; // If time format is unexpected, include it
+    });
+  };
+
 
   return (
     <div className="space-y-6">
@@ -188,7 +223,7 @@ export default function HomePage() {
       
       { (weatherData || isLoadingWeather) && selectedDate && (
         <HourlyForecastCard
-          forecastData={weatherData?.forecast}
+          forecastData={getFilteredHourlyForecast()}
           isLoading={isLoadingWeather}
           date={selectedDate}
         />
