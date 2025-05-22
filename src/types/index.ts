@@ -37,6 +37,16 @@ export interface LastKnownWeather {
 
 export type NotificationFrequency = 'daily' | 'weekly';
 
+// Represents the data structure for storing fetched suggestions in Firestore
+export interface StoredTripSegmentData {
+  segmentId: 'start' | 'middle' | 'end'; // To identify the segment (matches UI segment id)
+  date: string; // ISO string of the segment's date
+  weatherData: WeatherData;
+  clothingSuggestions: ClothingSuggestionsOutput;
+  activitySuggestions: ActivitySuggestionsOutput;
+  fetchedAt: string; // ISO string, timestamp of when this was fetched/updated
+}
+
 export interface TravelPlanItem {
   id: string;
   tripName: string;
@@ -47,10 +57,13 @@ export interface TravelPlanItem {
   notificationTime: string; // e.g., "09:00" (24-hour format)
   notificationTimeLabel?: string; // User-friendly time label e.g. "9:00 AM"
   notificationFrequency: NotificationFrequency;
-  tripContext?: string; // New field for trip-specific context
+  tripContext?: string;
+  userId?: string; // Added when saving to Firestore
+  createdAt?: string; // Added when saving to Firestore
+  storedSuggestions?: StoredTripSegmentData[]; // Array to hold suggestions for key dates
 }
 
-// This type is primarily for internal use within the trip details page
+// This type is primarily for UI state within the trip details page
 export interface TripSegmentSuggestions {
   id: 'start' | 'middle' | 'end';
   label: string;
@@ -60,4 +73,6 @@ export interface TripSegmentSuggestions {
   activitySuggestions: ActivitySuggestionsOutput | null;
   isLoading: boolean;
   error: string | null;
+  source?: 'stored' | 'newly-fetched'; // To track where the data came from
 }
+
