@@ -1,6 +1,6 @@
-# WeatherWise Guide
+# Weatherugo Guide
 
-This is the README for the WeatherWise Guide project.
+This is the README for the Weatherugo Guide project.
 
 ## How to Run the Project
 

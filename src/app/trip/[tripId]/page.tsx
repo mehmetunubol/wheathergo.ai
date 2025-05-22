@@ -96,10 +96,10 @@ export default function TripDetailsPage() {
       return;
     }
 
-    const storedFamilyProfile = localStorage.getItem("weatherwise-familyProfile");
+    const storedFamilyProfile = localStorage.getItem("weatherugo-familyProfile");
     if (storedFamilyProfile) setFamilyProfile(storedFamilyProfile);
 
-    const storedTravelPlans = localStorage.getItem("weatherwise-travel-plans");
+    const storedTravelPlans = localStorage.getItem("weatherugo-travel-plans");
     if (storedTravelPlans) {
       try {
         const parsedPlans = JSON.parse(storedTravelPlans) as TravelPlanItem[];
@@ -187,7 +187,7 @@ export default function TripDetailsPage() {
   const generateShareText = () => {
     if (!plan || segments.some(s => s.isLoading || s.error)) return "Suggestions are loading or incomplete.";
     
-    let text = `WeatherWise Guide - Travel Plan: ${plan.tripName} to ${plan.location}\n`;
+    let text = `Weatherugo Guide - Travel Plan: ${plan.tripName} to ${plan.location}\n`;
     text += `Dates: ${format(parseISO(plan.startDate), "PPP")} - ${format(parseISO(plan.endDate), "PPP")}\n`;
     if (plan.tripContext) {
       text += `Trip Notes: ${plan.tripContext}\n`;
@@ -341,7 +341,7 @@ export default function TripDetailsPage() {
                 )}
 
                 {segments.length > 0 && (
-                  <Accordion type="multiple" defaultValue={segments.map(s => s.id)} className="w-full space-y-1">
+                  <Accordion type="multiple" defaultValue={segments.map(s => s.id)} className="w-full space-y-1 p-1 flex-1 min-h-0">
                     {segments.map((segment) => {
                         const WeatherIcon = segment.weatherData ? getWeatherIcon(segment.weatherData.conditionCode, segment.weatherData.condition) : CloudSun;
                         return (

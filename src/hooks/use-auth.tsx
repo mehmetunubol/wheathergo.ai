@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
@@ -21,7 +22,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     try {
-      const storedAuth = localStorage.getItem('weatherwise-auth');
+      const storedAuth = localStorage.getItem('weatherugo-auth');
       if (storedAuth) {
         const authData = JSON.parse(storedAuth);
         setIsAuthenticated(authData.isAuthenticated);
@@ -29,7 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Failed to parse auth data from localStorage", error);
-      localStorage.removeItem('weatherwise-auth');
+      localStorage.removeItem('weatherugo-auth');
     }
     setIsLoading(false);
   }, []);
@@ -39,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(true);
     setUser(mockUser);
     try {
-      localStorage.setItem('weatherwise-auth', JSON.stringify({ isAuthenticated: true, user: mockUser }));
+      localStorage.setItem('weatherugo-auth', JSON.stringify({ isAuthenticated: true, user: mockUser }));
     } catch (error) {
       console.error("Failed to save auth data to localStorage", error);
     }
@@ -50,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
     setUser(null);
     try {
-      localStorage.removeItem('weatherwise-auth');
+      localStorage.removeItem('weatherugo-auth');
     } catch (error) {
       console.error("Failed to remove auth data from localStorage", error);
     }

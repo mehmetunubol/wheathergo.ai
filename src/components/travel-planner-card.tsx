@@ -68,7 +68,7 @@ export function TravelPlannerCard() {
   const { isAuthenticated } = useAuth(); // Get authentication status
 
   React.useEffect(() => {
-    const storedTravelPlans = localStorage.getItem("weatherwise-travel-plans");
+    const storedTravelPlans = localStorage.getItem("weatherugo-travel-plans");
     if (storedTravelPlans) {
       try {
         const parsedPlans = JSON.parse(storedTravelPlans) as TravelPlanItem[];
@@ -85,7 +85,7 @@ export function TravelPlannerCard() {
       }
     }
 
-    const storedFamilyProfile = localStorage.getItem("weatherwise-familyProfile");
+    const storedFamilyProfile = localStorage.getItem("weatherugo-familyProfile");
     if (storedFamilyProfile) {
       setFamilyProfileForSuggestions(storedFamilyProfile);
     }
@@ -93,7 +93,7 @@ export function TravelPlannerCard() {
   }, []);
 
   React.useEffect(() => {
-    localStorage.setItem("weatherwise-travel-plans", JSON.stringify(travelPlans));
+    localStorage.setItem("weatherugo-travel-plans", JSON.stringify(travelPlans));
   }, [travelPlans]);
 
   const handleAddTravelPlan = () => {
@@ -414,4 +414,3 @@ export function TravelPlannerCard() {
     </>
   );
 }
-

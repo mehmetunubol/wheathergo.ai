@@ -46,21 +46,21 @@ export default function HomePage() {
   const { isAuthenticated } = useAuth();
 
   React.useEffect(() => {
-    const storedLocation = localStorage.getItem("weatherwise-location");
+    const storedLocation = localStorage.getItem("weatherugo-location");
     if (storedLocation) setLocation(storedLocation);
 
-    const storedProfile = localStorage.getItem("weatherwise-familyProfile");
+    const storedProfile = localStorage.getItem("weatherugo-familyProfile");
     if (storedProfile) setFamilyProfile(storedProfile);
     
     setIsLoadingWeather(true); 
   }, []);
 
   React.useEffect(() => {
-    localStorage.setItem("weatherwise-location", location);
+    localStorage.setItem("weatherugo-location", location);
   }, [location]);
 
   React.useEffect(() => {
-    localStorage.setItem("weatherwise-familyProfile", familyProfile);
+    localStorage.setItem("weatherugo-familyProfile", familyProfile);
   }, [familyProfile]);
 
   React.useEffect(() => {
@@ -76,7 +76,7 @@ export default function HomePage() {
 
         if (isToday(selectedDate)) {
             const todayStr = format(new Date(), "yyyy-MM-dd");
-            const lastKnownWeatherStr = localStorage.getItem("weatherwise-lastKnownWeather");
+            const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
             if (lastKnownWeatherStr) {
                 const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
                 if (lastKnown.location === location && lastKnown.date === todayStr) {
@@ -88,7 +88,7 @@ export default function HomePage() {
                     }
                 }
             }
-            localStorage.setItem("weatherwise-lastKnownWeather", JSON.stringify({ 
+            localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
                 location: data.location, 
                 temperature: data.temperature, 
                 condition: data.condition,
@@ -237,4 +237,3 @@ export default function HomePage() {
     </div>
   );
 }
-

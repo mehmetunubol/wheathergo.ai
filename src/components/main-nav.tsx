@@ -21,7 +21,7 @@ export function MainNav() {
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <Zap className="h-6 w-6 text-primary" />
           <span className="font-bold sm:inline-block">
-            WeatherWise
+            Weatherugo
           </span>
         </Link>
         <nav className="flex items-center gap-4 text-sm lg:gap-6">
