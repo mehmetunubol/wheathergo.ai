@@ -3,7 +3,7 @@
 
 import type { WeatherData } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Thermometer, Droplets, Wind, Compass } from "lucide-react";
+import { Droplets, Wind, Compass } from "lucide-react";
 import { getWeatherIcon } from "@/components/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -54,7 +54,9 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
     );
   }
 
-  const IconComponent = getWeatherIcon(weatherData.conditionCode, weatherData.condition, weatherData.isDay);
+  // Defensively handle isDay: default to true (day) if undefined
+  const isDayForIcon = typeof weatherData.isDay === 'boolean' ? weatherData.isDay : true;
+  const IconComponent = getWeatherIcon(weatherData.conditionCode, weatherData.condition, isDayForIcon);
   const formattedDate = format(new Date(weatherData.date), "EEEE, MMMM do, yyyy");
 
   return (
@@ -70,7 +72,7 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
-          <IconComponent size={64} className="text-accent" data-ai-hint={`${weatherData.condition} weather ${weatherData.isDay ? "day" : "night"}`} />
+          <IconComponent size={64} className="text-accent" data-ai-hint={`${weatherData.condition} weather ${isDayForIcon ? "day" : "night"}`} />
           <div className="text-right">
             <p className="text-5xl font-bold">{weatherData.temperature}°C</p>
             <p className="text-muted-foreground capitalize">{weatherData.description}</p>

@@ -29,9 +29,9 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
         </CardHeader>
         <CardContent>
           <div className="flex space-x-4 overflow-x-auto pb-2">
-            {[...Array(8)].map((_, index) => ( 
-              <div key={index} className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[90px] bg-card">
-                <Skeleton className="h-4 w-12 mb-1" /> 
+            {[...Array(12)].map((_, index) => ( // Show more skeletons if expecting ~24h
+              <div key={index} className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[100px] bg-card">
+                <Skeleton className="h-4 w-16 mb-1" /> 
                 <Skeleton className="h-8 w-8 rounded-full my-1" /> 
                 <Skeleton className="h-4 w-8 mt-1" /> 
               </div>
@@ -67,7 +67,9 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
       <CardContent>
         <div className="flex space-x-3 overflow-x-auto pb-2" role="list" aria-label="Hourly weather forecast">
           {forecastData.map((item, index) => {
-            const IconComponent = getWeatherIcon(item.conditionCode, item.condition, item.isDay);
+            // Defensively handle isDay: default to true (day) if undefined
+            const isDayForIcon = typeof item.isDay === 'boolean' ? item.isDay : true;
+            const IconComponent = getWeatherIcon(item.conditionCode, item.condition, isDayForIcon);
             return (
               <div
                 key={index}
@@ -75,7 +77,7 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
                 role="listitem"
               >
                 <p className="text-xs font-medium text-muted-foreground">{item.time}</p>
-                <IconComponent size={32} className="text-accent my-1" data-ai-hint={`${item.condition} weather ${item.isDay ? "day" : "night"}`} />
+                <IconComponent size={32} className="text-accent my-1" data-ai-hint={`${item.condition} weather ${isDayForIcon ? "day" : "night"}`} />
                 <p className="text-sm font-semibold">{item.temperature}°C</p>
               </div>
             );
