@@ -11,6 +11,14 @@ const safeParseFloat = (value: any, defaultValue = 0): number => {
   return isNaN(num) ? defaultValue : num;
 };
 
+// Helper function to normalize location strings (remove diacritics, convert to lowercase)
+const normalizeLocationString = (location: string): string => {
+  return location
+    .normalize('NFD') // Decompose combined graphemes into base characters and diacritics
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
+    .toLowerCase(); // Convert to lowercase
+};
+
 export async function fetchWeather(location: string, selectedDate: Date): Promise<WeatherData> {
   if (!API_KEY_ENV_VAR) {
     const apiKeyError = "WeatherAPI.com API key is missing. Please set NEXT_PUBLIC_WEATHERAPI_COM_API_KEY.";
@@ -18,8 +26,9 @@ export async function fetchWeather(location: string, selectedDate: Date): Promis
     throw new Error(apiKeyError);
   }
 
+  const normalizedLocation = location.toLowerCase() === "auto:ip" ? "auto:ip" : normalizeLocationString(location);
   const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-  const apiUrl = `${WEATHERAPI_BASE_URL}/forecast.json?key=${API_KEY_ENV_VAR}&q=${encodeURIComponent(location)}&dt=${formattedDate}&aqi=no&alerts=no`;
+  const apiUrl = `${WEATHERAPI_BASE_URL}/forecast.json?key=${API_KEY_ENV_VAR}&q=${encodeURIComponent(normalizedLocation)}&dt=${formattedDate}&aqi=no&alerts=no`;
 
   try {
     const response = await fetch(apiUrl);
@@ -27,12 +36,12 @@ export async function fetchWeather(location: string, selectedDate: Date): Promis
 
     if (!response.ok || data.error) {
       const errorMessage = data.error ? data.error.message : `API request failed with status ${response.status}: ${response.statusText}`;
-      console.error(`Error fetching weather data from WeatherAPI.com for ${location} on ${formattedDate}:`, errorMessage, `URL: ${apiUrl}`);
+      console.error(`Error fetching weather data from WeatherAPI.com for "${location}" (normalized: "${normalizedLocation}") on ${formattedDate}:`, errorMessage, `URL: ${apiUrl}`);
       throw new Error(errorMessage);
     }
 
     if (!data.forecast || !data.forecast.forecastday || data.forecast.forecastday.length === 0) {
-      const noDataError = `No forecast data available for ${location} on ${formattedDate}.`;
+      const noDataError = `No forecast data available for "${location}" (normalized: "${normalizedLocation}") on ${formattedDate}.`;
       console.error(noDataError, `URL: ${apiUrl}`);
       throw new Error(noDataError);
     }
@@ -67,6 +76,7 @@ export async function fetchWeather(location: string, selectedDate: Date): Promis
     const hourlyForecasts: HourlyForecastData[] = [];
     if (forecastDay.hour && forecastDay.hour.length > 0) {
       forecastDay.hour.forEach((hourData: any) => {
+        // Ensure we only take hours for the selected date, WeatherAPI might give more for forecast.json
         if (format(parseISO(hourData.time), 'yyyy-MM-dd') === formattedDate) {
           hourlyForecasts.push({
             time: format(parseISO(hourData.time), 'h a'), 
@@ -84,9 +94,7 @@ export async function fetchWeather(location: string, selectedDate: Date): Promis
     return weatherData;
 
   } catch (error: any) {
-    // Catch fetch errors (network issues) or errors re-thrown from response check
-    console.error(`Failed to fetch or parse weather data for "${location}" on ${formattedDate}:`, error.message, `URL Attempted: ${apiUrl}`);
-    // Re-throw the error so the calling client code can handle it for UI updates
+    console.error(`Failed to fetch or parse weather data for "${location}" (normalized: "${normalizedLocation}") on ${formattedDate}:`, error.message, `URL Attempted: ${apiUrl}`);
     throw error; 
   }
 }
