@@ -53,6 +53,8 @@ export default function HomePage() {
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
 
+  const prevUserUID = React.useRef<string | undefined>(undefined);
+
   const handleProfileUpdate = React.useCallback((newProfile: string) => {
     setFamilyProfile(newProfile); 
     setIsLoadingProfile(false); 
@@ -68,13 +70,21 @@ export default function HomePage() {
 
   React.useEffect(() => {
     const loadPreferences = async () => {
-      if (authIsLoading) return;
+      if (authIsLoading) return; // Still determining auth state
 
       setIsLoadingPreferences(true);
-      try { 
+      const userJustLoggedIn = isAuthenticated && user && user.uid !== prevUserUID.current;
+
+      try {
         if (isAuthenticated && user) {
+          // User is authenticated
+          if (userJustLoggedIn) {
+            setSelectedDate(new Date()); // Reset date on login
+          }
+
           const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
           const docSnap = await getDoc(prefsRef);
+
           if (docSnap.exists()) {
             const data = docSnap.data();
             if (data.lastLocation) {
@@ -83,39 +93,56 @@ export default function HomePage() {
               const storedLocation = localStorage.getItem("weatherugo-location");
               setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
             }
-            if (data.lastSelectedDate) {
+
+            // Only load stored date if user didn't *just* log in
+            if (!userJustLoggedIn && data.lastSelectedDate) {
               const parsedDate = parseISO(data.lastSelectedDate);
               if (isValid(parsedDate)) {
                 setSelectedDate(parsedDate);
               } else {
-                setSelectedDate(new Date());
+                setSelectedDate(new Date()); // Fallback if stored date is invalid
               }
-            } else {
+            } else if (!userJustLoggedIn) {
+               // No stored date, and not just logged in, set to new Date
+               setSelectedDate(new Date());
+            }
+            // If userJustLoggedIn, selectedDate is already set to new Date() and we don't overwrite it
+          } else {
+            // No preferences doc in Firestore
+            const storedLocation = localStorage.getItem("weatherugo-location");
+            setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
+            if (!userJustLoggedIn) { // If not just logged in, default to new Date
               setSelectedDate(new Date());
             }
-          } else {
-             const storedLocation = localStorage.getItem("weatherugo-location");
-            setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
-            setSelectedDate(new Date());
+            // If userJustLoggedIn, selectedDate is already set.
           }
         } else {
+          // Not authenticated
           const storedLocation = localStorage.getItem("weatherugo-location");
           setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
           setSelectedDate(new Date());
         }
-      } catch (error) { 
+      } catch (error) {
         console.error("Error during preferences loading:", error);
         const storedLocation = localStorage.getItem("weatherugo-location");
         setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
-        setSelectedDate(new Date());
-      } finally { 
+        setSelectedDate(new Date()); // Fallback in case of error
+      } finally {
         setIsLoadingPreferences(false);
       }
     };
+
     if (!authIsLoading) {
-        loadPreferences();
+      loadPreferences();
     }
+    // Update prevUserUID after the logic for the current render has been processed
+    // This ensures that on the *next* render, prevUserUID.current holds the UID from the *previous* successful auth check
+    if (!authIsLoading) {
+        prevUserUID.current = user?.uid;
+    }
+
   }, [isAuthenticated, user, authIsLoading]);
+
 
   React.useEffect(() => {
     if (location && location.toLowerCase() !== "auto:ip") {
@@ -301,7 +328,7 @@ export default function HomePage() {
     if (!authIsLoading && !isLoadingProfile && !isLoadingPreferences) {
       getWeatherAndSuggestions();
     }
-  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user]); // user added for re-fetch on login/logout
+  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user]); 
   
   const getFilteredHourlyForecast = () => {
     if (!weatherData?.forecast || weatherData.isGuessed) return []; 
@@ -318,12 +345,31 @@ export default function HomePage() {
             if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
             return itemHour >= currentHourToDisplayFrom;
         }
+        // Fallback for non-standard time formats if any
         try {
-          const parsedItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/i, ':00').padStart(5, '0')}`);
-          if (isValid(parsedItemTime)) {
-            return getHours(parsedItemTime) >= currentHourToDisplayFrom;
+          // Assuming selectedDate is correctly a Date object
+          // And item.time is like 'HH:MM' or 'H AM/PM' from WeatherAPI
+          // We need to create a full date for parsing
+          let itemHourDate: Date;
+          const datePart = format(selectedDate, 'yyyy-MM-dd');
+          
+          // Check for "1 AM", "12 PM" format first
+          const matchAmPm = item.time.match(/(\d{1,2})\s*(AM|PM)/i);
+          if (matchAmPm) {
+            let hour = parseInt(matchAmPm[1]);
+            const period = matchAmPm[2].toUpperCase();
+            if (period === 'PM' && hour !== 12) hour += 12;
+            if (period === 'AM' && hour === 12) hour = 0; // Midnight
+            itemHourDate = parseISO(`${datePart}T${String(hour).padStart(2, '0')}:00:00`);
+          } else {
+            // Try to parse as HH:mm (less likely from weather API for hourly)
+            itemHourDate = parseISO(`${datePart}T${item.time.replace(/\s*(AM|PM)/i, '').padStart(5, '0')}`);
           }
-        } catch { /* ignore parsing error */ }
+
+          if (isValid(itemHourDate)) {
+            return getHours(itemHourDate) >= currentHourToDisplayFrom;
+          }
+        } catch { /* ignore parsing error, return true to not filter out potentially valid items */ }
         return true; 
     });
   };
@@ -369,7 +415,7 @@ export default function HomePage() {
           forecastData={filteredHourlyForecast}
           isLoading={isLoadingWeather}
           date={selectedDate}
-          isParentGuessed={weatherData?.isGuessed} // Though already filtered by this
+          isParentGuessed={weatherData?.isGuessed}
         />
       )}
       
@@ -416,5 +462,6 @@ export default function HomePage() {
     </div>
   );
 }
+    
 
     
