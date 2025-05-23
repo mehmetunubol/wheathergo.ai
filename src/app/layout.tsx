@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { MainNav } from '@/components/main-nav';
 import { AuthProvider } from '@/hooks/use-auth';
 import GoogleAnalytics from '@/components/google-analytics'; // Import the GA component
+import { Suspense } from 'react';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -31,7 +32,11 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      {gaMeasurementId && <GoogleAnalytics measurementId={gaMeasurementId} />}
+      {gaMeasurementId && (
+        <Suspense fallback={null}>
+          <GoogleAnalytics measurementId={gaMeasurementId} />
+        </Suspense>
+      )}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <AuthProvider>
           <MainNav />
