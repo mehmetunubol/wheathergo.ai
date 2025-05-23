@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation"; // Added import
 import { LocationDateSelector } from "@/components/location-date-selector";
 import { FamilyProfileEditor } from "@/components/family-profile-editor";
 import { CurrentWeatherCard } from "@/components/current-weather-card";
@@ -22,7 +23,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const DEFAULT_LOCATION = "auto:ip"; // This will be overridden by settings if available
+const DEFAULT_LOCATION = "auto:ip"; 
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
 const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
@@ -34,7 +35,7 @@ function getTimeOfDay(dateWithTime: Date): string {
 }
 
 export default function HomePage() {
-  const [location, setLocation] = React.useState<string>(""); // Initialize empty, will be set by preferences
+  const [location, setLocation] = React.useState<string>(""); 
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
   
   const [familyProfile, setFamilyProfile] = React.useState<string>(DEFAULT_FAMILY_PROFILE);
@@ -52,6 +53,7 @@ export default function HomePage() {
 
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
+  const pathname = usePathname(); // Added pathname
 
   const prevUserUID = React.useRef<string | undefined>(undefined);
 
@@ -74,14 +76,10 @@ export default function HomePage() {
 
       setIsLoadingPreferences(true);
       const userJustLoggedIn = isAuthenticated && user && user.uid !== prevUserUID.current;
-      let initialLocation = DEFAULT_LOCATION; // Start with hardcoded default
+      let initialLocation = DEFAULT_LOCATION; 
 
       try {
         if (isAuthenticated && user) {
-          if (userJustLoggedIn) {
-            setSelectedDate(new Date());
-          }
-
           const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
           const docSnap = await getDoc(prefsRef);
 
@@ -89,35 +87,33 @@ export default function HomePage() {
             const data = docSnap.data();
             if (data.lastLocation) {
               initialLocation = data.lastLocation;
-            } else if (data.defaultLocation) { // Check for defaultLocation from settings
+            } else if (data.defaultLocation) { 
               initialLocation = data.defaultLocation;
             } else {
-              // No lastLocation or defaultLocation in Firestore, check localStorage
               const storedLocation = localStorage.getItem("weatherugo-location");
               if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
                 initialLocation = storedLocation;
               }
             }
             
-            if (!userJustLoggedIn && data.lastSelectedDate) {
+            if (userJustLoggedIn) {
+              setSelectedDate(new Date()); // Reset date if just logged in
+            } else if (data.lastSelectedDate) {
               const parsedDate = parseISO(data.lastSelectedDate);
               if (isValid(parsedDate)) {
                 setSelectedDate(parsedDate);
               } else {
                 setSelectedDate(new Date());
               }
-            } else if (!userJustLoggedIn) {
+            } else {
                setSelectedDate(new Date());
             }
           } else {
-            // No preferences doc in Firestore, check localStorage
             const storedLocation = localStorage.getItem("weatherugo-location");
             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
               initialLocation = storedLocation;
             }
-            if (!userJustLoggedIn) {
-              setSelectedDate(new Date());
-            }
+            setSelectedDate(new Date()); // Always default to now if no Firestore doc
           }
         } else {
           // Not authenticated, load from localStorage
@@ -129,7 +125,6 @@ export default function HomePage() {
         }
       } catch (error) {
         console.error("Error during preferences loading:", error);
-        // Fallback in case of error
         const storedLocation = localStorage.getItem("weatherugo-location");
         if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             initialLocation = storedLocation;
@@ -141,14 +136,16 @@ export default function HomePage() {
       }
     };
 
-    if (!authIsLoading) {
+    if (!authIsLoading) { // Only run loadPreferences if auth state is settled
       loadPreferences();
     }
+    
+    // Update prevUserUID after loadPreferences has potentially run based on auth state
     if (!authIsLoading) {
         prevUserUID.current = user?.uid;
     }
 
-  }, [isAuthenticated, user, authIsLoading]);
+  }, [isAuthenticated, user, authIsLoading, pathname]); // Added pathname
 
 
   React.useEffect(() => {
@@ -173,21 +170,24 @@ export default function HomePage() {
 
   React.useEffect(() => {
     async function getWeatherAndSuggestions() {
-      if (authIsLoading || isLoadingProfile || isLoadingPreferences || !location) return; // Ensure location is set
+      if (authIsLoading || isLoadingProfile || isLoadingPreferences || !location) return; 
       if (!selectedDate) return;
 
-      const formattedDateForCacheKey = format(selectedDate, "yyyy-MM-dd-HH"); 
+      // Use date and hour for weather, but just date for general suggestions to improve cache hits for daily AI.
+      const formattedDateForCacheKey = format(selectedDate, "yyyy-MM-dd");
+      const formattedDateTimeForWeatherCacheKey = format(selectedDate, "yyyy-MM-dd-HH"); 
       const currentTime = new Date().getTime();
       let currentFetchedWeatherData: WeatherData | null = null;
 
-      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDateForCacheKey}`;
+      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDateTimeForWeatherCacheKey}-${selectedDate.getTimezoneOffset()}`;
       const cachedWeatherString = localStorage.getItem(weatherCacheKey);
       let weatherFromCache = false;
 
       if (cachedWeatherString) {
         try {
           const cached: CachedWeatherData = JSON.parse(cachedWeatherString);
-          if (currentTime - cached.timestamp < CACHE_DURATION_MS) {
+          // Check if cache includes the isGuessed flag to ensure it's the new format
+          if (currentTime - cached.timestamp < CACHE_DURATION_MS && typeof cached.data.isGuessed === 'boolean') {
             setWeatherData(cached.data);
             currentFetchedWeatherData = cached.data;
             setIsLoadingWeather(false);
@@ -195,6 +195,8 @@ export default function HomePage() {
             if (location.toLowerCase() === "auto:ip" && cached.data.location && cached.data.location.toLowerCase() !== "auto:ip") {
               setLocation(cached.data.location);
             }
+          } else {
+             localStorage.removeItem(weatherCacheKey); // Remove old format cache
           }
         } catch (e) {
           console.error("Failed to parse cached weather data", e);
@@ -217,15 +219,17 @@ export default function HomePage() {
             const todayStr = format(new Date(), "yyyy-MM-dd");
             const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
             if (lastKnownWeatherStr) {
-                const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
-                if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
-                    if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
-                        toast({
-                            title: "Weather Update!",
-                            description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
-                        });
+                try {
+                    const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
+                    if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
+                        if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
+                            toast({
+                                title: "Weather Update!",
+                                description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
+                            });
+                        }
                     }
-                }
+                } catch (e) { localStorage.removeItem("weatherugo-lastKnownWeather"); }
             }
             localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
                 location: data.location, 
@@ -256,6 +260,7 @@ export default function HomePage() {
 
       if (currentFetchedWeatherData && familyProfile) {
         const currentTOD = getTimeOfDay(selectedDate);
+        // Cache suggestions based on date only for daily suggestions.
         const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
         const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentTOD}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
 
@@ -268,6 +273,8 @@ export default function HomePage() {
               setOutfitSuggestions(cached.data);
               setIsLoadingOutfit(false);
               outfitFromCache = true;
+            } else {
+              localStorage.removeItem(outfitCacheKey);
             }
           } catch (e) {
             console.error("Failed to parse cached outfit suggestions", e);
@@ -301,6 +308,8 @@ export default function HomePage() {
               setActivitySuggestions(cached.data);
               setIsLoadingActivity(false);
               activityFromCache = true;
+            } else {
+              localStorage.removeItem(activityCacheKey);
             }
           } catch (e) {
             console.error("Failed to parse cached activity suggestions", e);
@@ -332,7 +341,7 @@ export default function HomePage() {
       }
     }
 
-    if (!authIsLoading && !isLoadingProfile && !isLoadingPreferences && location) { // Ensure location is initialized
+    if (!authIsLoading && !isLoadingProfile && !isLoadingPreferences && location) { 
       getWeatherAndSuggestions();
     }
   }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user]); 
@@ -344,36 +353,38 @@ export default function HomePage() {
 
     const currentHourToDisplayFrom = getHours(selectedDate); 
     return weatherData.forecast.filter(item => {
-        const timeParts = item.time.match(/(\d+)\s*(AM|PM)/i);
+        // Attempt to parse time like "3 PM" or "15:00" from API
+        // WeatherAPI usually gives "YYYY-MM-DD HH:MM" or epoch for hour.time
+        // Our own hourly generation in weather-api.ts uses "h a" format.
+        let itemHour = -1;
+        const timeParts = item.time.match(/(\d+)\s*(AM|PM)/i); // "3 PM"
         if (timeParts) {
-            let itemHour = parseInt(timeParts[1]);
+            itemHour = parseInt(timeParts[1]);
             const ampm = timeParts[2].toUpperCase();
             if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
             if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
+        } else { // Try to parse "HH:MM" or just "HH" if only hour is given
+            const hourMatch = item.time.match(/^(\d{1,2})/);
+            if (hourMatch) {
+                itemHour = parseInt(hourMatch[1]);
+            }
+        }
+        
+        if (itemHour !== -1) {
             return itemHour >= currentHourToDisplayFrom;
         }
+        // Fallback if parsing fails, might be full date string
         try {
-          let itemHourDate: Date;
-          const datePart = format(selectedDate, 'yyyy-MM-dd');
-          const matchAmPm = item.time.match(/(\d{1,2})\s*(AM|PM)/i);
-          if (matchAmPm) {
-            let hour = parseInt(matchAmPm[1]);
-            const period = matchAmPm[2].toUpperCase();
-            if (period === 'PM' && hour !== 12) hour += 12;
-            if (period === 'AM' && hour === 12) hour = 0; 
-            itemHourDate = parseISO(`${datePart}T${String(hour).padStart(2, '0')}:00:00`);
-          } else {
-            itemHourDate = parseISO(`${datePart}T${item.time.replace(/\s*(AM|PM)/i, '').padStart(5, '0')}`);
+          const itemDate = parseISO(item.time); // WeatherAPI might provide full ISO string for hour.time
+          if (isValid(itemDate)) {
+             return getHours(itemDate) >= currentHourToDisplayFrom;
           }
-          if (isValid(itemHourDate)) {
-            return getHours(itemHourDate) >= currentHourToDisplayFrom;
-          }
-        } catch { /* ignore parsing error */ }
-        return true; 
+        } catch { /* ignore parsing errors for this complex field */ }
+        return true; // Default to showing if parsing fails, to be safe
     });
   };
 
-  if (authIsLoading || isLoadingPreferences) { // Main skeleton depends on auth and overall preferences loading
+  if (authIsLoading || isLoadingPreferences) { 
     return (
       <div className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
@@ -462,3 +473,4 @@ export default function HomePage() {
   );
 }
     
+
