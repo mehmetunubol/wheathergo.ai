@@ -309,7 +309,7 @@ export default function TripDetailsPage() {
     segments.forEach(segment => {
       text += `--- ${segment.label} ---\n`;
       if (segment.weatherData) {
-        text += `Weather: ${segment.weatherData.temperature}°C, ${segment.weatherData.condition} (${segment.weatherData.description})${segment.weatherData.isGuessed ? " (AI Estimate)" : ""}\n`;
+        text += `Weather: ${segment.weatherData.temperature}°C, ${segment.weatherData.condition} (${segment.weatherData.description})${segment.weatherData.isGuessed ? " (AI)" : ""}\n`;
         if (segment.weatherData.forecast && segment.weatherData.forecast.length > 0 && !segment.weatherData.isGuessed) {
           text += ` Hourly: ${segment.weatherData.forecast.map(f => `${f.time}: ${f.temperature}°C, ${f.condition}`).slice(0,5).join('; ')}...\n`; // Show first few hours
         }
@@ -489,7 +489,7 @@ export default function TripDetailsPage() {
                                                           <Tooltip delayDuration={100}>
                                                               <TooltipTrigger asChild>
                                                                   <span className="mt-1 inline-flex items-center text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300 cursor-help">
-                                                                      <Info size={12} className="mr-1" /> AI Estimate
+                                                                      <Info size={12} className="mr-1" /> AI
                                                                   </span>
                                                               </TooltipTrigger>
                                                               <TooltipContent side="bottom" className="max-w-xs bg-background border-border shadow-lg p-2">
