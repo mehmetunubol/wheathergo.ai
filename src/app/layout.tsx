@@ -4,7 +4,8 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { MainNav } from '@/components/main-nav';
-import { AuthProvider } from '@/hooks/use-auth'; 
+import { AuthProvider } from '@/hooks/use-auth';
+import GoogleAnalytics from '@/components/google-analytics'; // Import the GA component
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -26,8 +27,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+
   return (
     <html lang="en">
+      {gaMeasurementId && <GoogleAnalytics measurementId={gaMeasurementId} />}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <AuthProvider>
           <MainNav />
@@ -35,10 +39,10 @@ export default function RootLayout({
             {children}
           </main>
           <footer className="text-center py-4 text-sm text-muted-foreground border-t mt-auto">
-            Weatherugo Guide &copy; {new Date().getFullYear()}
+            <p>&copy; {new Date().getFullYear()} Weatherugo Guide. All rights reserved.</p>
           </footer>
-          <Toaster />
         </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );
