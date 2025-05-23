@@ -13,9 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings as SettingsIcon, Save, UserCircle, MapPin as MapPinIcon } from "lucide-react"; // Renamed MapPin to MapPinIcon to avoid conflict
+import { Settings as SettingsIcon, Save, UserCircle, MapPin as MapPinIcon } from "lucide-react";
 
-const DEFAULT_LOCATION_SETTING = "auto:ip";
+const DEFAULT_LOCATION_SETTING = "auto:ip"; // Internal default
 const DEFAULT_FAMILY_PROFILE_SETTING = "A single adult enjoying good weather.";
 
 export default function SettingsPage() {
@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
 
   const [familyProfile, setFamilyProfile] = React.useState("");
-  const [defaultLocation, setDefaultLocation] = React.useState("");
+  const [defaultLocationInput, setDefaultLocationInput] = React.useState(""); // What user types
 
   const [isLoadingSettings, setIsLoadingSettings] = React.useState(true);
   const [isSavingFamilyProfile, setIsSavingFamilyProfile] = React.useState(false);
@@ -33,7 +33,7 @@ export default function SettingsPage() {
     const loadSettings = async () => {
       if (!isAuthenticated || !user) {
         setFamilyProfile(DEFAULT_FAMILY_PROFILE_SETTING);
-        setDefaultLocation(DEFAULT_LOCATION_SETTING);
+        setDefaultLocationInput(""); // Show placeholder if not logged in
         setIsLoadingSettings(false);
         return;
       }
@@ -52,16 +52,14 @@ export default function SettingsPage() {
         // Load default location from preferences
         const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
         const prefsSnap = await getDoc(prefsRef);
-        if (prefsSnap.exists() && prefsSnap.data().defaultLocation) {
-          setDefaultLocation(prefsSnap.data().defaultLocation);
-        } else {
-          setDefaultLocation(DEFAULT_LOCATION_SETTING);
-        }
+        const storedDefaultLocation = prefsSnap.exists() ? prefsSnap.data().defaultLocation : DEFAULT_LOCATION_SETTING;
+        setDefaultLocationInput(storedDefaultLocation === DEFAULT_LOCATION_SETTING ? "" : storedDefaultLocation);
+
       } catch (error) {
         console.error("Error loading settings:", error);
         toast({ title: "Error", description: "Could not load settings.", variant: "destructive" });
         setFamilyProfile(DEFAULT_FAMILY_PROFILE_SETTING);
-        setDefaultLocation(DEFAULT_LOCATION_SETTING);
+        setDefaultLocationInput(""); // Fallback to show placeholder
       } finally {
         setIsLoadingSettings(false);
       }
@@ -96,10 +94,14 @@ export default function SettingsPage() {
       return;
     }
     setIsSavingDefaultLocation(true);
+    const locationToSave = defaultLocationInput.trim() === "" ? DEFAULT_LOCATION_SETTING : defaultLocationInput.trim();
+    
     try {
       const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
-      await setDoc(prefsRef, { defaultLocation: defaultLocation.trim() || DEFAULT_LOCATION_SETTING }, { merge: true });
-      toast({ title: "Default Location Saved", description: "Your default location has been updated." });
+      await setDoc(prefsRef, { defaultLocation: locationToSave }, { merge: true });
+      // Update input display to "" if "auto:ip" was effectively saved.
+      setDefaultLocationInput(locationToSave === DEFAULT_LOCATION_SETTING ? "" : locationToSave);
+      toast({ title: "Default Location Saved", description: `Your default location has been updated to ${locationToSave === DEFAULT_LOCATION_SETTING ? "Automatic (IP-based)" : locationToSave}.` });
     } catch (error) {
       console.error("Error saving default location:", error);
       toast({ title: "Save Error", description: "Could not save default location.", variant: "destructive" });
@@ -184,22 +186,22 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2"><MapPinIcon /> Default Location</CardTitle>
           <CardDescription>
-            Set your preferred default location for weather lookups. Use &quot;auto:ip&quot; to use your current IP address for automatic detection.
+            Set your preferred default location. Leave blank or type &quot;auto:ip&quot; for automatic detection based on your IP address.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Label htmlFor="default-location-setting">Default Location</Label>
           <Input
             id="default-location-setting"
-            value={defaultLocation}
-            onChange={(e) => setDefaultLocation(e.target.value)}
-            placeholder="E.g., London or auto:ip"
+            value={defaultLocationInput}
+            onChange={(e) => setDefaultLocationInput(e.target.value)}
+            placeholder="E.g., London, or leave blank for auto IP"
             className="mt-1"
             disabled={isSavingDefaultLocation}
           />
         </CardContent>
         <CardFooter>
-          <Button onClick={handleSaveDefaultLocation} disabled={isSavingDefaultLocation || defaultLocation.trim() === ""}>
+          <Button onClick={handleSaveDefaultLocation} disabled={isSavingDefaultLocation}>
             <Save className="mr-2 h-4 w-4" /> {isSavingDefaultLocation ? "Saving..." : "Save Default Location"}
           </Button>
         </CardFooter>
