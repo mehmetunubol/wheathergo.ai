@@ -73,7 +73,7 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
             <TooltipProvider>
               <Tooltip delayDuration={300}>
                 <TooltipTrigger asChild>
-                  <span className="ml-2 inline-flex items-center text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300 cursor-help">
+                  <span className="ml-2 mt-1 inline-flex items-center text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300 cursor-help">
                     <Info size={12} className="mr-1" /> AI Estimate
                   </span>
                 </TooltipTrigger>
