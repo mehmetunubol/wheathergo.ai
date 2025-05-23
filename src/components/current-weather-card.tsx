@@ -3,10 +3,12 @@
 
 import type { WeatherData } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Droplets, Wind, Compass } from "lucide-react";
+import { Droplets, Wind, Compass, Info } from "lucide-react"; // Added Info
 import { getWeatherIcon } from "@/components/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface CurrentWeatherCardProps {
   weatherData: WeatherData | null;
@@ -54,7 +56,6 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
     );
   }
 
-  // Defensively handle isDay: default to true (day) if undefined
   const isDayForIcon = typeof weatherData.isDay === 'boolean' ? weatherData.isDay : true;
   const IconComponent = getWeatherIcon(weatherData.conditionCode, weatherData.condition, isDayForIcon);
   const formattedDate = format(new Date(weatherData.date), "EEEE, MMMM do, yyyy");
@@ -68,6 +69,20 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
         </CardTitle>
         <CardDescription className="pt-4 text-sm">
           {formattedDate}
+           {weatherData.isGuessed && (
+            <TooltipProvider>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <span className="ml-2 inline-flex items-center text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300 cursor-help">
+                    <Info size={12} className="mr-1" /> AI Estimate
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs bg-background border-border shadow-lg p-2">
+                  <p className="text-xs">This is an AI-generated estimate. For an official forecast, please check closer to the date.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

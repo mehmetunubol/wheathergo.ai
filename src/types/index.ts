@@ -23,6 +23,7 @@ export interface WeatherData {
   description: string;
   isDay?: boolean; // Optional: true if daytime, false if nighttime
   forecast?: HourlyForecastData[];
+  isGuessed?: boolean; // True if this data is AI-generated
 }
 
 export interface FamilyProfile {
@@ -43,7 +44,7 @@ export type NotificationFrequency = 'daily' | 'weekly';
 export interface StoredTripSegmentData {
   segmentId: 'start' | 'middle' | 'end'; // To identify the segment (matches UI segment id)
   date: string; // ISO string of the segment's date
-  weatherData: WeatherData;
+  weatherData: WeatherData; // Can now include isGuessed
   clothingSuggestions: ClothingSuggestionsOutput;
   activitySuggestions: ActivitySuggestionsOutput;
   fetchedAt: string; // ISO string, timestamp of when this was fetched/updated
@@ -70,7 +71,7 @@ export interface TripSegmentSuggestions {
   id: 'start' | 'middle' | 'end';
   label: string;
   date: Date;
-  weatherData: WeatherData | null;
+  weatherData: WeatherData | null; // Can now include isGuessed
   clothingSuggestions: ClothingSuggestionsOutput | null;
   activitySuggestions: ActivitySuggestionsOutput | null;
   isLoading: boolean;
@@ -82,9 +83,26 @@ export interface TripSegmentSuggestions {
 export interface CachedItem<T> {
   timestamp: number;
   data: T;
+  isGuessed?: boolean; // To know if cached data was an AI guess
 }
 
 export type CachedWeatherData = CachedItem<WeatherData>;
 export type CachedOutfitSuggestions = CachedItem<ClothingSuggestionsOutput>;
 export type CachedActivitySuggestions = CachedItem<ActivitySuggestionsOutput>;
+
+// AI Flow for guessed weather
+export interface GuessedWeatherInput {
+  location: string;
+  date: string; // YYYY-MM-DD
+}
+
+export interface GuessedWeatherOutput {
+  temperature: number;
+  condition: string;
+  conditionCode: string;
+  humidity: number;
+  windSpeed: number;
+  description: string;
+  locationName?: string; // AI might return a resolved location name
+}
 

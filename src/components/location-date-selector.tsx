@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { format, parse } from "date-fns";
-import { Calendar as CalendarIcon, MapPin, Check, X as XIcon, Clock } from "lucide-react";
+import { format, parse, differenceInCalendarDays, startOfDay } from "date-fns"; // Added differenceInCalendarDays, startOfDay
+import { Calendar as CalendarIcon, MapPin, Check, X as XIcon, Info } from "lucide-react"; // Added Info
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Added Tooltip
 import { cn } from "@/lib/utils";
 
 interface LocationDateSelectorProps {
@@ -31,6 +32,8 @@ const capitalizeFirstLetter = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+const MAX_API_FORECAST_DAYS_FOR_TOOLTIP = 2; // For UI hint, API limit for direct forecast
+
 export function LocationDateSelector({
   location,
   onLocationChange,
@@ -40,19 +43,30 @@ export function LocationDateSelector({
   const [currentLocationInput, setCurrentLocationInput] = React.useState(capitalizeFirstLetter(location));
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   
-  // Provisional states for within the popover
   const [provisionalDatePart, setProvisionalDatePart] = React.useState<Date | undefined>(selectedDate);
   const [provisionalTimePart, setProvisionalTimePart] = React.useState<string>(format(selectedDate, "HH:mm"));
+  const [showDateTooltip, setShowDateTooltip] = React.useState(false);
+
 
   React.useEffect(() => {
     setCurrentLocationInput(capitalizeFirstLetter(location));
   }, [location]);
 
-  // Update provisional states if selectedDate prop changes from outside
   React.useEffect(() => {
     setProvisionalDatePart(selectedDate);
     setProvisionalTimePart(format(selectedDate, "HH:mm"));
   }, [selectedDate]);
+
+  React.useEffect(() => {
+    if (provisionalDatePart) {
+      const today = startOfDay(new Date());
+      const diffDays = differenceInCalendarDays(startOfDay(provisionalDatePart), today);
+      setShowDateTooltip(diffDays > MAX_API_FORECAST_DAYS_FOR_TOOLTIP || diffDays < 0);
+    } else {
+      setShowDateTooltip(false);
+    }
+  }, [provisionalDatePart]);
+
 
   const handleLocationBlur = () => {
     if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
@@ -89,7 +103,6 @@ export function LocationDateSelector({
   };
 
   const handleCancelDateTime = () => {
-    // Reset provisional states to the last confirmed selectedDate
     setProvisionalDatePart(selectedDate);
     setProvisionalTimePart(format(selectedDate, "HH:mm"));
     setIsCalendarOpen(false);
@@ -97,12 +110,20 @@ export function LocationDateSelector({
 
   const handlePopoverOpenChange = (open: boolean) => {
     if (open) {
-      // When opening, ensure provisional states are synced with current selectedDate
       setProvisionalDatePart(selectedDate);
       setProvisionalTimePart(format(selectedDate, "HH:mm"));
     }
     setIsCalendarOpen(open);
   };
+  
+  const CalendarWithTooltip = (
+    <Calendar
+      mode="single"
+      selected={provisionalDatePart}
+      onSelect={setProvisionalDatePart}
+      initialFocus
+    />
+  );
 
   return (
     <Card className="shadow-lg">
@@ -147,12 +168,23 @@ export function LocationDateSelector({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={provisionalDatePart}
-                onSelect={setProvisionalDatePart}
-                initialFocus
-              />
+              {showDateTooltip ? (
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>{CalendarWithTooltip}</TooltipTrigger>
+                    <TooltipContent side="bottom" align="start" className="max-w-xs bg-background border-border shadow-lg p-2">
+                      <div className="flex items-start gap-1.5">
+                        <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                        <p className="text-xs">
+                          Forecasts beyond 3 days or in the past are AI-generated estimates. Check closer to the date for official forecasts.
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                CalendarWithTooltip
+              )}
               <div className="p-3 border-t border-border">
                 <Label htmlFor="time-select" className="text-sm font-medium">Select Time</Label>
                 <Input 

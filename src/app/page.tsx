@@ -35,7 +35,8 @@ function getTimeOfDay(dateWithTime: Date): string {
 
 export default function HomePage() {
   const [location, setLocation] = React.useState<string>(DEFAULT_LOCATION);
-  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); // Default to current date & time
+  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
+  
   const [familyProfile, setFamilyProfile] = React.useState<string>(DEFAULT_FAMILY_PROFILE);
   
   const [weatherData, setWeatherData] = React.useState<WeatherData | null>(null);
@@ -126,11 +127,11 @@ export default function HomePage() {
       if (authIsLoading || isLoadingProfile || isLoadingPreferences) return;
       if (!location || !selectedDate) return;
 
-      const formattedDateForAPI = format(selectedDate, "yyyy-MM-dd");
+      const formattedDateForCacheKey = format(selectedDate, "yyyy-MM-dd-HH"); // Include hour in cache key
       const currentTime = new Date().getTime();
       let currentFetchedWeatherData: WeatherData | null = null;
 
-      const weatherCacheKey = `weatherugo-cache-weather-${location}-${format(selectedDate, "yyyy-MM-dd-HH")}`;
+      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDateForCacheKey}`;
       const cachedWeatherString = localStorage.getItem(weatherCacheKey);
       let weatherFromCache = false;
 
@@ -159,11 +160,12 @@ export default function HomePage() {
           const data = await fetchWeather(location, selectedDate); 
           setWeatherData(data);
           currentFetchedWeatherData = data;
+          // Cache includes isGuessed flag from fetchWeather directly
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
           if (location.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
             setLocation(data.location); 
           }
-          if (isToday(selectedDate)) {
+          if (isToday(selectedDate) && !data.isGuessed) { // Only show diff toast for non-guessed, today's weather
             const todayStr = format(new Date(), "yyyy-MM-dd");
             const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
             if (lastKnownWeatherStr) {
@@ -205,9 +207,11 @@ export default function HomePage() {
       }
 
       if (currentFetchedWeatherData && familyProfile) {
+        // If weather is AI guessed, suggestions will be based on that guess.
+        // The AI suggestion flows themselves don't need to know if the weather input was guessed.
         const currentTOD = getTimeOfDay(selectedDate);
-        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForAPI}-${getHours(selectedDate)}-${familyProfile}`;
-        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForAPI}-${getHours(selectedDate)}-${familyProfile}-${currentTOD}`;
+        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
+        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentTOD}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
 
         const cachedOutfitString = localStorage.getItem(outfitCacheKey);
         let outfitFromCache = false;
@@ -236,6 +240,7 @@ export default function HomePage() {
           } catch (error: any) {
             console.error("Failed to get outfit suggestions:", error);
             toast({ title: "Outfit Suggestion Error", description: error.message || "Could not fetch outfit suggestions. AI service may be unavailable.", variant: "destructive" });
+            setOutfitSuggestions(null); // Clear on error
           } finally {
             setIsLoadingOutfit(false);
           }
@@ -263,16 +268,18 @@ export default function HomePage() {
           try {
             const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: familyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location };
             const activities = await suggestActivities(activityInput);
-            setActivitySuggestions(activities);
+setActivitySuggestions(activities);
             localStorage.setItem(activityCacheKey, JSON.stringify({ timestamp: currentTime, data: activities }));
           } catch (error: any) {
             console.error("Failed to get activity suggestions:", error);
             toast({ title: "Activity Suggestion Error", description: error.message || "Could not fetch activity suggestions. AI service may be unavailable.", variant: "destructive" });
+            setActivitySuggestions(null); // Clear on error
           } finally {
             setIsLoadingActivity(false);
           }
         }
       } else {
+        // If no weather data, clear suggestions
         setOutfitSuggestions(null);
         setActivitySuggestions(null);
         setIsLoadingOutfit(false);
@@ -280,7 +287,8 @@ export default function HomePage() {
       }
     }
     getWeatherAndSuggestions();
-  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences]);
+  // Ensure all dependencies that trigger re-fetch are listed.
+  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user]);
 
 
   const handleDateChange = React.useCallback((date: Date | undefined) => {
@@ -298,31 +306,35 @@ export default function HomePage() {
 
 
   const getFilteredHourlyForecast = () => {
-    if (!weatherData?.forecast) return [];
+    if (!weatherData?.forecast || weatherData.isGuessed) return []; // No hourly for guessed
     
+    // For non-guessed weather, filter based on selectedDate's hour if it's today
     if (!isToday(selectedDate)) return weatherData.forecast;
 
     const currentHourToDisplayFrom = getHours(selectedDate); 
     return weatherData.forecast.filter(item => {
-        const timeParts = item.time.match(/(\d+)(?::\d+)?\s*(AM|PM)/i);
+        // Assuming item.time is "1 AM", "11 PM", etc. from WeatherAPI
+        const timeParts = item.time.match(/(\d+)\s*(AM|PM)/i);
         if (timeParts) {
             let itemHour = parseInt(timeParts[1]);
             const ampm = timeParts[2].toUpperCase();
             if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
-            if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
+            if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight case
             return itemHour >= currentHourToDisplayFrom;
         }
+        // Fallback if time format is different (should not happen with WeatherAPI structure)
         try {
-          const fullItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/i, ':00')}`);
+          // Attempt to parse more complex time strings if necessary
+          const fullItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/i, ':00')}`); // This might be fragile
           if (isValid(fullItemTime)) {
             return getHours(fullItemTime) >= currentHourToDisplayFrom;
           }
         } catch { /* ignore parsing error for fallback */ }
-        return true;
+        return true; // Default to show if parsing fails
     });
   };
 
-  if (authIsLoading || isLoadingPreferences) { // Main page skeleton condition
+  if (authIsLoading || isLoadingPreferences) {
     return (
       <div className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
@@ -359,10 +371,11 @@ export default function HomePage() {
           forecastData={getFilteredHourlyForecast()}
           isLoading={isLoadingWeather}
           date={selectedDate}
+          isParentGuessed={weatherData?.isGuessed}
         />
       )}
       
-      {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather /* Show tabs if weather is loading too */) && (
+      {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather ) && (
         <SuggestionsTabs
           outfitSuggestions={outfitSuggestions}
           isOutfitLoading={isLoadingOutfit}
@@ -405,5 +418,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
