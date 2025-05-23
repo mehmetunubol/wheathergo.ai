@@ -53,6 +53,19 @@ export default function HomePage() {
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
 
+  const handleProfileUpdate = React.useCallback((newProfile: string) => {
+    setFamilyProfile(newProfile); 
+    setIsLoadingProfile(false); 
+  }, []);
+
+  const handleDateChange = React.useCallback((date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+    } else {
+      setSelectedDate(new Date()); 
+    }
+  }, []);
+
   React.useEffect(() => {
     const loadPreferences = async () => {
       if (authIsLoading) return;
@@ -99,7 +112,9 @@ export default function HomePage() {
         setIsLoadingPreferences(false);
       }
     };
-    loadPreferences();
+    if (!authIsLoading) {
+        loadPreferences();
+    }
   }, [isAuthenticated, user, authIsLoading]);
 
   React.useEffect(() => {
@@ -160,12 +175,11 @@ export default function HomePage() {
           const data = await fetchWeather(location, selectedDate); 
           setWeatherData(data);
           currentFetchedWeatherData = data;
-          // Cache includes isGuessed flag from fetchWeather directly
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
           if (location.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
             setLocation(data.location); 
           }
-          if (isToday(selectedDate) && !data.isGuessed) { // Only show diff toast for non-guessed, today's weather
+          if (isToday(selectedDate) && !data.isGuessed) { 
             const todayStr = format(new Date(), "yyyy-MM-dd");
             const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
             if (lastKnownWeatherStr) {
@@ -207,8 +221,6 @@ export default function HomePage() {
       }
 
       if (currentFetchedWeatherData && familyProfile) {
-        // If weather is AI guessed, suggestions will be based on that guess.
-        // The AI suggestion flows themselves don't need to know if the weather input was guessed.
         const currentTOD = getTimeOfDay(selectedDate);
         const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
         const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentTOD}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
@@ -240,7 +252,7 @@ export default function HomePage() {
           } catch (error: any) {
             console.error("Failed to get outfit suggestions:", error);
             toast({ title: "Outfit Suggestion Error", description: error.message || "Could not fetch outfit suggestions. AI service may be unavailable.", variant: "destructive" });
-            setOutfitSuggestions(null); // Clear on error
+            setOutfitSuggestions(null); 
           } finally {
             setIsLoadingOutfit(false);
           }
@@ -268,69 +280,51 @@ export default function HomePage() {
           try {
             const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: familyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location };
             const activities = await suggestActivities(activityInput);
-setActivitySuggestions(activities);
+            setActivitySuggestions(activities);
             localStorage.setItem(activityCacheKey, JSON.stringify({ timestamp: currentTime, data: activities }));
           } catch (error: any) {
             console.error("Failed to get activity suggestions:", error);
             toast({ title: "Activity Suggestion Error", description: error.message || "Could not fetch activity suggestions. AI service may be unavailable.", variant: "destructive" });
-            setActivitySuggestions(null); // Clear on error
+            setActivitySuggestions(null); 
           } finally {
             setIsLoadingActivity(false);
           }
         }
       } else {
-        // If no weather data, clear suggestions
         setOutfitSuggestions(null);
         setActivitySuggestions(null);
         setIsLoadingOutfit(false);
         setIsLoadingActivity(false);
       }
     }
-    getWeatherAndSuggestions();
-  // Ensure all dependencies that trigger re-fetch are listed.
-  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user]);
 
-
-  const handleDateChange = React.useCallback((date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-    } else {
-      setSelectedDate(new Date()); 
+    if (!authIsLoading && !isLoadingProfile && !isLoadingPreferences) {
+      getWeatherAndSuggestions();
     }
-  }, []);
+  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user]); // user added for re-fetch on login/logout
   
-  const handleProfileUpdate = React.useCallback((newProfile: string) => {
-    setFamilyProfile(newProfile); 
-    setIsLoadingProfile(false); 
-  }, []);
-
-
   const getFilteredHourlyForecast = () => {
-    if (!weatherData?.forecast || weatherData.isGuessed) return []; // No hourly for guessed
+    if (!weatherData?.forecast || weatherData.isGuessed) return []; 
     
-    // For non-guessed weather, filter based on selectedDate's hour if it's today
     if (!isToday(selectedDate)) return weatherData.forecast;
 
     const currentHourToDisplayFrom = getHours(selectedDate); 
     return weatherData.forecast.filter(item => {
-        // Assuming item.time is "1 AM", "11 PM", etc. from WeatherAPI
         const timeParts = item.time.match(/(\d+)\s*(AM|PM)/i);
         if (timeParts) {
             let itemHour = parseInt(timeParts[1]);
             const ampm = timeParts[2].toUpperCase();
             if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
-            if (ampm === 'AM' && itemHour === 12) itemHour = 0; // Midnight case
+            if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
             return itemHour >= currentHourToDisplayFrom;
         }
-        // Fallback if time format is different (should not happen with WeatherAPI structure)
         try {
-          // Attempt to parse more complex time strings if necessary
-          const fullItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/i, ':00')}`); // This might be fragile
-          if (isValid(fullItemTime)) {
-            return getHours(fullItemTime) >= currentHourToDisplayFrom;
+          const parsedItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${item.time.replace(/( AM| PM)/i, ':00').padStart(5, '0')}`);
+          if (isValid(parsedItemTime)) {
+            return getHours(parsedItemTime) >= currentHourToDisplayFrom;
           }
-        } catch { /* ignore parsing error for fallback */ }
-        return true; // Default to show if parsing fails
+        } catch { /* ignore parsing error */ }
+        return true; 
     });
   };
 
@@ -349,6 +343,10 @@ setActivitySuggestions(activities);
     );
   }
 
+  const filteredHourlyForecast = getFilteredHourlyForecast();
+  const showHourlyForecast = !weatherData?.isGuessed && filteredHourlyForecast && filteredHourlyForecast.length > 0;
+
+
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
@@ -366,12 +364,12 @@ setActivitySuggestions(activities);
 
       <CurrentWeatherCard weatherData={weatherData} isLoading={isLoadingWeather} />
       
-      { (weatherData || isLoadingWeather) && selectedDate && (
+      {showHourlyForecast && (
         <HourlyForecastCard
-          forecastData={getFilteredHourlyForecast()}
+          forecastData={filteredHourlyForecast}
           isLoading={isLoadingWeather}
           date={selectedDate}
-          isParentGuessed={weatherData?.isGuessed}
+          isParentGuessed={weatherData?.isGuessed} // Though already filtered by this
         />
       )}
       
@@ -418,3 +416,5 @@ setActivitySuggestions(activities);
     </div>
   );
 }
+
+    
