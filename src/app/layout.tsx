@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Weatherugo Guide',
+  title: 'Weatherugo',
   description: 'Your personal guide for weather-based clothing and activity suggestions.',
 };
 
@@ -39,7 +39,7 @@ export default function RootLayout({
             {children}
           </main>
           <footer className="text-center py-4 text-sm text-muted-foreground border-t mt-auto">
-            <p>&copy; {new Date().getFullYear()} Weatherugo Guide. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Weatherugo. All rights reserved.</p>
           </footer>
         </AuthProvider>
         <Toaster />
