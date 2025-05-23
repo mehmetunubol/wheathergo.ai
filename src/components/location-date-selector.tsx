@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { format, parse } from "date-fns";
-import { Calendar as CalendarIcon, MapPin, Check, X as XIcon, Clock } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon, MapPin, Check, X as XIcon, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { differenceInCalendarDays, startOfDay } from "date-fns";
 
 interface LocationDateSelectorProps {
   location: string;
@@ -25,51 +27,69 @@ interface LocationDateSelectorProps {
 
 const capitalizeFirstLetter = (str: string): string => {
   if (!str) return str;
+  // Don't capitalize "auto:ip"
   if (str.toLowerCase() === "auto:ip") {
     return str;
   }
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+const MAX_API_FORECAST_DAYS_FOR_TOOLTIP = 2; 
+
 export function LocationDateSelector({
-  location,
+  location: propsLocation, // Renamed to avoid conflict with internal state if any
   onLocationChange,
   selectedDate,
   onDateChange,
 }: LocationDateSelectorProps) {
-  const [currentLocationInput, setCurrentLocationInput] = React.useState(capitalizeFirstLetter(location));
+  const [currentLocationInput, setCurrentLocationInput] = React.useState("");
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   
-  // Provisional states for within the popover
   const [provisionalDatePart, setProvisionalDatePart] = React.useState<Date | undefined>(selectedDate);
   const [provisionalTimePart, setProvisionalTimePart] = React.useState<string>(format(selectedDate, "HH:mm"));
+  const [showDateTooltip, setShowDateTooltip] = React.useState(false);
 
   React.useEffect(() => {
-    setCurrentLocationInput(capitalizeFirstLetter(location));
-  }, [location]);
+    // If propsLocation is "auto:ip", display an empty string to show placeholder.
+    // Otherwise, display the capitalized location.
+    setCurrentLocationInput(propsLocation.toLowerCase() === "auto:ip" ? "" : capitalizeFirstLetter(propsLocation));
+  }, [propsLocation]);
 
-  // Update provisional states if selectedDate prop changes from outside
   React.useEffect(() => {
     setProvisionalDatePart(selectedDate);
     setProvisionalTimePart(format(selectedDate, "HH:mm"));
   }, [selectedDate]);
 
-  const handleLocationBlur = () => {
-    if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
-      onLocationChange(currentLocationInput);
-    } else if (currentLocationInput.trim() === "" && location !== "") {
-      onLocationChange("");
+  React.useEffect(() => {
+    if (provisionalDatePart) {
+      const today = startOfDay(new Date());
+      const diffDays = differenceInCalendarDays(startOfDay(provisionalDatePart), today);
+      setShowDateTooltip(diffDays > MAX_API_FORECAST_DAYS_FOR_TOOLTIP || diffDays < 0);
     } else {
-       setCurrentLocationInput(capitalizeFirstLetter(location));
+      setShowDateTooltip(false);
+    }
+  }, [provisionalDatePart]);
+
+  const handleLocationCommit = () => {
+    const trimmedInput = currentLocationInput.trim();
+    if (trimmedInput === "") {
+      // If input is cleared by user, effectively set to "auto:ip"
+      if (propsLocation !== "auto:ip") { // Only call if it's a change
+        onLocationChange("auto:ip");
+      }
+    } else {
+      // If user typed something, commit that (capitalized)
+      const newLocation = capitalizeFirstLetter(trimmedInput);
+      if (propsLocation !== newLocation) { // Only call if it's a change
+        onLocationChange(newLocation);
+      }
     }
   };
   
   const handleLocationKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-       if (currentLocationInput.trim() !== "" && currentLocationInput !== location) {
-        onLocationChange(currentLocationInput);
-      }
-       (e.target as HTMLInputElement).blur();
+      handleLocationCommit();
+      (e.target as HTMLInputElement).blur();
     }
   };
 
@@ -89,7 +109,6 @@ export function LocationDateSelector({
   };
 
   const handleCancelDateTime = () => {
-    // Reset provisional states to the last confirmed selectedDate
     setProvisionalDatePart(selectedDate);
     setProvisionalTimePart(format(selectedDate, "HH:mm"));
     setIsCalendarOpen(false);
@@ -97,12 +116,20 @@ export function LocationDateSelector({
 
   const handlePopoverOpenChange = (open: boolean) => {
     if (open) {
-      // When opening, ensure provisional states are synced with current selectedDate
       setProvisionalDatePart(selectedDate);
       setProvisionalTimePart(format(selectedDate, "HH:mm"));
     }
     setIsCalendarOpen(open);
   };
+  
+  const CalendarWithTooltip = (
+    <Calendar
+      mode="single"
+      selected={provisionalDatePart}
+      onSelect={setProvisionalDatePart}
+      initialFocus
+    />
+  );
 
   return (
     <Card className="shadow-lg">
@@ -122,9 +149,9 @@ export function LocationDateSelector({
             type="text"
             value={currentLocationInput}
             onChange={(e) => setCurrentLocationInput(e.target.value)}
-            onBlur={handleLocationBlur}
+            onBlur={handleLocationCommit}
             onKeyDown={handleLocationKeyDown}
-            placeholder="E.g., New York or auto:ip"
+            placeholder="E.g., New York, London or Current Location"
             className="mt-1"
           />
         </div>
@@ -147,12 +174,23 @@ export function LocationDateSelector({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={provisionalDatePart}
-                onSelect={setProvisionalDatePart}
-                initialFocus
-              />
+              {showDateTooltip ? (
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>{CalendarWithTooltip}</TooltipTrigger>
+                    <TooltipContent side="bottom" align="start" className="max-w-xs bg-background border-border shadow-lg p-2">
+                      <div className="flex items-start gap-1.5">
+                        <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                        <p className="text-xs">
+                          Forecasts beyond {MAX_API_FORECAST_DAYS_FOR_TOOLTIP + 1} days or in the past are AI-generated estimates. Check closer to the date for official forecasts.
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                CalendarWithTooltip
+              )}
               <div className="p-3 border-t border-border">
                 <Label htmlFor="time-select" className="text-sm font-medium">Select Time</Label>
                 <Input 

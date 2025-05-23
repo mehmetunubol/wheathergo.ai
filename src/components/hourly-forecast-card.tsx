@@ -2,11 +2,11 @@
 "use client";
 
 import * as React from "react";
-import type { HourlyForecastData } from "@/types";
+import type { HourlyForecastData, WeatherData } from "@/types"; // Added WeatherData
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWeatherIcon } from "@/components/icons";
-import { Clock } from "lucide-react";
+import { Clock, Info } from "lucide-react"; // Added Info
 import { format as formatDateFns } from "date-fns";
 
 
@@ -14,9 +14,10 @@ interface HourlyForecastCardProps {
   forecastData: HourlyForecastData[] | undefined;
   isLoading: boolean;
   date: Date;
+  isParentGuessed?: boolean; // To know if the main weather data was an AI guess
 }
 
-export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyForecastCardProps) {
+export function HourlyForecastCard({ forecastData, isLoading, date, isParentGuessed }: HourlyForecastCardProps) {
   const forecastTitle = `Forecast for ${formatDateFns(date, "MMM d, yyyy")}`;
 
   if (isLoading) {
@@ -29,7 +30,7 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
         </CardHeader>
         <CardContent>
           <div className="flex space-x-4 overflow-x-auto pb-2">
-            {[...Array(12)].map((_, index) => ( // Show more skeletons if expecting ~24h
+            {[...Array(12)].map((_, index) => ( 
               <div key={index} className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[100px] bg-card">
                 <Skeleton className="h-4 w-16 mb-1" /> 
                 <Skeleton className="h-8 w-8 rounded-full my-1" /> 
@@ -42,7 +43,7 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
     );
   }
 
-  if (!forecastData || forecastData.length === 0) {
+  if (isParentGuessed || !forecastData || forecastData.length === 0) {
     return (
       <Card className="shadow-md rounded-lg">
         <CardHeader>
@@ -51,7 +52,15 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No forecast details available for the selected period.</p>
+          <div className="flex items-center gap-2 text-muted-foreground p-4 border rounded-md bg-muted/50">
+            <Info size={18} />
+            <span>
+              {isParentGuessed 
+                ? "Detailed hourly forecast is not available for AI-estimated weather."
+                : "No detailed hourly forecast available for this period."
+              }
+            </span>
+          </div>
         </CardContent>
       </Card>
     );
@@ -67,7 +76,6 @@ export function HourlyForecastCard({ forecastData, isLoading, date }: HourlyFore
       <CardContent>
         <div className="flex space-x-3 overflow-x-auto pb-2" role="list" aria-label="Hourly weather forecast">
           {forecastData.map((item, index) => {
-            // Defensively handle isDay: default to true (day) if undefined
             const isDayForIcon = typeof item.isDay === 'boolean' ? item.isDay : true;
             const IconComponent = getWeatherIcon(item.conditionCode, item.condition, isDayForIcon);
             return (
