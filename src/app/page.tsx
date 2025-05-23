@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; // Added import
 import { LocationDateSelector } from "@/components/location-date-selector";
 import { FamilyProfileEditor } from "@/components/family-profile-editor";
 import { CurrentWeatherCard } from "@/components/current-weather-card";
@@ -53,7 +52,6 @@ export default function HomePage() {
 
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
-  const pathname = usePathname(); // Added pathname
 
   const prevUserUID = React.useRef<string | undefined>(undefined);
 
@@ -87,9 +85,8 @@ export default function HomePage() {
             const data = docSnap.data();
             if (data.lastLocation) {
               initialLocation = data.lastLocation;
-            } else if (data.defaultLocation) { 
-              initialLocation = data.defaultLocation;
             } else {
+              // No defaultLocation check here anymore, fall back to localStorage or hardcoded default
               const storedLocation = localStorage.getItem("weatherugo-location");
               if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
                 initialLocation = storedLocation;
@@ -97,7 +94,7 @@ export default function HomePage() {
             }
             
             if (userJustLoggedIn) {
-              setSelectedDate(new Date()); // Reset date if just logged in
+              setSelectedDate(new Date()); 
             } else if (data.lastSelectedDate) {
               const parsedDate = parseISO(data.lastSelectedDate);
               if (isValid(parsedDate)) {
@@ -113,7 +110,7 @@ export default function HomePage() {
             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
               initialLocation = storedLocation;
             }
-            setSelectedDate(new Date()); // Always default to now if no Firestore doc
+            setSelectedDate(new Date()); 
           }
         } else {
           // Not authenticated, load from localStorage
@@ -136,16 +133,15 @@ export default function HomePage() {
       }
     };
 
-    if (!authIsLoading) { // Only run loadPreferences if auth state is settled
+    if (!authIsLoading) { 
       loadPreferences();
     }
     
-    // Update prevUserUID after loadPreferences has potentially run based on auth state
     if (!authIsLoading) {
         prevUserUID.current = user?.uid;
     }
 
-  }, [isAuthenticated, user, authIsLoading, pathname]); // Added pathname
+  }, [isAuthenticated, user, authIsLoading]); 
 
 
   React.useEffect(() => {
@@ -173,7 +169,6 @@ export default function HomePage() {
       if (authIsLoading || isLoadingProfile || isLoadingPreferences || !location) return; 
       if (!selectedDate) return;
 
-      // Use date and hour for weather, but just date for general suggestions to improve cache hits for daily AI.
       const formattedDateForCacheKey = format(selectedDate, "yyyy-MM-dd");
       const formattedDateTimeForWeatherCacheKey = format(selectedDate, "yyyy-MM-dd-HH"); 
       const currentTime = new Date().getTime();
@@ -186,7 +181,6 @@ export default function HomePage() {
       if (cachedWeatherString) {
         try {
           const cached: CachedWeatherData = JSON.parse(cachedWeatherString);
-          // Check if cache includes the isGuessed flag to ensure it's the new format
           if (currentTime - cached.timestamp < CACHE_DURATION_MS && typeof cached.data.isGuessed === 'boolean') {
             setWeatherData(cached.data);
             currentFetchedWeatherData = cached.data;
@@ -196,7 +190,7 @@ export default function HomePage() {
               setLocation(cached.data.location);
             }
           } else {
-             localStorage.removeItem(weatherCacheKey); // Remove old format cache
+             localStorage.removeItem(weatherCacheKey); 
           }
         } catch (e) {
           console.error("Failed to parse cached weather data", e);
@@ -260,7 +254,6 @@ export default function HomePage() {
 
       if (currentFetchedWeatherData && familyProfile) {
         const currentTOD = getTimeOfDay(selectedDate);
-        // Cache suggestions based on date only for daily suggestions.
         const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
         const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${familyProfile}-${currentTOD}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
 
@@ -353,17 +346,14 @@ export default function HomePage() {
 
     const currentHourToDisplayFrom = getHours(selectedDate); 
     return weatherData.forecast.filter(item => {
-        // Attempt to parse time like "3 PM" or "15:00" from API
-        // WeatherAPI usually gives "YYYY-MM-DD HH:MM" or epoch for hour.time
-        // Our own hourly generation in weather-api.ts uses "h a" format.
         let itemHour = -1;
-        const timeParts = item.time.match(/(\d+)\s*(AM|PM)/i); // "3 PM"
+        const timeParts = item.time.match(/(\d+)\s*(AM|PM)/i); 
         if (timeParts) {
             itemHour = parseInt(timeParts[1]);
             const ampm = timeParts[2].toUpperCase();
             if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
             if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
-        } else { // Try to parse "HH:MM" or just "HH" if only hour is given
+        } else { 
             const hourMatch = item.time.match(/^(\d{1,2})/);
             if (hourMatch) {
                 itemHour = parseInt(hourMatch[1]);
@@ -373,14 +363,13 @@ export default function HomePage() {
         if (itemHour !== -1) {
             return itemHour >= currentHourToDisplayFrom;
         }
-        // Fallback if parsing fails, might be full date string
         try {
-          const itemDate = parseISO(item.time); // WeatherAPI might provide full ISO string for hour.time
+          const itemDate = parseISO(item.time); 
           if (isValid(itemDate)) {
              return getHours(itemDate) >= currentHourToDisplayFrom;
           }
-        } catch { /* ignore parsing errors for this complex field */ }
-        return true; // Default to showing if parsing fails, to be safe
+        } catch { /* ignore parsing errors */ }
+        return true; 
     });
   };
 
@@ -473,4 +462,3 @@ export default function HomePage() {
   );
 }
     
-
