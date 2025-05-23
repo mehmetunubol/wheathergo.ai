@@ -22,7 +22,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const DEFAULT_LOCATION = "auto:ip";
+const DEFAULT_LOCATION = "auto:ip"; // This will be overridden by settings if available
 const DEFAULT_FAMILY_PROFILE = "A single adult enjoying good weather.";
 const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
@@ -34,7 +34,7 @@ function getTimeOfDay(dateWithTime: Date): string {
 }
 
 export default function HomePage() {
-  const [location, setLocation] = React.useState<string>(DEFAULT_LOCATION);
+  const [location, setLocation] = React.useState<string>(""); // Initialize empty, will be set by preferences
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
   
   const [familyProfile, setFamilyProfile] = React.useState<string>(DEFAULT_FAMILY_PROFILE);
@@ -70,16 +70,16 @@ export default function HomePage() {
 
   React.useEffect(() => {
     const loadPreferences = async () => {
-      if (authIsLoading) return; // Still determining auth state
+      if (authIsLoading) return; 
 
       setIsLoadingPreferences(true);
       const userJustLoggedIn = isAuthenticated && user && user.uid !== prevUserUID.current;
+      let initialLocation = DEFAULT_LOCATION; // Start with hardcoded default
 
       try {
         if (isAuthenticated && user) {
-          // User is authenticated
           if (userJustLoggedIn) {
-            setSelectedDate(new Date()); // Reset date on login
+            setSelectedDate(new Date());
           }
 
           const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
@@ -88,46 +88,55 @@ export default function HomePage() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             if (data.lastLocation) {
-              setLocation(data.lastLocation);
+              initialLocation = data.lastLocation;
+            } else if (data.defaultLocation) { // Check for defaultLocation from settings
+              initialLocation = data.defaultLocation;
             } else {
+              // No lastLocation or defaultLocation in Firestore, check localStorage
               const storedLocation = localStorage.getItem("weatherugo-location");
-              setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
+              if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
+                initialLocation = storedLocation;
+              }
             }
-
-            // Only load stored date if user didn't *just* log in
+            
             if (!userJustLoggedIn && data.lastSelectedDate) {
               const parsedDate = parseISO(data.lastSelectedDate);
               if (isValid(parsedDate)) {
                 setSelectedDate(parsedDate);
               } else {
-                setSelectedDate(new Date()); // Fallback if stored date is invalid
+                setSelectedDate(new Date());
               }
             } else if (!userJustLoggedIn) {
-               // No stored date, and not just logged in, set to new Date
                setSelectedDate(new Date());
             }
-            // If userJustLoggedIn, selectedDate is already set to new Date() and we don't overwrite it
           } else {
-            // No preferences doc in Firestore
+            // No preferences doc in Firestore, check localStorage
             const storedLocation = localStorage.getItem("weatherugo-location");
-            setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
-            if (!userJustLoggedIn) { // If not just logged in, default to new Date
+            if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
+              initialLocation = storedLocation;
+            }
+            if (!userJustLoggedIn) {
               setSelectedDate(new Date());
             }
-            // If userJustLoggedIn, selectedDate is already set.
           }
         } else {
-          // Not authenticated
+          // Not authenticated, load from localStorage
           const storedLocation = localStorage.getItem("weatherugo-location");
-          setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
+          if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
+            initialLocation = storedLocation;
+          }
           setSelectedDate(new Date());
         }
       } catch (error) {
         console.error("Error during preferences loading:", error);
+        // Fallback in case of error
         const storedLocation = localStorage.getItem("weatherugo-location");
-        setLocation(storedLocation && storedLocation.toLowerCase() !== "auto:ip" ? storedLocation : DEFAULT_LOCATION);
-        setSelectedDate(new Date()); // Fallback in case of error
+        if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
+            initialLocation = storedLocation;
+        }
+        setSelectedDate(new Date());
       } finally {
+        setLocation(initialLocation);
         setIsLoadingPreferences(false);
       }
     };
@@ -135,8 +144,6 @@ export default function HomePage() {
     if (!authIsLoading) {
       loadPreferences();
     }
-    // Update prevUserUID after the logic for the current render has been processed
-    // This ensures that on the *next* render, prevUserUID.current holds the UID from the *previous* successful auth check
     if (!authIsLoading) {
         prevUserUID.current = user?.uid;
     }
@@ -166,10 +173,10 @@ export default function HomePage() {
 
   React.useEffect(() => {
     async function getWeatherAndSuggestions() {
-      if (authIsLoading || isLoadingProfile || isLoadingPreferences) return;
-      if (!location || !selectedDate) return;
+      if (authIsLoading || isLoadingProfile || isLoadingPreferences || !location) return; // Ensure location is set
+      if (!selectedDate) return;
 
-      const formattedDateForCacheKey = format(selectedDate, "yyyy-MM-dd-HH"); // Include hour in cache key
+      const formattedDateForCacheKey = format(selectedDate, "yyyy-MM-dd-HH"); 
       const currentTime = new Date().getTime();
       let currentFetchedWeatherData: WeatherData | null = null;
 
@@ -325,7 +332,7 @@ export default function HomePage() {
       }
     }
 
-    if (!authIsLoading && !isLoadingProfile && !isLoadingPreferences) {
+    if (!authIsLoading && !isLoadingProfile && !isLoadingPreferences && location) { // Ensure location is initialized
       getWeatherAndSuggestions();
     }
   }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user]); 
@@ -345,36 +352,28 @@ export default function HomePage() {
             if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
             return itemHour >= currentHourToDisplayFrom;
         }
-        // Fallback for non-standard time formats if any
         try {
-          // Assuming selectedDate is correctly a Date object
-          // And item.time is like 'HH:MM' or 'H AM/PM' from WeatherAPI
-          // We need to create a full date for parsing
           let itemHourDate: Date;
           const datePart = format(selectedDate, 'yyyy-MM-dd');
-          
-          // Check for "1 AM", "12 PM" format first
           const matchAmPm = item.time.match(/(\d{1,2})\s*(AM|PM)/i);
           if (matchAmPm) {
             let hour = parseInt(matchAmPm[1]);
             const period = matchAmPm[2].toUpperCase();
             if (period === 'PM' && hour !== 12) hour += 12;
-            if (period === 'AM' && hour === 12) hour = 0; // Midnight
+            if (period === 'AM' && hour === 12) hour = 0; 
             itemHourDate = parseISO(`${datePart}T${String(hour).padStart(2, '0')}:00:00`);
           } else {
-            // Try to parse as HH:mm (less likely from weather API for hourly)
             itemHourDate = parseISO(`${datePart}T${item.time.replace(/\s*(AM|PM)/i, '').padStart(5, '0')}`);
           }
-
           if (isValid(itemHourDate)) {
             return getHours(itemHourDate) >= currentHourToDisplayFrom;
           }
-        } catch { /* ignore parsing error, return true to not filter out potentially valid items */ }
+        } catch { /* ignore parsing error */ }
         return true; 
     });
   };
 
-  if (authIsLoading || isLoadingPreferences) {
+  if (authIsLoading || isLoadingPreferences) { // Main skeleton depends on auth and overall preferences loading
     return (
       <div className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
@@ -462,6 +461,4 @@ export default function HomePage() {
     </div>
   );
 }
-    
-
     
