@@ -57,9 +57,11 @@ export default function LoginPage() {
   };
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+    // This function is triggered by the "Sign Up" button, not the form submission directly.
+    // We prevent default in case it's ever part of a form that might submit.
+    e.preventDefault(); 
     if (!email || !password) {
-      toast({ title: "Missing Fields", description: "Please enter both email and password.", variant: "destructive" });
+      toast({ title: "Missing Fields", description: "Please enter both email and password to sign up.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
@@ -157,10 +159,10 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Signing In..." : "Sign In with Email"}
+                {isSubmitting ? "Signing In..." : "Sign In"}
               </Button>
               <Button type="button" variant="outline" onClick={handleEmailSignUp} className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Signing Up..." : "Sign Up with Email"}
+                {isSubmitting ? "Signing Up..." : "Sign Up"}
               </Button>
             </div>
           </form>
