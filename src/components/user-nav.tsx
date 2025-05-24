@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, Settings, CreditCard, LogIn } from "lucide-react"; // UserIcon removed
+import { LogOut, Settings, CreditCard, LogIn } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function UserNav() {
@@ -67,11 +67,12 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          {/* Profile DropdownMenuItem removed */}
-          <DropdownMenuItem>
-            <CreditCard className="mr-2 h-4 w-4" />
-            <span>Billing</span>
-          </DropdownMenuItem>
+          <Link href="/subscription" passHref>
+            <DropdownMenuItem>
+              <CreditCard className="mr-2 h-4 w-4" />
+              <span>Subscription & Billing</span>
+            </DropdownMenuItem>
+          </Link>
           <Link href="/settings" passHref>
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
