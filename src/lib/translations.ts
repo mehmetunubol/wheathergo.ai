@@ -23,6 +23,8 @@ export const translations: AllTranslations = {
     confirm: "Confirm",
     error: "Error",
     success: "Success",
+    // Navbar
+    appTagline: "Your personal weather & travel companion.",
     // MainPage
     locationDateTime: "Location & Date/Time",
     locationLabel: "Location",
@@ -206,6 +208,8 @@ export const translations: AllTranslations = {
     confirm: "Onayla",
     error: "Hata",
     success: "Başarılı",
+    // Navbar
+    appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
     // MainPage
     locationDateTime: "Konum & Tarih/Saat",
     locationLabel: "Konum",
@@ -248,8 +252,8 @@ export const translations: AllTranslations = {
     termsPreamble: "Devam ederek",
     termsAnd: "ve",
     termsConclusion: " kabul etmiş olursunuz.",
-    termsOfService: "Hizmet Şartları",
-    privacyPolicy: "Gizlilik Politikası",
+    termsOfService: "Hizmet Şartları'nı",
+    privacyPolicy: "Gizlilik Politikası'nı",
     appleSignInSimulated: "Apple ile Giriş şu anda simüle edilmiştir ve Google Girişini kullanacaktır.",
     // Settings Page
     appSettingsTitle: "Uygulama Ayarları",
@@ -378,3 +382,4 @@ export const translations: AllTranslations = {
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
+
