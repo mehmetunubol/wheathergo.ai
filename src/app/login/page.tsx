@@ -187,22 +187,19 @@ export default function LoginPage() {
           </Button>
           
           <p className="px-8 text-center text-sm text-muted-foreground">
-             {t('termsAgreement', {
-                termsLink: (
-                    <Link href="/terms" passHref>
-                        <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                            {t('termsOfService')}
-                        </span>
-                    </Link>
-                ),
-                privacyLink: (
-                    <Link href="/privacy" passHref>
-                        <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                            {t('privacyPolicy')}
-                        </span>
-                    </Link>
-                )
-             })}
+             {t('termsPreamble')}{' '}
+             <Link href="/terms">
+                <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                    {t('termsOfService')}
+                </span>
+             </Link>
+             {' '}{t('termsAnd')}{' '}
+             <Link href="/privacy">
+                <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                    {t('privacyPolicy')}
+                </span>
+             </Link>
+             {t('termsConclusion')}
           </p>
         </CardContent>
          <CardFooter className="flex flex-col items-center text-center">
