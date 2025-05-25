@@ -2,8 +2,9 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, ListChecks, Settings } from "lucide-react"; // Assuming you might use these later
+import { Users, ListChecks, Settings } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button"; // Added Button import
 
 export default function AdminDashboardPage() {
   return (
@@ -20,10 +21,9 @@ export default function AdminDashboardPage() {
             <CardDescription>View and manage user accounts.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              (Coming soon)
-            </p>
-            {/* <Link href="/admin/users" passHref><Button variant="outline" className="mt-2 w-full">Manage Users</Button></Link> */}
+            <Link href="/admin/users" passHref>
+              <Button variant="outline" className="mt-2 w-full">Manage Users</Button>
+            </Link>
           </CardContent>
         </Card>
 
