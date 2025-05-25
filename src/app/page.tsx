@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plane, LogIn, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useAppSettings } from "@/contexts/app-settings-context"; // Import useAppSettings
+import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context"; // Import DEFAULT_APP_SETTINGS
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,7 +32,7 @@ function getTimeOfDay(dateWithTime: Date): string {
 }
 
 export default function HomePage() {
-  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); // Get app settings
+  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); 
 
   const [location, setLocation] = React.useState<string>(""); 
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
@@ -82,7 +82,7 @@ export default function HomePage() {
 
       setIsLoadingPreferences(true);
       const userJustLoggedIn = isAuthenticated && user && user.uid !== prevUserUID.current;
-      let initialLocation = appSettings.defaultLocation; // Use app setting as base default
+      let initialLocation = appSettings.defaultLocation; 
 
       try {
         if (isAuthenticated && user) {
@@ -93,7 +93,7 @@ export default function HomePage() {
             const data = docSnap.data();
             if (data.lastLocation) {
               initialLocation = data.lastLocation;
-            } // No user defaultLocation, appSettings.defaultLocation is the fallback
+            } 
             
             if (userJustLoggedIn) {
               setSelectedDate(new Date()); 
@@ -108,7 +108,6 @@ export default function HomePage() {
                setSelectedDate(new Date());
             }
           } else {
-            // No user preferences doc, check localStorage then app default
             const storedLocation = localStorage.getItem("weatherugo-location");
             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
               initialLocation = storedLocation;
@@ -116,7 +115,6 @@ export default function HomePage() {
             setSelectedDate(new Date()); 
           }
         } else {
-          // Not authenticated, load from localStorage then app default
           const storedLocation = localStorage.getItem("weatherugo-location");
           if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             initialLocation = storedLocation;
@@ -363,7 +361,7 @@ export default function HomePage() {
             if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
             if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
         } else { 
-            const hourMatch = item.time.match(/^(\d{1,2})/); // Match 1 or 2 digits at the start
+            const hourMatch = item.time.match(/^(\d{1,2})/); 
             if (hourMatch) {
                 itemHour = parseInt(hourMatch[1]);
             }
@@ -373,13 +371,12 @@ export default function HomePage() {
             return itemHour >= currentHourToDisplayFrom;
         }
         try {
-          // Fallback for full ISO date strings if any
           const itemDate = parseISO(item.time); 
           if (isValid(itemDate)) {
              return getHours(itemDate) >= currentHourToDisplayFrom;
           }
         } catch { /* ignore parsing errors */ }
-        return true; // If cannot parse, include it by default
+        return true; 
     });
   };
 
@@ -410,7 +407,7 @@ export default function HomePage() {
           onLocationChange={setLocation}
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
-          maxApiForecastDays={appSettings.maxApiForecastDays} // Pass down setting
+          maxApiForecastDays={appSettings.maxApiForecastDays} 
         />
         <FamilyProfileEditor
           profile={familyProfile} 
@@ -472,3 +469,4 @@ export default function HomePage() {
     </div>
   );
 }
+
