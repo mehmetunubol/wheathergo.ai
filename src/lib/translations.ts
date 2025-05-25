@@ -193,6 +193,8 @@ export const translations: AllTranslations = {
     loadingPlanDetails: "Loading plan details...",
     loadingPlanDetailsError: "Could not load plan details. Please try again or go back.",
     travelPlanNotFound: "Travel plan not found.",
+    user: "User",
+    loginButton: "Login",
 
   },
   tr: {
@@ -378,6 +380,8 @@ export const translations: AllTranslations = {
     loadingPlanDetails: "Plan detayları yükleniyor...",
     loadingPlanDetailsError: "Plan detayları yüklenemedi. Lütfen tekrar deneyin veya geri dönün.",
     travelPlanNotFound: "Seyahat planı bulunamadı.",
+    user: "Kullanıcı",
+    loginButton: "Giriş Yap",
   },
 };
 
