@@ -17,13 +17,11 @@ import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPi
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
 import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useAppSettings } from "@/contexts/app-settings-context"; // Import useAppSettings
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, query, getDocs, deleteDoc, doc, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const DEFAULT_NOTIFICATION_TIME = "09:00";
-const DEFAULT_NOTIFICATION_FREQUENCY: NotificationFrequency = "daily";
 
 const generateTimeOptions = () => {
   const options = [];
@@ -42,14 +40,17 @@ const generateTimeOptions = () => {
 const timeOptions = generateTimeOptions();
 
 export function TravelPlannerCard() {
+  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); // Get app settings
   const [travelPlans, setTravelPlans] = React.useState<TravelPlanItem[]>([]);
+  
   const [newTripName, setNewTripName] = React.useState("");
   const [newLocation, setNewLocation] = React.useState("");
   const [newEmail, setNewEmail] = React.useState("");
   const [newStartDate, setNewStartDate] = React.useState<Date | undefined>(undefined);
   const [newEndDate, setNewEndDate] = React.useState<Date | undefined>(undefined);
-  const [newTime, setNewTime] = React.useState<string>(DEFAULT_NOTIFICATION_TIME);
-  const [newNotificationFrequency, setNewNotificationFrequency] = React.useState<NotificationFrequency>(DEFAULT_NOTIFICATION_FREQUENCY);
+  // Use default from appSettings once loaded
+  const [newTime, setNewTime] = React.useState<string>(appSettings.defaultNotificationTime);
+  const [newNotificationFrequency, setNewNotificationFrequency] = React.useState<NotificationFrequency>(appSettings.defaultNotificationFrequency);
   const [newTripContext, setNewTripContext] = React.useState<string>("");
 
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = React.useState(false);
@@ -65,7 +66,14 @@ export function TravelPlannerCard() {
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
 
   React.useEffect(() => {
-    if (authIsLoading) return; // Wait for auth state to be determined
+    if (!appSettingsLoading) {
+      setNewTime(appSettings.defaultNotificationTime);
+      setNewNotificationFrequency(appSettings.defaultNotificationFrequency);
+    }
+  }, [appSettingsLoading, appSettings.defaultNotificationTime, appSettings.defaultNotificationFrequency]);
+
+  React.useEffect(() => {
+    if (authIsLoading) return; 
 
     if (isAuthenticated && user) {
       setIsLoadingPlans(true);
@@ -84,9 +92,8 @@ export function TravelPlannerCard() {
         toast({ title: "Error", description: "Could not load travel plans.", variant: "destructive" });
         setIsLoadingPlans(false);
       });
-      return () => unsubscribe(); // Cleanup listener on unmount
+      return () => unsubscribe(); 
     } else {
-      // Handle unauthenticated state (e.g., clear plans or show message)
       setTravelPlans([]);
       setIsLoadingPlans(false);
     }
@@ -117,15 +124,14 @@ export function TravelPlannerCard() {
       tripName: newTripName.trim(),
       location: newLocation.trim(),
       email: newEmail.trim(),
-      // Firestore handles Timestamps better than ISO strings for queries, but Date objects are fine for `addDoc`
-      startDate: newStartDate.toISOString(), // Keep as ISO for consistency with type, Firestore converts to Timestamp
-      endDate: newEndDate.toISOString(),   // Keep as ISO for consistency with type, Firestore converts to Timestamp
+      startDate: newStartDate.toISOString(), 
+      endDate: newEndDate.toISOString(),   
       notificationTime: newTime,
       notificationTimeLabel: selectedTimeOption?.label || newTime,
       notificationFrequency: newNotificationFrequency,
       tripContext: newTripContext.trim() || "",
-      userId: user.uid, // Store userId for potential future admin/sharing features
-      createdAt: new Date().toISOString(), // Firestore server timestamp is better for production
+      userId: user.uid, 
+      createdAt: new Date().toISOString(), 
     };
 
     try {
@@ -137,8 +143,8 @@ export function TravelPlannerCard() {
       setNewEmail("");
       setNewStartDate(undefined);
       setNewEndDate(undefined);
-      setNewTime(DEFAULT_NOTIFICATION_TIME);
-      setNewNotificationFrequency(DEFAULT_NOTIFICATION_FREQUENCY);
+      setNewTime(appSettings.defaultNotificationTime); // Reset to default from settings
+      setNewNotificationFrequency(appSettings.defaultNotificationFrequency); // Reset to default
       setNewTripContext("");
       toast({
         title: "Travel Plan Added",
@@ -174,7 +180,7 @@ export function TravelPlannerCard() {
     setIsDetailsDialogOpen(true);
   };
 
-  if (authIsLoading) {
+  if (authIsLoading || appSettingsLoading) {
     return (
       <Card className="shadow-lg">
         <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
@@ -204,8 +210,10 @@ export function TravelPlannerCard() {
                 Your plans will be accessible across devices and notifications (simulated) can be enabled.
                 If you add plans now, they will be stored locally and may be lost.
                 <br />
-                <Link href="/login" className="font-medium text-primary hover:underline">
-                  Log in or Sign up
+                <Link href="/login" passHref>
+                  <span className="font-medium text-primary hover:underline cursor-pointer">
+                    Log in or Sign up
+                  </span>
                 </Link>
               </AlertDescription>
             </Alert>
@@ -302,8 +310,15 @@ export function TravelPlannerCard() {
             {!isLoadingPlans && isAuthenticated && (
               <ul className="space-y-3">
                 {travelPlans.map((plan) => {
-                  const startDate = parseISO(plan.startDate);
-                  const endDate = parseISO(plan.endDate);
+                  let startDate, endDate;
+                  try {
+                    startDate = parseISO(plan.startDate);
+                    endDate = parseISO(plan.endDate);
+                  } catch (e) {
+                    console.error("Invalid date format in plan:", plan, e);
+                    // Skip rendering this plan or render an error state for it
+                    return <li key={plan.id} className="p-4 border rounded-md bg-destructive/10 text-destructive">Invalid date format for plan: {plan.tripName}</li>;
+                  }
                   return (
                   <li
                     key={plan.id}

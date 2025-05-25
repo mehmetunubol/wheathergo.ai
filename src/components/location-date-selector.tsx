@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { format, differenceInCalendarDays, startOfDay } from "date-fns";
 import { Calendar as CalendarIcon, MapPin, Check, X as XIcon, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,33 +16,33 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { differenceInCalendarDays, startOfDay } from "date-fns";
 
 interface LocationDateSelectorProps {
   location: string;
   onLocationChange: (location: string) => void;
   selectedDate: Date;
   onDateChange: (date: Date | undefined) => void;
+  maxApiForecastDays: number; // Added prop
 }
 
 const capitalizeFirstLetter = (str: string): string => {
   if (!str) return str;
-  // Don't capitalize "auto:ip"
   if (str.toLowerCase() === "auto:ip") {
     return str;
   }
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-const MAX_API_FORECAST_DAYS_FOR_TOOLTIP = 2; 
-
 export function LocationDateSelector({
-  location: propsLocation, // Renamed to avoid conflict with internal state if any
+  location: propsLocation,
   onLocationChange,
   selectedDate,
   onDateChange,
+  maxApiForecastDays, // Use prop
 }: LocationDateSelectorProps) {
-  const [currentLocationInput, setCurrentLocationInput] = React.useState("");
+  const [currentLocationInput, setCurrentLocationInput] = React.useState(
+    propsLocation.toLowerCase() === "auto:ip" ? "" : capitalizeFirstLetter(propsLocation)
+  );
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   
   const [provisionalDatePart, setProvisionalDatePart] = React.useState<Date | undefined>(selectedDate);
@@ -50,8 +50,6 @@ export function LocationDateSelector({
   const [showDateTooltip, setShowDateTooltip] = React.useState(false);
 
   React.useEffect(() => {
-    // If propsLocation is "auto:ip", display an empty string to show placeholder.
-    // Otherwise, display the capitalized location.
     setCurrentLocationInput(propsLocation.toLowerCase() === "auto:ip" ? "" : capitalizeFirstLetter(propsLocation));
   }, [propsLocation]);
 
@@ -64,23 +62,21 @@ export function LocationDateSelector({
     if (provisionalDatePart) {
       const today = startOfDay(new Date());
       const diffDays = differenceInCalendarDays(startOfDay(provisionalDatePart), today);
-      setShowDateTooltip(diffDays > MAX_API_FORECAST_DAYS_FOR_TOOLTIP || diffDays < 0);
+      setShowDateTooltip(diffDays > maxApiForecastDays || diffDays < 0);
     } else {
       setShowDateTooltip(false);
     }
-  }, [provisionalDatePart]);
+  }, [provisionalDatePart, maxApiForecastDays]);
 
   const handleLocationCommit = () => {
     const trimmedInput = currentLocationInput.trim();
     if (trimmedInput === "") {
-      // If input is cleared by user, effectively set to "auto:ip"
-      if (propsLocation !== "auto:ip") { // Only call if it's a change
+      if (propsLocation !== "auto:ip") {
         onLocationChange("auto:ip");
       }
     } else {
-      // If user typed something, commit that (capitalized)
       const newLocation = capitalizeFirstLetter(trimmedInput);
-      if (propsLocation !== newLocation) { // Only call if it's a change
+      if (propsLocation !== newLocation) {
         onLocationChange(newLocation);
       }
     }
@@ -182,7 +178,7 @@ export function LocationDateSelector({
                       <div className="flex items-start gap-1.5">
                         <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
                         <p className="text-xs">
-                          Forecasts beyond {MAX_API_FORECAST_DAYS_FOR_TOOLTIP + 1} days or in the past are AI-generated estimates. Check closer to the date for official forecasts.
+                          Forecasts beyond {maxApiForecastDays + 1} days or in the past are AI-generated estimates. Check closer to the date for official forecasts.
                         </p>
                       </div>
                     </TooltipContent>

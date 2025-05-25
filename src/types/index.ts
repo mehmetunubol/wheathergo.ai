@@ -26,6 +26,16 @@ export interface WeatherData {
   isGuessed?: boolean; // True if this data is AI-generated
 }
 
+export interface User {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL?: string | null;
+  isAdmin?: boolean;
+  isActive?: boolean;
+  createdAt?: string;
+}
+
 export interface FamilyProfile {
   description: string;
 }
@@ -42,9 +52,9 @@ export type NotificationFrequency = 'daily' | 'weekly';
 
 // Represents the data structure for storing fetched suggestions in Firestore
 export interface StoredTripSegmentData {
-  segmentId: 'start' | 'middle' | 'end'; // To identify the segment (matches UI segment id)
+  segmentId: 'start' | 'middle' | 'end';
   date: string; // ISO string of the segment's date
-  weatherData: WeatherData; // Can now include isGuessed
+  weatherData: WeatherData;
   clothingSuggestions: ClothingSuggestionsOutput;
   activitySuggestions: ActivitySuggestionsOutput;
   fetchedAt: string; // ISO string, timestamp of when this was fetched/updated
@@ -61,9 +71,9 @@ export interface TravelPlanItem {
   notificationTimeLabel?: string; // User-friendly time label e.g. "9:00 AM"
   notificationFrequency: NotificationFrequency;
   tripContext?: string;
-  userId?: string; // Added when saving to Firestore
-  createdAt?: string; // Added when saving to Firestore
-  storedSuggestions?: StoredTripSegmentData[]; // Array to hold suggestions for key dates
+  userId?: string;
+  createdAt?: string; // ISO string
+  storedSuggestions?: StoredTripSegmentData[];
 }
 
 // This type is primarily for UI state within the trip details page
@@ -71,19 +81,19 @@ export interface TripSegmentSuggestions {
   id: 'start' | 'middle' | 'end';
   label: string;
   date: Date;
-  weatherData: WeatherData | null; // Can now include isGuessed
+  weatherData: WeatherData | null;
   clothingSuggestions: ClothingSuggestionsOutput | null;
   activitySuggestions: ActivitySuggestionsOutput | null;
   isLoading: boolean;
   error: string | null;
-  source?: 'stored' | 'newly-fetched'; // To track where the data came from
+  source?: 'stored' | 'newly-fetched';
 }
 
 // Cache types for homepage
 export interface CachedItem<T> {
   timestamp: number;
   data: T;
-  isGuessed?: boolean; // To know if cached data was an AI guess
+  isGuessed?: boolean;
 }
 
 export type CachedWeatherData = CachedItem<WeatherData>;
@@ -103,6 +113,28 @@ export interface GuessedWeatherOutput {
   humidity: number;
   windSpeed: number;
   description: string;
-  locationName?: string; // AI might return a resolved location name
+  locationName?: string;
 }
 
+// Firestore document for storing user preferences
+export interface UserPreferences {
+  lastLocation?: string;
+  lastSelectedDate?: string;
+  // defaultLocation is now part of AppSettings
+}
+
+// Firestore document for main user profile
+export interface UserProfileData {
+    description: string;
+    updatedAt: string; // ISO string
+}
+
+// Application-wide settings configurable by admin
+export interface AppSettings {
+  defaultLocation: string;
+  cacheDurationMs: number;
+  maxApiForecastDays: number;
+  defaultFamilyProfile: string;
+  defaultNotificationTime: string; // e.g., "09:00"
+  defaultNotificationFrequency: NotificationFrequency; // 'daily' | 'weekly'
+}
