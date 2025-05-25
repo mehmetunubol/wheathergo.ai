@@ -41,7 +41,10 @@ export default function HomePage() {
   const [location, setLocation] = React.useState<string>(""); 
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
   
-  const [familyProfile, setFamilyProfile] = React.useState<string>(appSettings.defaultFamilyProfile);
+  // Initialize familyProfile state.
+  // It will be properly set once appSettings are loaded or by FamilyProfileEditor's initial load.
+  const [familyProfile, setFamilyProfile] = React.useState<string>("");
+  const [isLoadingProfileFromEditor, setIsLoadingProfileFromEditor] = React.useState(true); 
   
   const [weatherData, setWeatherData] = React.useState<WeatherData | null>(null);
   const [outfitSuggestions, setOutfitSuggestions] = React.useState<ClothingSuggestionsOutput | null>(null);
@@ -51,7 +54,6 @@ export default function HomePage() {
   const [isLoadingOutfit, setIsLoadingOutfit] = React.useState(false);
   const [isLoadingActivity, setIsLoadingActivity] = React.useState(false); 
   
-  const [isLoadingProfileFromEditor, setIsLoadingProfileFromEditor] = React.useState(true); 
   const [isLoadingPreferences, setIsLoadingPreferences] = React.useState(true); 
 
   const { toast } = useToast();
@@ -59,10 +61,23 @@ export default function HomePage() {
   const pathname = usePathname();
   const prevUserUID = React.useRef<string | undefined>(undefined);
 
+  // Effect to initialize familyProfile from appSettings once they are loaded.
+  // This acts as the initial default before FamilyProfileEditor potentially loads a user-specific one.
+  React.useEffect(() => {
+    if (!appSettingsLoading) {
+      // Only set if familyProfile hasn't been set by FamilyProfileEditor yet
+      // or if it's still the very initial empty string.
+      if (isLoadingProfileFromEditor || familyProfile === "") {
+        setFamilyProfile(appSettings.defaultFamilyProfile || "");
+      }
+    }
+  }, [appSettingsLoading, appSettings.defaultFamilyProfile, isLoadingProfileFromEditor, familyProfile]);
+
+
   const handleProfileUpdate = React.useCallback((newProfile: string) => {
-    setFamilyProfile(newProfile || appSettings.defaultFamilyProfile); 
-    setIsLoadingProfileFromEditor(false); 
-  }, [appSettings.defaultFamilyProfile]);
+    setFamilyProfile(newProfile);
+    setIsLoadingProfileFromEditor(false);
+  }, []);
 
   const handleDateChange = React.useCallback((date: Date | undefined) => {
     if (date) {
@@ -72,11 +87,21 @@ export default function HomePage() {
     }
   }, []);
 
+  // This effect updates familyProfile if appSettings change, but only if
+  // familyProfile is currently the generic default from DEFAULT_APP_SETTINGS or uninitialized.
   React.useEffect(() => {
-    if (!isLoadingProfileFromEditor && (familyProfile === DEFAULT_APP_SETTINGS.defaultFamilyProfile || familyProfile === "")) {
+    if (!appSettingsLoading && !isLoadingProfileFromEditor) {
+      const needsUpdateFromAppSettings =
+        (familyProfile === DEFAULT_APP_SETTINGS.defaultFamilyProfile || familyProfile === "" || familyProfile === undefined) &&
+        appSettings.defaultFamilyProfile &&
+        familyProfile !== appSettings.defaultFamilyProfile;
+
+      if (needsUpdateFromAppSettings) {
         setFamilyProfile(appSettings.defaultFamilyProfile);
+      }
     }
-  }, [appSettings.defaultFamilyProfile, isLoadingProfileFromEditor, familyProfile]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appSettingsLoading, appSettings.defaultFamilyProfile, isLoadingProfileFromEditor]);
 
 
   React.useEffect(() => {
@@ -114,6 +139,8 @@ export default function HomePage() {
             const storedLocation = localStorage.getItem("weatherugo-location");
             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
               initialLocation = storedLocation;
+            } else {
+              initialLocation = appSettings.defaultLocation; // Fallback to app settings default
             }
             setSelectedDate(new Date()); 
           }
@@ -121,6 +148,8 @@ export default function HomePage() {
           const storedLocation = localStorage.getItem("weatherugo-location");
           if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             initialLocation = storedLocation;
+          } else {
+             initialLocation = appSettings.defaultLocation; // Fallback to app settings default for non-auth users
           }
           setSelectedDate(new Date());
         }
@@ -129,6 +158,8 @@ export default function HomePage() {
         const storedLocation = localStorage.getItem("weatherugo-location");
         if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             initialLocation = storedLocation;
+        } else {
+           initialLocation = appSettings.defaultLocation;
         }
         setSelectedDate(new Date());
       } finally {
@@ -181,7 +212,7 @@ export default function HomePage() {
       const currentTime = new Date().getTime();
       let currentFetchedWeatherData: WeatherData | null = null;
 
-      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDateTimeForWeatherCacheKey}-${selectedDate.getTimezoneOffset()}`;
+      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDateTimeForWeatherCacheKey}-${selectedDate.getTimezoneOffset()}-${language}`;
       const cachedWeatherString = localStorage.getItem(weatherCacheKey);
       let weatherFromCache = false;
 
@@ -209,7 +240,7 @@ export default function HomePage() {
         setIsLoadingWeather(true);
         setWeatherData(null); 
         try {
-          const data = await fetchWeather(location, selectedDate, MAX_API_FORECAST_DAYS); 
+          const data = await fetchWeather(location, selectedDate, MAX_API_FORECAST_DAYS, language); 
           setWeatherData(data);
           currentFetchedWeatherData = data;
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
@@ -347,7 +378,7 @@ export default function HomePage() {
       getWeatherAndSuggestions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, user, appSettingsLoading, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.defaultFamilyProfile, language, t]); 
+  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.defaultFamilyProfile, language]); 
   
   const getFilteredHourlyForecast = (): HourlyForecastData[] => {
     if (!weatherData?.forecast || weatherData.isGuessed) return []; 
@@ -357,29 +388,34 @@ export default function HomePage() {
     const currentHourToDisplayFrom = getHours(selectedDate); 
     return weatherData.forecast.filter(item => {
         let itemHour = -1;
-        const timeParts = item.time.match(/(\d+)\s*(AM|PM)/i); 
-        if (timeParts) {
-            itemHour = parseInt(timeParts[1]);
-            const ampm = timeParts[2].toUpperCase();
-            if (ampm === 'PM' && itemHour !== 12) itemHour += 12;
-            if (ampm === 'AM' && itemHour === 12) itemHour = 0; 
-        } else { 
-            const hourMatch = item.time.match(/^(\d{1,2})/); 
-            if (hourMatch) {
-                itemHour = parseInt(hourMatch[1]);
+        // Try to parse time from "May 22, 10 PM" or "10 PM" format
+        const timeString = item.time;
+        const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i);
+        if (match) {
+            itemHour = parseInt(match[1], 10);
+            const period = match[2].toUpperCase();
+            if (period === 'PM' && itemHour !== 12) {
+                itemHour += 12;
+            } else if (period === 'AM' && itemHour === 12) { // Midnight case
+                itemHour = 0;
             }
+        } else {
+           // Fallback for just "HH:MM" or ISO attempt
+            try {
+              const itemDate = parseISO(item.time); // Handles full ISO string if present
+              if (isValid(itemDate)) {
+                 itemHour = getHours(itemDate);
+              } else {
+                 const plainHourMatch = item.time.match(/^(\d{1,2})/); // e.g. "22:00"
+                 if (plainHourMatch) itemHour = parseInt(plainHourMatch[1], 10);
+              }
+            } catch { /* ignore parsing errors for this fallback */ }
         }
         
         if (itemHour !== -1) {
             return itemHour >= currentHourToDisplayFrom;
         }
-        try {
-          const itemDate = parseISO(item.time); 
-          if (isValid(itemDate)) {
-             return getHours(itemDate) >= currentHourToDisplayFrom;
-          }
-        } catch { /* ignore parsing errors */ }
-        return true; 
+        return true; // If parsing fails, include it to be safe or log error
     });
   };
 
