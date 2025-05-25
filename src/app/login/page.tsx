@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // Import Link
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Chrome, Apple, Mail, KeyRound } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function LoginPage() {
     isLoading 
   } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -38,17 +40,16 @@ export default function LoginPage() {
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast({ title: "Missing Fields", description: "Please enter both email and password.", variant: "destructive" });
+      toast({ title: t('error'), description: "Please enter both email and password.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     try {
       await loginWithEmailPassword(email, password);
-      // Successful login is handled by onAuthStateChanged in useAuth
     } catch (error: any) {
       console.error("Email sign-in error:", error);
       toast({
-        title: "Sign In Failed",
+        title: t('signIn') + " " + t('error'), // Example "Sign In Error"
         description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
@@ -58,21 +59,18 @@ export default function LoginPage() {
   };
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
-    // This function is triggered by the "Sign Up" button, not the form submission directly.
-    // We prevent default in case it's ever part of a form that might submit.
     e.preventDefault(); 
     if (!email || !password) {
-      toast({ title: "Missing Fields", description: "Please enter both email and password to sign up.", variant: "destructive" });
+      toast({ title: t('error'), description: "Please enter both email and password to sign up.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
     try {
       await signUpWithEmailPassword(email, password);
-      // Successful sign-up is handled by onAuthStateChanged in useAuth
     } catch (error: any) {
       console.error("Email sign-up error:", error);
       toast({
-        title: "Sign Up Failed",
+        title: t('signUp') + " " + t('error'), // Example "Sign Up Error"
         description: error.message || "Could not create account. Please try again.",
         variant: "destructive",
       });
@@ -121,19 +119,19 @@ export default function LoginPage() {
     <div className="flex items-center justify-center py-12">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Welcome to Weatherugo!</CardTitle>
-          <CardDescription>Sign in or create an account to save your preferences and travel plans.</CardDescription>
+          <CardTitle className="text-2xl font-bold">{t('welcomeToWeatherugo')}</CardTitle>
+          <CardDescription>{t('loginDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleEmailSignIn} className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('emailLabel')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="you@example.com" 
+                  placeholder={t('emailPlaceholder')} 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
@@ -143,7 +141,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('passwordLabel')}</Label>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input 
@@ -160,10 +158,10 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Signing In..." : "Sign In"}
+                {isSubmitting ? t('saving') : t('signIn')}
               </Button>
               <Button type="button" variant="outline" onClick={handleEmailSignUp} className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Signing Up..." : "Sign Up"}
+                {isSubmitting ? t('saving') : t('signUp')}
               </Button>
             </div>
           </form>
@@ -174,44 +172,42 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+                {t('orContinueWith')}
               </span>
             </div>
           </div>
 
           <Button className="w-full" onClick={loginWithGoogle} disabled={isSubmitting}>
             <Chrome className="mr-2 h-5 w-5" /> 
-            Sign in with Google
+            {t('signInWithGoogle')}
           </Button>
           <Button variant="outline" className="w-full" onClick={loginWithApple} disabled={isSubmitting}>
             <Apple className="mr-2 h-5 w-5" />
-            Sign in with Apple (Simulated)
+            {t('signInWithApple')}
           </Button>
           
           <p className="px-8 text-center text-sm text-muted-foreground">
-            By continuing, you agree to our{" "}
-            <Link href="/terms" passHref>
-              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                Terms of Service
-              </span>
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" passHref>
-              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                Privacy Policy
-              </span>
-            </Link>
-            .
+             {t('termsPreamble')}{' '}
+             <Link href="/terms">
+                <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                    {t('termsOfService')}
+                </span>
+             </Link>
+             {' '}{t('termsAnd')}{' '}
+             <Link href="/privacy">
+                <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                    {t('privacyPolicy')}
+                </span>
+             </Link>
+             {t('termsConclusion')}
           </p>
         </CardContent>
          <CardFooter className="flex flex-col items-center text-center">
             <p className="text-xs text-muted-foreground">
-                Apple Sign-In is currently simulated and will use Google Sign-In.
+                {t('appleSignInSimulated')}
             </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
-
-    

@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-// Removed Alert and AlertDescription import as we are using Tooltip now
+import { useTranslation } from "@/hooks/use-translation";
 
 interface FamilyProfileEditorProps {
   profile: string; 
@@ -24,11 +24,15 @@ export function FamilyProfileEditor({
   profile: initialProfile,
   onProfileSave,
 }: FamilyProfileEditorProps) {
+  const { t } = useTranslation();
   const [currentProfile, setCurrentProfile] = React.useState(initialProfile);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
+
+  // This default might need translation or to be a key from translations.ts
+  const defaultProfileText = t('familyProfilePlaceholder'); 
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -42,24 +46,24 @@ export function FamilyProfileEditor({
             setCurrentProfile(profileData);
             onProfileSave(profileData); 
           } else {
-            setCurrentProfile(initialProfile); 
-            onProfileSave(initialProfile);
+            setCurrentProfile(initialProfile || defaultProfileText); 
+            onProfileSave(initialProfile || defaultProfileText);
           }
         } catch (error) {
           console.error("Error fetching family profile:", error);
           toast({
-            title: "Error",
-            description: "Could not load your family profile from the cloud.",
+            title: t('error'),
+            description: "Could not load your family profile from the cloud.", // Consider t('loadProfileError')
             variant: "destructive",
           });
-          setCurrentProfile(initialProfile); 
-          onProfileSave(initialProfile);
+          setCurrentProfile(initialProfile || defaultProfileText); 
+          onProfileSave(initialProfile || defaultProfileText);
         } finally {
           setIsLoading(false);
         }
       } else if (!authIsLoading) {
         const storedProfile = localStorage.getItem("weatherugo-familyProfile");
-        const profileToSet = storedProfile || initialProfile;
+        const profileToSet = storedProfile || initialProfile || defaultProfileText;
         setCurrentProfile(profileToSet);
         onProfileSave(profileToSet);
         setIsLoading(false);
@@ -69,8 +73,7 @@ export function FamilyProfileEditor({
     if (!authIsLoading) {
       fetchProfile();
     }
-    // onProfileSave is wrapped in useCallback in parent, initialProfile is stable
-  }, [user, isAuthenticated, authIsLoading, toast, initialProfile, onProfileSave]);
+  }, [user, isAuthenticated, authIsLoading, toast, initialProfile, onProfileSave, t, defaultProfileText]);
 
 
   const handleSave = async () => {
@@ -78,7 +81,7 @@ export function FamilyProfileEditor({
       localStorage.setItem("weatherugo-familyProfile", currentProfile);
       onProfileSave(currentProfile);
       toast({
-        title: "Profile Saved Locally",
+        title: t('familyProfileSaveLocal'),
         description: "Your family profile has been saved to this browser. Log in to save to the cloud.",
       });
       return;
@@ -90,13 +93,13 @@ export function FamilyProfileEditor({
       await setDoc(profileRef, { description: currentProfile, updatedAt: new Date().toISOString() }, { merge: true });
       onProfileSave(currentProfile); 
       toast({
-        title: "Profile Saved",
+        title: t('familyProfileSaveSuccess'),
         description: "Your family profile has been updated in the cloud.",
       });
     } catch (error) {
       console.error("Error saving family profile:", error);
       toast({
-        title: "Save Error",
+        title: t('familyProfileSaveError'),
         description: "Could not save your family profile. Please try again.",
         variant: "destructive",
       });
@@ -127,7 +130,7 @@ export function FamilyProfileEditor({
       id="family-profile"
       value={currentProfile}
       onChange={(e) => setCurrentProfile(e.target.value)}
-      placeholder="E.g., Two adults, one 2-year-old baby sensitive to cold, one dog."
+      placeholder={t('familyProfilePlaceholder')}
       className="mt-1 min-h-[100px]"
       disabled={isSaving}
     />
@@ -138,12 +141,12 @@ export function FamilyProfileEditor({
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Users className="text-primary" />
-          Family Profile
+          {t('familyProfile')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Label htmlFor="family-profile" className="text-sm font-medium">
-          Describe your family members (e.g., ages, sensitivities, pets)
+          {t('familyProfileDescription')}
         </Label>
         {!isAuthenticated ? (
           <TooltipProvider delayDuration={300}>
@@ -155,9 +158,9 @@ export function FamilyProfileEditor({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 shrink-0" />
                   <div className="text-sm">
-                    <p className="font-semibold text-foreground">Not Logged In</p>
+                    <p className="font-semibold text-foreground">{t('notLoggedInWarning')}</p>
                     <p className="text-muted-foreground">
-                      Profile changes will be saved locally to this browser. Log in to save to the cloud for access across devices.
+                      {t('notLoggedInDetails')}
                     </p>
                   </div>
                 </div>
@@ -170,7 +173,7 @@ export function FamilyProfileEditor({
       </CardContent>
       <CardFooter>
         <Button onClick={handleSave} className="w-full" disabled={isSaving || isLoading}>
-          {isSaving ? "Saving..." : <><Save className="mr-2 h-4 w-4" /> Save Profile</>}
+          {isSaving ? t('saving') : <><Save className="mr-2 h-4 w-4" /> {t('saveFamilyProfile')}</>}
         </Button>
       </CardFooter>
     </Card>

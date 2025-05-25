@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from "react";
+import * => React from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import type { User } from "@/types";
@@ -31,6 +31,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { format, parseISO } from 'date-fns';
+import { useLanguage } from "@/contexts/language-context";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function AdminUsersPage() {
   const { user: adminUser, isAdmin: isAdminAuth } = useAuth();
@@ -38,10 +40,12 @@ export default function AdminUsersPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
+  const { dateLocale } = useLanguage();
+  const { t } = useTranslation();
 
   const fetchUsers = React.useCallback(async () => {
     if (!isAdminAuth) {
-      setError("You do not have permission to view this page.");
+      setError(t('actionDenied'));
       setIsLoading(false);
       return;
     }
@@ -53,22 +57,22 @@ export default function AdminUsersPage() {
       const querySnapshot = await getDocs(q);
       const fetchedUsers: User[] = [];
       querySnapshot.forEach((doc) => {
-        // Ensure uid is part of the object, matching the User type
         fetchedUsers.push({ uid: doc.id, ...doc.data() } as User);
       });
       setUsers(fetchedUsers);
     } catch (err) {
       console.error("Error fetching users:", err);
-      setError("Failed to fetch users. Please try again.");
+      const errorMessage = (err as Error).message || t('error');
+      setError(t('errorFetchingUsers') + ": " + errorMessage);
       toast({
-        title: "Error Fetching Users",
-        description: (err as Error).message || "An unexpected error occurred.",
+        title: t('errorFetchingUsers'),
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [isAdminAuth, toast]);
+  }, [isAdminAuth, toast, t]);
 
   React.useEffect(() => {
     fetchUsers();
@@ -76,7 +80,7 @@ export default function AdminUsersPage() {
 
   const handleToggleAdmin = async (userId: string, currentIsAdmin: boolean) => {
     if (userId === adminUser?.uid) {
-      toast({ title: "Action Denied", description: "You cannot change your own admin status.", variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
       return;
     }
     try {
@@ -87,16 +91,16 @@ export default function AdminUsersPage() {
           u.uid === userId ? { ...u, isAdmin: !currentIsAdmin } : u
         )
       );
-      toast({ title: "Admin Status Updated", description: `User ${userId} admin status set to ${!currentIsAdmin}.` });
+      toast({ title: t('adminStatusUpdated'), description: `User ${userId} ${t('adminStatusUpdated').toLowerCase()} ${!currentIsAdmin}.` });
     } catch (err) {
       console.error("Error updating admin status:", err);
-      toast({ title: "Update Failed", description: "Could not update admin status.", variant: "destructive" });
+      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
     }
   };
 
   const handleToggleActive = async (userId: string, currentIsActive: boolean) => {
      if (userId === adminUser?.uid) {
-      toast({ title: "Action Denied", description: "You cannot change your own active status.", variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
       return;
     }
     try {
@@ -107,42 +111,43 @@ export default function AdminUsersPage() {
           u.uid === userId ? { ...u, isActive: !currentIsActive } : u
         )
       );
-      toast({ title: "User Status Updated", description: `User ${userId} active status set to ${!currentIsActive}.` });
+      toast({ title: t('userStatusUpdated'), description: `User ${userId} ${t('userStatusUpdated').toLowerCase()} ${!currentIsActive}.` });
     } catch (err) {
       console.error("Error updating active status:", err);
-      toast({ title: "Update Failed", description: "Could not update active status.", variant: "destructive" });
+      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (userId === adminUser?.uid) {
-      toast({ title: "Action Denied", description: "You cannot delete your own account from here.", variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
       return;
     }
     try {
       const userDocRef = doc(db, "users", userId);
       await deleteDoc(userDocRef);
       setUsers((prevUsers) => prevUsers.filter((u) => u.uid !== userId));
-      toast({ title: "User Deleted", description: `User ${userId} Firestore record has been deleted.` });
+      toast({ title: t('userDeleted'), description: `User ${userId} Firestore record has been deleted.` });
     } catch (err) {
       console.error("Error deleting user:", err);
-      toast({ title: "Delete Failed", description: "Could not delete user Firestore record.", variant: "destructive" });
+      toast({ title: t('deleteFailed'), description: (err as Error).message, variant: "destructive" });
     }
   };
   
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     try {
-      return format(parseISO(dateString), 'PPpp');
+      // Ensure dateLocale is defined before using it, fallback to undefined if not
+      return format(parseISO(dateString), 'PPpp', { locale: dateLocale || undefined });
     } catch {
-      return dateString; // Fallback if parsing fails
+      return dateString; 
     }
   };
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">User Management</h1>
+        <h1 className="text-2xl font-bold">{t('userManagementTitle')}</h1>
         <div className="border rounded-lg p-4">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="flex items-center space-x-4 py-2">
@@ -164,7 +169,7 @@ export default function AdminUsersPage() {
   if (error) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">User Management</h1>
+        <h1 className="text-2xl font-bold">{t('userManagementTitle')}</h1>
         <div className="text-red-600 bg-red-100 border border-red-300 p-4 rounded-md flex items-center gap-2">
           <ShieldAlert className="h-5 w-5"/> {error}
         </div>
@@ -174,25 +179,25 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">User Management</h1>
+      <h1 className="text-2xl font-bold">{t('userManagementTitle')}</h1>
       <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[150px]">User ID</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Display Name</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="text-center">Is Admin</TableHead>
-              <TableHead className="text-center">Is Active</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="w-[150px]">{t('userIdTableHeader')}</TableHead>
+              <TableHead>{t('emailTableHeader')}</TableHead>
+              <TableHead>{t('displayNameTableHeader')}</TableHead>
+              <TableHead>{t('createdAtTableHeader')}</TableHead>
+              <TableHead className="text-center">{t('isAdminTableHeader')}</TableHead>
+              <TableHead className="text-center">{t('isActiveTableHeader')}</TableHead>
+              <TableHead className="text-right">{t('actionsTableHeader')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {users.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No users found.
+                  {t('noUsersFound')}
                 </TableCell>
               </TableRow>
             )}
@@ -204,19 +209,19 @@ export default function AdminUsersPage() {
                 <TableCell>{formatDate(user.createdAt)}</TableCell>
                 <TableCell className="text-center">
                   <Switch
-                    checked={user.isAdmin}
+                    checked={!!user.isAdmin}
                     onCheckedChange={() => handleToggleAdmin(user.uid, !!user.isAdmin)}
                     disabled={user.uid === adminUser?.uid}
-                    aria-label={user.isAdmin ? "Demote from admin" : "Promote to admin"}
+                    aria-label={user.isAdmin ? t('demoteAdminAria') : t('promoteAdminAria')}
                   />
                   {user.isAdmin ? <ShieldCheck className="inline-block ml-1 h-4 w-4 text-green-600" /> : <ShieldOff className="inline-block ml-1 h-4 w-4 text-muted-foreground" />}
                 </TableCell>
                 <TableCell className="text-center">
                   <Switch
-                    checked={user.isActive}
+                    checked={!!user.isActive}
                     onCheckedChange={() => handleToggleActive(user.uid, !!user.isActive)}
                     disabled={user.uid === adminUser?.uid}
-                    aria-label={user.isActive ? "Deactivate user" : "Activate user"}
+                    aria-label={user.isActive ? t('deactivateUserAria') : t('activateUserAria')}
                   />
                    {user.isActive ? <UserCheck className="inline-block ml-1 h-4 w-4 text-green-600" /> : <UserX className="inline-block ml-1 h-4 w-4 text-red-600" />}
                 </TableCell>
@@ -229,15 +234,15 @@ export default function AdminUsersPage() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('deleteUserDialogTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action will delete the user's Firestore record. It will NOT delete their Firebase Authentication account. The user might be able to log in again, creating a new record.
+                          {t('deleteUserDialogDesc')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                         <AlertDialogAction onClick={() => handleDeleteUser(user.uid)}>
-                          Delete Record
+                          {t('deleteRecordButton')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

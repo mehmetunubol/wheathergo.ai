@@ -2,6 +2,14 @@
 import type { LucideProps } from 'lucide-react';
 import type { ClothingSuggestionsOutput } from '@/ai/flows/clothing-suggestions';
 import type { ActivitySuggestionsOutput } from '@/ai/flows/activity-suggestions';
+import type { Locale } from 'date-fns';
+
+export type Language = 'en' | 'tr';
+
+export interface DateFnsLocaleMapping {
+  en: Locale;
+  tr: Locale;
+}
 
 export interface HourlyForecastData {
   time: string; // e.g., "3:00 PM" or "May 21, 3:00 PM"
@@ -104,6 +112,7 @@ export type CachedActivitySuggestions = CachedItem<ActivitySuggestionsOutput>;
 export interface GuessedWeatherInput {
   location: string;
   date: string; // YYYY-MM-DD
+  language?: Language; // Added language
 }
 
 export interface GuessedWeatherOutput {
@@ -116,11 +125,30 @@ export interface GuessedWeatherOutput {
   locationName?: string;
 }
 
+// AI Flow for clothing suggestions
+export interface ClothingSuggestionsInput {
+  weatherCondition: string;
+  temperature: number;
+  familyProfile: string;
+  location: string;
+  language?: Language; // Added language
+}
+
+// AI Flow for activity suggestions
+export interface ActivitySuggestionsInput {
+  weatherCondition: string;
+  temperature: number;
+  familyProfile: string;
+  timeOfDay: string;
+  locationPreferences?: string;
+  language?: Language; // Added language
+}
+
+
 // Firestore document for storing user preferences
 export interface UserPreferences {
   lastLocation?: string;
   lastSelectedDate?: string;
-  // defaultLocation is now part of AppSettings
 }
 
 // Firestore document for main user profile

@@ -11,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { Language } from '@/types';
 
 const ActivitySuggestionsInputSchema = z.object({
   weatherCondition: z.string().describe('The current weather condition (e.g., sunny, rainy, cloudy).'),
@@ -22,6 +23,7 @@ const ActivitySuggestionsInputSchema = z.object({
     ),
   timeOfDay: z.string().describe('The current time of day (e.g., morning, afternoon, evening).'),
   locationPreferences: z.string().optional().describe('Optional preferences of user location. Defaults to current location if not provided'),
+  language: z.enum(['en', 'tr']).optional().default('en').describe('The language for the suggestions.'),
 });
 export type ActivitySuggestionsInput = z.infer<typeof ActivitySuggestionsInputSchema>;
 
@@ -35,11 +37,24 @@ export async function suggestActivities(input: ActivitySuggestionsInput): Promis
   return activitySuggestionsFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'activitySuggestionsPrompt',
-  input: {schema: ActivitySuggestionsInputSchema},
-  output: {schema: ActivitySuggestionsOutputSchema},
-  prompt: `You are a helpful assistant that suggests activities based on weather conditions and family profiles.
+const getPromptTemplate = (language: Language = 'en') => {
+  const respondInLang = language === 'tr' ? "Lütfen Türkçe yanıt ver." : "Please respond in English.";
+  const basePrompt = language === 'tr' ?
+  `Hava koşullarına ve aile profillerine göre aktivite önerileri sunan yardımcı bir asistansın.
+
+  Hava Durumu: {{{weatherCondition}}}
+  Sıcaklık: {{{temperature}}} Santigrat
+  Aile Profili: {{{familyProfile}}}
+  Günün Zamanı: {{{timeOfDay}}}
+  Konum Tercihleri: {{{locationPreferences}}}
+
+  Bu bilgilere dayanarak, ailenin hoşlanabileceği bazı iç ve dış mekan aktiviteleri öner.
+  Öneri yaparken ailenin profilini dikkate al. Örneğin, küçük çocukları varsa, küçük çocuklar için uygun aktiviteler öner.
+  Aile profilinde listelenen alerjilere veya hassasiyetlere özellikle dikkat et.
+  Aktiviteleri JSON formatında sağla.
+  ${respondInLang}`
+  :
+  `You are a helpful assistant that suggests activities based on weather conditions and family profiles.
 
   Weather Condition: {{{weatherCondition}}}
   Temperature: {{{temperature}}} Celsius
@@ -51,8 +66,10 @@ const prompt = ai.definePrompt({
   Consider the family's profile when making suggestions.  For example, if they have young children, suggest activities that are appropriate for young children.
   Pay extra attention to any allergies or sensitives listed in the family profile.
   Provide the activities in JSON format.
-  `,
-});
+  ${respondInLang}`;
+  return basePrompt;
+};
+
 
 const activitySuggestionsFlow = ai.defineFlow(
   {
@@ -61,20 +78,23 @@ const activitySuggestionsFlow = ai.defineFlow(
     outputSchema: ActivitySuggestionsOutputSchema,
   },
   async (input) => {
+    const promptTemplate = getPromptTemplate(input.language);
+    const prompt = ai.definePrompt({
+        name: 'activitySuggestionsDynamicPrompt',
+        input: {schema: ActivitySuggestionsInputSchema},
+        output: {schema: ActivitySuggestionsOutputSchema},
+        prompt: promptTemplate,
+    });
     try {
       const {output} = await prompt(input);
       if (!output) {
-        // This case should ideally be handled by the prompt throwing an error if generation fails.
-        // However, as a fallback, return an empty/default response adhering to the schema.
         console.error('Activity suggestions prompt returned no output, but did not throw. Input:', input);
         return { indoorActivities: [], outdoorActivities: [] };
       }
       return output;
     } catch (error) {
       console.error('Error in activitySuggestionsFlow:', error);
-      // Re-throw the error to be caught by the client-side caller
       throw error;
     }
   }
 );
-
