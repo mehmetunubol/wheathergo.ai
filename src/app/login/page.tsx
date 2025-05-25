@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Import Link
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -189,13 +190,17 @@ export default function LoginPage() {
           
           <p className="px-8 text-center text-sm text-muted-foreground">
             By continuing, you agree to our{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
-              Terms of Service
-            </a>{" "}
+            <Link href="/terms" passHref>
+              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                Terms of Service
+              </span>
+            </Link>{" "}
             and{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
-              Privacy Policy
-            </a>
+            <Link href="/privacy" passHref>
+              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                Privacy Policy
+              </span>
+            </Link>
             .
           </p>
         </CardContent>
@@ -208,3 +213,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
