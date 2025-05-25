@@ -1,11 +1,10 @@
 
-import type { WeatherData, HourlyForecastData } from '@/types';
+import type { WeatherData, HourlyForecastData, Language } from '@/types'; // Added Language
 import { format, parseISO, startOfDay, isValid, isToday as fnsIsToday, addHours, getHours, differenceInCalendarDays, addDays } from 'date-fns';
-import { guessWeather, type GuessedWeatherOutput } from '@/ai/flows/guess-weather-flow';
+import { guessWeather, type GuessedWeatherInput, type GuessedWeatherOutput } from '@/ai/flows/guess-weather-flow';
 
 const WEATHERAPI_BASE_URL = 'https://api.weatherapi.com/v1';
 const API_KEY_ENV_VAR = process.env.NEXT_PUBLIC_WEATHERAPI_COM_API_KEY;
-// MAX_API_FORECAST_DAYS is now passed as a parameter
 
 const safeParseFloat = (value: any, defaultValue = 0): number => {
   const num = parseFloat(value);
@@ -14,12 +13,15 @@ const safeParseFloat = (value: any, defaultValue = 0): number => {
 
 const normalizeLocationString = (location: string): string => {
   let normalized = location;
+  // Specific Turkish character replacements
   normalized = normalized.replace(/ı/g, 'i').replace(/İ/g, 'I');
   normalized = normalized.replace(/ş/g, 's').replace(/Ş/g, 'S');
   normalized = normalized.replace(/ğ/g, 'g').replace(/Ğ/g, 'G');
   normalized = normalized.replace(/ç/g, 'c').replace(/Ç/g, 'C');
   normalized = normalized.replace(/ö/g, 'o').replace(/Ö/g, 'O');
   normalized = normalized.replace(/ü/g, 'u').replace(/Ü/g, 'U');
+  
+  // General diacritic removal
   normalized = normalized
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
@@ -29,7 +31,8 @@ const normalizeLocationString = (location: string): string => {
 export async function fetchWeather(
   locationInput: string, 
   selectedDate: Date,
-  maxApiForecastDays: number // Added parameter for max real forecast days from settings
+  maxApiForecastDays: number,
+  language: Language = 'en' // Added language parameter
 ): Promise<WeatherData> {
   if (!API_KEY_ENV_VAR) {
     const apiKeyError = "WeatherAPI.com API key is missing. Please set NEXT_PUBLIC_WEATHERAPI_COM_API_KEY.";
@@ -48,9 +51,9 @@ export async function fetchWeather(
   }
   
   if (daysFromToday > maxApiForecastDays || daysFromToday < 0) {
-    console.log(`Date ${formattedDateForAPI} is outside WeatherAPI.com's direct forecast range (max ${maxApiForecastDays} days). Using AI guess.`);
+    console.log(`Date ${formattedDateForAPI} is outside WeatherAPI.com's direct forecast range (max ${maxApiForecastDays} days). Using AI guess with language: ${language}.`);
     try {
-      const guessedData: GuessedWeatherOutput = await guessWeather({ location: originalLocation, date: formattedDateForAPI });
+      const guessedData: GuessedWeatherOutput = await guessWeather({ location: originalLocation, date: formattedDateForAPI, language });
       return {
         temperature: Math.round(guessedData.temperature),
         condition: guessedData.condition,
@@ -69,8 +72,9 @@ export async function fetchWeather(
       throw new Error(`Failed to generate AI weather estimate: ${aiError.message}`);
     }
   }
-
-  const apiUrl = `${WEATHERAPI_BASE_URL}/forecast.json?key=${API_KEY_ENV_VAR}&q=${encodeURIComponent(normalizedQueryLocation)}&dt=${formattedDateForAPI}&aqi=no&alerts=no`;
+  
+  // For WeatherAPI.com, you might need to pass lang parameter if supported for error messages or some texts
+  const apiUrl = `${WEATHERAPI_BASE_URL}/forecast.json?key=${API_KEY_ENV_VAR}&q=${encodeURIComponent(normalizedQueryLocation)}&dt=${formattedDateForAPI}&aqi=no&alerts=no&lang=${language}`;
 
   try {
     const response = await fetch(apiUrl);
@@ -108,7 +112,7 @@ export async function fetchWeather(
       windSpeed: Math.round(windSpeed),
       location: `${data.location.name}, ${data.location.region || data.location.country}`,
       date: startOfDay(selectedDate).toISOString(),
-      description: mainConditionText,
+      description: mainConditionText, // This is the API condition text
       isDay: mainIsDay,
       forecast: [],
       isGuessed: false,

@@ -19,10 +19,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plane, LogIn, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context"; // Import DEFAULT_APP_SETTINGS
+import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/language-context";
+import { useTranslation } from "@/hooks/use-translation";
 
 function getTimeOfDay(dateWithTime: Date): string {
   const hour = getHours(dateWithTime);
@@ -33,6 +35,8 @@ function getTimeOfDay(dateWithTime: Date): string {
 
 export default function HomePage() {
   const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); 
+  const { language, dateLocale } = useLanguage();
+  const { t } = useTranslation();
 
   const [location, setLocation] = React.useState<string>(""); 
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
@@ -47,7 +51,7 @@ export default function HomePage() {
   const [isLoadingOutfit, setIsLoadingOutfit] = React.useState(false);
   const [isLoadingActivity, setIsLoadingActivity] = React.useState(false); 
   
-  const [isLoadingProfile, setIsLoadingProfile] = React.useState(true); 
+  const [isLoadingProfileFromEditor, setIsLoadingProfileFromEditor] = React.useState(true); 
   const [isLoadingPreferences, setIsLoadingPreferences] = React.useState(true); 
 
   const { toast } = useToast();
@@ -57,7 +61,7 @@ export default function HomePage() {
 
   const handleProfileUpdate = React.useCallback((newProfile: string) => {
     setFamilyProfile(newProfile || appSettings.defaultFamilyProfile); 
-    setIsLoadingProfile(false); 
+    setIsLoadingProfileFromEditor(false); 
   }, [appSettings.defaultFamilyProfile]);
 
   const handleDateChange = React.useCallback((date: Date | undefined) => {
@@ -69,11 +73,10 @@ export default function HomePage() {
   }, []);
 
   React.useEffect(() => {
-    // Update family profile if app settings change and no user profile is set
-    if (!isLoadingProfile && (familyProfile === DEFAULT_APP_SETTINGS.defaultFamilyProfile || familyProfile === "")) {
+    if (!isLoadingProfileFromEditor && (familyProfile === DEFAULT_APP_SETTINGS.defaultFamilyProfile || familyProfile === "")) {
         setFamilyProfile(appSettings.defaultFamilyProfile);
     }
-  }, [appSettings.defaultFamilyProfile, isLoadingProfile, familyProfile]);
+  }, [appSettings.defaultFamilyProfile, isLoadingProfileFromEditor, familyProfile]);
 
 
   React.useEffect(() => {
@@ -167,7 +170,7 @@ export default function HomePage() {
 
   React.useEffect(() => {
     async function getWeatherAndSuggestions() {
-      if (authIsLoading || isLoadingProfile || isLoadingPreferences || appSettingsLoading || !location) return; 
+      if (authIsLoading || isLoadingProfileFromEditor || isLoadingPreferences || appSettingsLoading || !location) return; 
       if (!selectedDate) return;
 
       const CACHE_DURATION_MS = appSettings.cacheDurationMs;
@@ -222,8 +225,8 @@ export default function HomePage() {
                     if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
                         if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
                             toast({
-                                title: "Weather Update!",
-                                description: `Weather in ${data.location} has changed. Currently ${data.temperature}°C and ${data.condition.toLowerCase()}.`,
+                                title: t('weather') + " " + t('success') + "!", // Example of translating toast
+                                description: `${t('weatherInLocation', { location: data.location })} ${t('weatherHasChanged')} ${data.temperature}°C ${t('and')} ${data.condition.toLowerCase()}.`,
                             });
                         }
                     }
@@ -238,14 +241,14 @@ export default function HomePage() {
           }
         } catch (error: any) {
           console.error(`Client-side fetch weather error for "${location}":`, error.message);
-          let toastDescription = error.message || `Could not retrieve weather data for "${location}". Please try a different location or check again later.`;
+          let toastDescription = error.message || t('weatherApiDefaultError');
           if (error.message && error.message.toLowerCase().includes("api key")) {
-             toastDescription = `Could not retrieve weather data: API key issue. Please contact support.`;
+             toastDescription = t('weatherApiApiKeyError');
           } else if (error.message && error.message.toLowerCase().includes("no matching location found")) {
-            toastDescription = `No weather data found for '${location}'. Please ensure the location is correct.`;
+            toastDescription = t('weatherApiNoLocationError', {location: location});
           }
           toast({ 
-            title: "Weather Data Error", 
+            title: t('weatherApiErrorTitle'), 
             description: toastDescription, 
             variant: "destructive" 
           });
@@ -260,8 +263,8 @@ export default function HomePage() {
 
       if (currentFetchedWeatherData && effectiveFamilyProfile) {
         const currentTOD = getTimeOfDay(selectedDate);
-        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${effectiveFamilyProfile}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
-        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${effectiveFamilyProfile}-${currentTOD}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}`;
+        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${effectiveFamilyProfile}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}-${language}`;
+        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${effectiveFamilyProfile}-${currentTOD}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}-${language}`;
 
         const cachedOutfitString = localStorage.getItem(outfitCacheKey);
         let outfitFromCache = false;
@@ -285,13 +288,13 @@ export default function HomePage() {
           setIsLoadingOutfit(true);
           setOutfitSuggestions(null);
           try {
-            const clothingInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, location: currentFetchedWeatherData.location };
+            const clothingInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, location: currentFetchedWeatherData.location, language: language };
             const clothing = await suggestClothing(clothingInput);
             setOutfitSuggestions(clothing);
             localStorage.setItem(outfitCacheKey, JSON.stringify({ timestamp: currentTime, data: clothing }));
           } catch (error: any) {
             console.error("Failed to get outfit suggestions:", error);
-            toast({ title: "Outfit Suggestion Error", description: error.message || "Could not fetch outfit suggestions. AI service may be unavailable.", variant: "destructive" });
+            toast({ title: t('outfitSuggestionErrorTitle'), description: error.message || t('outfitSuggestionErrorDefault'), variant: "destructive" });
             setOutfitSuggestions(null); 
           } finally {
             setIsLoadingOutfit(false);
@@ -320,13 +323,13 @@ export default function HomePage() {
           setIsLoadingActivity(true);
           setActivitySuggestions(null);
           try {
-            const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location };
+            const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location, language: language };
             const activities = await suggestActivities(activityInput);
             setActivitySuggestions(activities);
             localStorage.setItem(activityCacheKey, JSON.stringify({ timestamp: currentTime, data: activities }));
           } catch (error: any) {
             console.error("Failed to get activity suggestions:", error);
-            toast({ title: "Activity Suggestion Error", description: error.message || "Could not fetch activity suggestions. AI service may be unavailable.", variant: "destructive" });
+            toast({ title: t('activitySuggestionErrorTitle'), description: error.message || t('activitySuggestionErrorDefault'), variant: "destructive" });
             setActivitySuggestions(null); 
           } finally {
             setIsLoadingActivity(false);
@@ -340,11 +343,11 @@ export default function HomePage() {
       }
     }
 
-    if (!authIsLoading && !isLoadingProfile && !isLoadingPreferences && !appSettingsLoading && location) { 
+    if (!authIsLoading && !isLoadingProfileFromEditor && !isLoadingPreferences && !appSettingsLoading && location) { 
       getWeatherAndSuggestions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfile, isLoadingPreferences, user, appSettingsLoading, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.defaultFamilyProfile]); 
+  }, [location, selectedDate, familyProfile, toast, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, user, appSettingsLoading, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.defaultFamilyProfile, language, t]); 
   
   const getFilteredHourlyForecast = (): HourlyForecastData[] => {
     if (!weatherData?.forecast || weatherData.isGuessed) return []; 
@@ -439,27 +442,27 @@ export default function HomePage() {
         <CardHeader className="text-center">
           <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
             <Sparkles className="text-accent h-6 w-6" />
-            Ready for an Adventure?
+            {t('readyForAdventure')}
             <Sparkles className="text-accent h-6 w-6" />
           </CardTitle>
           <CardDescription className="!mt-2 text-foreground/90">
-            Use our <strong className="font-semibold text-primary">Travel Planner</strong> to get daily weather forecasts and AI-powered suggestions for your entire trip!
+            {t('travelPlannerPrompt')}
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-3">
           <p className="text-sm text-muted-foreground">
-            Plan your packing and activities with ease. {!isAuthenticated && "Sign up or log in to save your plans and enable (simulated) email notifications!"}
+            {t('travelPlannerSubPrompt', { authPrompt: !isAuthenticated ? t('travelPlannerAuthPrompt') : ''})}
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
             <Link href="/notifications" passHref>
               <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Plane className="mr-2 h-5 w-5" /> Explore Travel Plans
+                <Plane className="mr-2 h-5 w-5" /> {t('exploreTravelPlans')}
               </Button>
             </Link>
             {!isAuthenticated && (
               <Link href="/login" passHref>
                 <Button variant="outline" className="w-full sm:w-auto">
-                  <LogIn className="mr-2 h-5 w-5" /> Sign Up / Log In
+                  <LogIn className="mr-2 h-5 w-5" /> {t('signUpLogin')}
                 </Button>
               </Link>
             )}
@@ -469,4 +472,3 @@ export default function HomePage() {
     </div>
   );
 }
-

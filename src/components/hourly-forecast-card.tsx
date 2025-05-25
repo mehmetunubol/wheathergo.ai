@@ -2,23 +2,30 @@
 "use client";
 
 import * as React from "react";
-import type { HourlyForecastData, WeatherData } from "@/types"; // Added WeatherData
+import type { HourlyForecastData } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWeatherIcon } from "@/components/icons";
-import { Clock, Info } from "lucide-react"; // Added Info
-import { format as formatDateFns } from "date-fns";
+import { Clock, Info } from "lucide-react";
+import { format as formatDateFns, parseISO } from "date-fns"; // Added parseISO
+import { useLanguage } from "@/contexts/language-context";
+import { useTranslation } from "@/hooks/use-translation";
 
 
 interface HourlyForecastCardProps {
   forecastData: HourlyForecastData[] | undefined;
   isLoading: boolean;
-  date: Date;
-  isParentGuessed?: boolean; // To know if the main weather data was an AI guess
+  date: Date; // This should be a Date object
+  isParentGuessed?: boolean;
 }
 
 export function HourlyForecastCard({ forecastData, isLoading, date, isParentGuessed }: HourlyForecastCardProps) {
-  const forecastTitle = `Forecast for ${formatDateFns(date, "MMM d, yyyy")}`;
+  const { dateLocale } = useLanguage();
+  const { t } = useTranslation();
+  
+  // Ensure 'date' is a valid Date object before formatting
+  const forecastTitle = isValidDate(date) ? t('hourlyForecastForDate', { date: formatDateFns(date, "MMM d, yyyy", { locale: dateLocale }) }) : t('hourlyForecastForDate', { date: '...' });
+
 
   if (isLoading) {
     return (
@@ -56,8 +63,8 @@ export function HourlyForecastCard({ forecastData, isLoading, date, isParentGues
             <Info size={18} />
             <span>
               {isParentGuessed 
-                ? "Detailed hourly forecast is not available for AI-estimated weather."
-                : "No detailed hourly forecast available for this period."
+                ? t('hourlyForecastNotAvailable')
+                : t('hourlyForecastNotAvailableForPeriod')
               }
             </span>
           </div>
@@ -78,13 +85,30 @@ export function HourlyForecastCard({ forecastData, isLoading, date, isParentGues
           {forecastData.map((item, index) => {
             const isDayForIcon = typeof item.isDay === 'boolean' ? item.isDay : true;
             const IconComponent = getWeatherIcon(item.conditionCode, item.condition, isDayForIcon);
+            let displayTime = item.time;
+            // If time contains a date part (from next day forecasts), format it
+            try {
+              const parsedItemTime = parseISO(item.time); // Assuming item.time could be an ISO string for next day
+              if (isValidDate(parsedItemTime)) {
+                displayTime = formatDateFns(parsedItemTime, "MMM d, h a", { locale: dateLocale });
+              } else {
+                // Try parsing as just time if it's not a full ISO string
+                const timeMatch = item.time.match(/(\d{1,2}:\d{2})\s*(AM|PM)?/i);
+                if (timeMatch) {
+                   displayTime = item.time; // Keep original if it's like "3 PM"
+                }
+              }
+            } catch (e) {
+              // Fallback to original item.time if parsing fails
+            }
+
             return (
               <div
                 key={index}
                 className="flex flex-col items-center space-y-1 p-3 border rounded-lg min-w-[100px] bg-card shadow-sm text-center" 
                 role="listitem"
               >
-                <p className="text-xs font-medium text-muted-foreground">{item.time}</p>
+                <p className="text-xs font-medium text-muted-foreground">{displayTime}</p>
                 <IconComponent size={32} className="text-accent my-1" data-ai-hint={`${item.condition} weather ${isDayForIcon ? "day" : "night"}`} />
                 <p className="text-sm font-semibold">{item.temperature}°C</p>
               </div>
@@ -94,4 +118,8 @@ export function HourlyForecastCard({ forecastData, isLoading, date, isParentGues
       </CardContent>
     </Card>
   );
+}
+
+function isValidDate(d: any): d is Date {
+  return d instanceof Date && !isNaN(d.getTime());
 }

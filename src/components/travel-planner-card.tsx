@@ -17,30 +17,39 @@ import { Plane, Mail, Clock, Trash2, PlusCircle, ListChecks, CalendarDays, MapPi
 import { format, parseISO, isValid, isBefore, startOfDay } from "date-fns";
 import { TravelPlanDetailsDialog } from "./travel-plan-details-dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useAppSettings } from "@/contexts/app-settings-context"; // Import useAppSettings
+import { useAppSettings } from "@/contexts/app-settings-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, getDocs, deleteDoc, doc, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
+import { collection, addDoc, query, getDocs, deleteDoc, doc, onSnapshot, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/language-context";
+import { useTranslation } from "@/hooks/use-translation";
 
-const generateTimeOptions = () => {
+const generateTimeOptions = (t: (key: any) => string) => { // Added t argument
   const options = [];
   for (let i = 0; i < 24; i++) {
     const hourString = i.toString().padStart(2, "0");
     const value = `${hourString}:00`;
     let label;
-    if (i === 0) label = "12:00 AM (Midnight)";
-    else if (i === 12) label = "12:00 PM (Noon)";
+    if (i === 0) label = `12:00 AM (${t('midnight') || 'Midnight'})`; // Example: t('midnight')
+    else if (i === 12) label = `12:00 PM (${t('noon') || 'Noon'})`; // Example: t('noon')
     else if (i < 12) label = `${i}:00 AM`;
     else label = `${i - 12}:00 PM`;
     options.push({ value, label });
   }
   return options;
 };
-const timeOptions = generateTimeOptions();
+
 
 export function TravelPlannerCard() {
-  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); // Get app settings
+  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings();
+  const { dateLocale, language } = useLanguage();
+  const { t } = useTranslation();
+  
+  // Memoize timeOptions based on language
+  const timeOptions = React.useMemo(() => generateTimeOptions(t), [t]);
+
+
   const [travelPlans, setTravelPlans] = React.useState<TravelPlanItem[]>([]);
   
   const [newTripName, setNewTripName] = React.useState("");
@@ -48,7 +57,6 @@ export function TravelPlannerCard() {
   const [newEmail, setNewEmail] = React.useState("");
   const [newStartDate, setNewStartDate] = React.useState<Date | undefined>(undefined);
   const [newEndDate, setNewEndDate] = React.useState<Date | undefined>(undefined);
-  // Use default from appSettings once loaded
   const [newTime, setNewTime] = React.useState<string>(appSettings.defaultNotificationTime);
   const [newNotificationFrequency, setNewNotificationFrequency] = React.useState<NotificationFrequency>(appSettings.defaultNotificationFrequency);
   const [newTripContext, setNewTripContext] = React.useState<string>("");
@@ -89,7 +97,7 @@ export function TravelPlannerCard() {
         setIsLoadingPlans(false);
       }, (error) => {
         console.error("Error fetching travel plans:", error);
-        toast({ title: "Error", description: "Could not load travel plans.", variant: "destructive" });
+        toast({ title: t('error'), description: "Could not load travel plans.", variant: "destructive" });
         setIsLoadingPlans(false);
       });
       return () => unsubscribe(); 
@@ -97,24 +105,24 @@ export function TravelPlannerCard() {
       setTravelPlans([]);
       setIsLoadingPlans(false);
     }
-  }, [isAuthenticated, user, authIsLoading, toast]);
+  }, [isAuthenticated, user, authIsLoading, toast, t]);
 
 
   const handleAddTravelPlan = async () => {
     if (!isAuthenticated || !user) {
-      toast({ title: "Login Required", description: "Please log in to add travel plans.", variant: "destructive" });
+      toast({ title: t('loginToManageTravelPlans'), description: "Please log in to add travel plans.", variant: "destructive" });
       return;
     }
     if (!newTripName.trim() || !newLocation.trim() || !newEmail.trim() || !newStartDate || !newEndDate) {
-      toast({ title: "Missing Information", description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ title: t('error'), description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      toast({ title: t('error'), description: "Please enter a valid email address.", variant: "destructive" });
       return;
     }
     if (isBefore(newEndDate, newStartDate)) {
-      toast({ title: "Invalid Date Range", description: "End date cannot be before the start date.", variant: "destructive" });
+      toast({ title: t('error'), description: "End date cannot be before the start date.", variant: "destructive" });
       return;
     }
 
@@ -143,16 +151,16 @@ export function TravelPlannerCard() {
       setNewEmail("");
       setNewStartDate(undefined);
       setNewEndDate(undefined);
-      setNewTime(appSettings.defaultNotificationTime); // Reset to default from settings
-      setNewNotificationFrequency(appSettings.defaultNotificationFrequency); // Reset to default
+      setNewTime(appSettings.defaultNotificationTime);
+      setNewNotificationFrequency(appSettings.defaultNotificationFrequency);
       setNewTripContext("");
       toast({
-        title: "Travel Plan Added",
-        description: `Notifications for ${newPlanData.tripName} will be configured.`,
+        title: t('travelPlans'),
+        description: `${newPlanData.tripName} ${t('notificationsConfigured') || 'notifications will be configured.'}`,
       });
     } catch (error) {
       console.error("Error adding travel plan to Firestore:", error);
-      toast({ title: "Error", description: "Could not add travel plan. Please try again.", variant: "destructive" });
+      toast({ title: t('error'), description: "Could not add travel plan. Please try again.", variant: "destructive" });
     } finally {
       setIsAddingPlan(false);
     }
@@ -161,17 +169,17 @@ export function TravelPlannerCard() {
   const handleDeleteTravelPlan = async (id: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (!isAuthenticated || !user) {
-      toast({ title: "Login Required", description: "Please log in to delete travel plans.", variant: "destructive" });
+      toast({ title: t('loginToManageTravelPlans'), description: "Please log in to delete travel plans.", variant: "destructive" });
       return;
     }
 
     try {
       const planDocRef = doc(db, "users", user.uid, "travelPlans", id);
       await deleteDoc(planDocRef);
-      toast({ title: "Travel Plan Removed", description: "The travel plan has been deleted." });
+      toast({ title: t('travelPlans'), description: "The travel plan has been deleted." });
     } catch (error) {
       console.error("Error deleting travel plan from Firestore:", error);
-      toast({ title: "Error", description: "Could not delete travel plan.", variant: "destructive" });
+      toast({ title: t('error'), description: "Could not delete travel plan.", variant: "destructive" });
     }
   };
 
@@ -194,72 +202,70 @@ export function TravelPlannerCard() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
-            <Plane className="text-primary" /> My Travel Plans
+            <Plane className="text-primary" /> {t('myTravelPlans')}
           </CardTitle>
           <CardDescription>
-            Plan your trips and receive weather updates and suggestions.
+            {t('manageTravelPlansDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {!isAuthenticated ? (
             <Alert variant="default" className="mb-6">
               <AlertTriangle className="h-5 w-5" />
-              <AlertTitle className="font-semibold">Log In to Manage Travel Plans</AlertTitle>
+              <AlertTitle className="font-semibold">{t('loginToManageTravelPlans')}</AlertTitle>
               <AlertDescription>
-                Please log in to save and manage your travel plans in the cloud.
-                Your plans will be accessible across devices and notifications (simulated) can be enabled.
-                If you add plans now, they will be stored locally and may be lost.
+                {t('loginToManageTravelPlansDetails')}
                 <br />
                 <Link href="/login" passHref>
                   <span className="font-medium text-primary hover:underline cursor-pointer">
-                    Log in or Sign up
+                    {t('loginOrSignUpLink')}
                   </span>
                 </Link>
               </AlertDescription>
             </Alert>
           ) : (
           <div className="space-y-4 p-4 border rounded-md bg-card">
-            <h3 className="text-lg font-semibold flex items-center gap-2"><PlusCircle size={20} /> Add New Travel Plan</h3>
+            <h3 className="text-lg font-semibold flex items-center gap-2"><PlusCircle size={20} /> {t('addNewTravelPlan')}</h3>
 
             <div>
-              <Label htmlFor="trip-name">Trip Name</Label>
-              <Input id="trip-name" value={newTripName} onChange={(e) => setNewTripName(e.target.value)} placeholder="E.g., Summer Vacation" className="mt-1" />
+              <Label htmlFor="trip-name">{t('tripNameLabel')}</Label>
+              <Input id="trip-name" value={newTripName} onChange={(e) => setNewTripName(e.target.value)} placeholder={t('tripNamePlaceholder')} className="mt-1" />
             </div>
             <div>
-              <Label htmlFor="travel-location">Location</Label>
-              <Input id="travel-location" value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="E.g., Paris, Tokyo" className="mt-1" />
+              <Label htmlFor="travel-location">{t('travelLocationLabel')}</Label>
+              <Input id="travel-location" value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder={t('travelLocationPlaceholder')} className="mt-1" />
             </div>
             <div>
-              <Label htmlFor="travel-email">Email Address (for notifications)</Label>
-              <Input id="travel-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="your.email@example.com" className="mt-1" />
+              <Label htmlFor="travel-email">{t('emailForNotificationsLabel')}</Label>
+              <Input id="travel-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={t('emailPlaceholderNotifications')} className="mt-1" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start-date">{t('startDateLabel')}</Label>
                 <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
                       <CalendarDays className="mr-2 h-4 w-4" />
-                      {newStartDate ? format(newStartDate, "PPP") : "Select start date"}
+                      {newStartDate ? format(newStartDate, "PPP", { locale: dateLocale }) : t('selectStartDate')}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={newStartDate} onSelect={(date) => { setNewStartDate(date); setIsStartDatePickerOpen(false); if (date && newEndDate && isBefore(newEndDate, date)) setNewEndDate(undefined); }} disabled={(date) => isBefore(date, startOfDay(new Date()))} initialFocus />
+                    <Calendar mode="single" selected={newStartDate} onSelect={(date) => { setNewStartDate(date); setIsStartDatePickerOpen(false); if (date && newEndDate && isBefore(newEndDate, date)) setNewEndDate(undefined); }} disabled={(date) => isBefore(date, startOfDay(new Date()))} initialFocus locale={dateLocale} />
                   </PopoverContent>
                 </Popover>
               </div>
               <div>
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end-date">{t('endDateLabel')}</Label>
                  <Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
                       <CalendarDays className="mr-2 h-4 w-4" />
-                      {newEndDate ? format(newEndDate, "PPP") : "Select end date"}
+                      {newEndDate ? format(newEndDate, "PPP", { locale: dateLocale }) : t('selectEndDate')}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={newEndDate} onSelect={(date) => { setNewEndDate(date); setIsEndDatePickerOpen(false); }} disabled={(date) => (newStartDate && isBefore(date, newStartDate)) || isBefore(date, startOfDay(new Date()))} initialFocus />
+                    <Calendar mode="single" selected={newEndDate} onSelect={(date) => { setNewEndDate(date); setIsEndDatePickerOpen(false); }} disabled={(date) => (newStartDate && isBefore(date, newStartDate)) || isBefore(date, startOfDay(new Date()))} initialFocus locale={dateLocale} />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -267,34 +273,37 @@ export function TravelPlannerCard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="travel-time">Notification Time</Label>
+                <Label htmlFor="travel-time">{t('notificationTimeLabel')}</Label>
                 <Select value={newTime} onValueChange={setNewTime}>
-                  <SelectTrigger id="travel-time" className="w-full mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
+                  <SelectTrigger id="travel-time" className="w-full mt-1"><SelectValue placeholder={t('selectTime')} /></SelectTrigger>
                   <SelectContent>{timeOptions.map((option) => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="notification-frequency">Notification Frequency</Label>
+                <Label htmlFor="notification-frequency">{t('notificationFrequencyLabel')}</Label>
                 <Select value={newNotificationFrequency} onValueChange={(value) => setNewNotificationFrequency(value as NotificationFrequency)}>
-                  <SelectTrigger id="notification-frequency" className="w-full mt-1"><SelectValue placeholder="Select frequency" /></SelectTrigger>
-                  <SelectContent><SelectItem value="daily">Daily</SelectItem><SelectItem value="weekly">Weekly</SelectItem></SelectContent>
+                  <SelectTrigger id="notification-frequency" className="w-full mt-1"><SelectValue placeholder={t('selectFrequency')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">{t('daily')}</SelectItem>
+                    <SelectItem value="weekly">{t('weekly')}</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div>
-              <Label htmlFor="trip-context">Trip-Specific Context (Optional)</Label>
-              <Textarea id="trip-context" value={newTripContext} onChange={(e) => setNewTripContext(e.target.value)} placeholder="E.g., Business meetings, prefer indoor activities." className="mt-1 min-h-[80px]" />
+              <Label htmlFor="trip-context">{t('tripContextOptionalLabel')}</Label>
+              <Textarea id="trip-context" value={newTripContext} onChange={(e) => setNewTripContext(e.target.value)} placeholder={t('tripContextPlaceholder')} className="mt-1 min-h-[80px]" />
             </div>
 
             <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan || !isAuthenticated}>
-              {isAddingPlan ? "Adding..." : <><PlusCircle className="mr-2" /> Add Travel Plan</>}
+              {isAddingPlan ? t('addingTravelPlanButton') : <><PlusCircle className="mr-2" /> {t('addTravelPlanButton')}</>}
             </Button>
           </div>
           )}
 
           <div className="space-y-3">
-             <h3 className="text-lg font-semibold flex items-center gap-2 pt-4 border-t"><ListChecks size={20} /> Your Travel Plans</h3>
+             <h3 className="text-lg font-semibold flex items-center gap-2 pt-4 border-t"><ListChecks size={20} /> {t('yourTravelPlansList')}</h3>
             {isLoadingPlans && isAuthenticated && (
                 <div className="space-y-3">
                     <Skeleton className="h-24 w-full" />
@@ -302,10 +311,10 @@ export function TravelPlannerCard() {
                 </div>
             )}
             {!isLoadingPlans && isAuthenticated && travelPlans.length === 0 && (
-              <p className="text-sm text-muted-foreground">No travel plans added yet.</p>
+              <p className="text-sm text-muted-foreground">{t('noTravelPlansYet')}</p>
             )}
             {!isAuthenticated && !authIsLoading && (
-                 <p className="text-sm text-muted-foreground">Log in to see your saved travel plans.</p>
+                 <p className="text-sm text-muted-foreground">{t('loginToSeePlans')}</p>
             )}
             {!isLoadingPlans && isAuthenticated && (
               <ul className="space-y-3">
@@ -316,8 +325,7 @@ export function TravelPlannerCard() {
                     endDate = parseISO(plan.endDate);
                   } catch (e) {
                     console.error("Invalid date format in plan:", plan, e);
-                    // Skip rendering this plan or render an error state for it
-                    return <li key={plan.id} className="p-4 border rounded-md bg-destructive/10 text-destructive">Invalid date format for plan: {plan.tripName}</li>;
+                    return <li key={plan.id} className="p-4 border rounded-md bg-destructive/10 text-destructive">{t('error')}: Invalid date format for plan: {plan.tripName}</li>;
                   }
                   return (
                   <li
@@ -333,15 +341,15 @@ export function TravelPlannerCard() {
                         <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Mail size={12} /> {plan.email}</p>
                         <p className="text-muted-foreground text-xs flex items-center gap-1.5">
                           <CalendarDays size={12} />
-                          {isValid(startDate) ? format(startDate, "MMM d, yyyy") : "Invalid date"} - {isValid(endDate) ? format(endDate, "MMM d, yyyy") : "Invalid date"}
+                          {isValid(startDate) ? format(startDate, "PPP", { locale: dateLocale }) : t('error')} - {isValid(endDate) ? format(endDate, "PPP", { locale: dateLocale }) : t('error')}
                         </p>
-                        <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Clock size={12} /> At {plan.notificationTimeLabel || plan.notificationTime}</p>
-                        <p className="text-muted-foreground text-xs flex items-center gap-1.5 capitalize"><Repeat size={12} /> {plan.notificationFrequency}</p>
-                        {plan.tripContext && (<p className="text-muted-foreground text-xs flex items-start gap-1.5 pt-1"><Info size={12} className="mt-0.5 shrink-0" /> <span className="italic truncate">Context: {plan.tripContext.length > 50 ? `${plan.tripContext.substring(0, 50)}...` : plan.tripContext}</span></p>)}
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Clock size={12} /> {t('atTime', {time: plan.notificationTimeLabel || plan.notificationTime})}</p> {/* Example for 'At {time}' */}
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5 capitalize"><Repeat size={12} /> {plan.notificationFrequency === 'daily' ? t('daily') : t('weekly')}</p>
+                        {plan.tripContext && (<p className="text-muted-foreground text-xs flex items-start gap-1.5 pt-1"><Info size={12} className="mt-0.5 shrink-0" /> <span className="italic truncate">{t('context')}: {plan.tripContext.length > 50 ? `${plan.tripContext.substring(0, 50)}...` : plan.tripContext}</span></p>)} {/* Example for 'Context: ...' */}
                       </div>
                       <div className="flex items-center self-end sm:self-center space-x-2">
-                        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}} aria-label="View summary" className="px-2 py-1 h-auto text-xs"><Eye className="mr-1.5 h-3 w-3" /> View</Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteTravelPlan(plan.id, e)} aria-label="Delete travel plan" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}} aria-label={t('viewSummary')} className="px-2 py-1 h-auto text-xs"><Eye className="mr-1.5 h-3 w-3" /> {t('viewSummary')}</Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteTravelPlan(plan.id, e)} aria-label={t('deleteTravelPlan')} className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   </li>
@@ -352,7 +360,7 @@ export function TravelPlannerCard() {
         </CardContent>
          <CardFooter>
           <p className="text-xs text-muted-foreground">
-            Daily/Weekly email notifications with suggestions are simulated. Full functionality would require a backend service.
+            {t('notificationsSimulatedFooter')}
           </p>
         </CardFooter>
       </Card>

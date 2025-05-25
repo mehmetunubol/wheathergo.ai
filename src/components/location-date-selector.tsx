@@ -16,19 +16,21 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface LocationDateSelectorProps {
   location: string;
   onLocationChange: (location: string) => void;
   selectedDate: Date;
   onDateChange: (date: Date | undefined) => void;
-  maxApiForecastDays: number; // Added prop
+  maxApiForecastDays: number;
 }
 
 const capitalizeFirstLetter = (str: string): string => {
   if (!str) return str;
   if (str.toLowerCase() === "auto:ip") {
-    return str;
+    return str; // Don't capitalize 'auto:ip' for internal logic
   }
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
@@ -38,10 +40,13 @@ export function LocationDateSelector({
   onLocationChange,
   selectedDate,
   onDateChange,
-  maxApiForecastDays, // Use prop
+  maxApiForecastDays,
 }: LocationDateSelectorProps) {
+  const { dateLocale } = useLanguage();
+  const { t } = useTranslation();
+  
   const [currentLocationInput, setCurrentLocationInput] = React.useState(
-    propsLocation.toLowerCase() === "auto:ip" ? "" : capitalizeFirstLetter(propsLocation)
+     propsLocation.toLowerCase() === "auto:ip" ? "" : capitalizeFirstLetter(propsLocation)
   );
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   
@@ -124,6 +129,7 @@ export function LocationDateSelector({
       selected={provisionalDatePart}
       onSelect={setProvisionalDatePart}
       initialFocus
+      locale={dateLocale}
     />
   );
 
@@ -132,13 +138,13 @@ export function LocationDateSelector({
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <MapPin className="text-primary" />
-          Location & Date/Time
+          {t('locationDateTime')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
           <Label htmlFor="location" className="text-sm font-medium">
-            Location
+            {t('locationLabel')}
           </Label>
           <Input
             id="location"
@@ -147,13 +153,13 @@ export function LocationDateSelector({
             onChange={(e) => setCurrentLocationInput(e.target.value)}
             onBlur={handleLocationCommit}
             onKeyDown={handleLocationKeyDown}
-            placeholder="E.g., New York, London or Current Location"
+            placeholder={t('locationPlaceholder')}
             className="mt-1"
           />
         </div>
         <div>
           <Label htmlFor="date-time" className="text-sm font-medium">
-            Date & Time
+            {t('dateTimeLabel')}
           </Label>
           <Popover open={isCalendarOpen} onOpenChange={handlePopoverOpenChange}>
             <PopoverTrigger asChild>
@@ -166,7 +172,7 @@ export function LocationDateSelector({
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP, p") : <span>Pick a date and time</span>}
+                {selectedDate ? format(selectedDate, "PPP, p", { locale: dateLocale }) : <span>{t('pickDateTime')}</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
@@ -178,7 +184,7 @@ export function LocationDateSelector({
                       <div className="flex items-start gap-1.5">
                         <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
                         <p className="text-xs">
-                          Forecasts beyond {maxApiForecastDays + 1} days or in the past are AI-generated estimates. Check closer to the date for official forecasts.
+                          {t('dateForecastTooltip', { maxDays: maxApiForecastDays + 1 })}
                         </p>
                       </div>
                     </TooltipContent>
@@ -188,7 +194,7 @@ export function LocationDateSelector({
                 CalendarWithTooltip
               )}
               <div className="p-3 border-t border-border">
-                <Label htmlFor="time-select" className="text-sm font-medium">Select Time</Label>
+                <Label htmlFor="time-select" className="text-sm font-medium">{t('selectTime')}</Label>
                 <Input 
                   id="time-select"
                   type="time" 
@@ -199,10 +205,10 @@ export function LocationDateSelector({
               </div>
               <div className="p-2 border-t border-border flex justify-end space-x-2">
                 <Button variant="ghost" size="sm" onClick={handleCancelDateTime}>
-                  <XIcon className="mr-1 h-4 w-4" /> Cancel
+                  <XIcon className="mr-1 h-4 w-4" /> {t('cancel')}
                 </Button>
                 <Button variant="default" size="sm" onClick={handleConfirmDateTime}>
-                  <Check className="mr-1 h-4 w-4" /> Confirm
+                  <Check className="mr-1 h-4 w-4" /> {t('confirm')}
                 </Button>
               </div>
             </PopoverContent>

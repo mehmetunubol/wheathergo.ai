@@ -3,12 +3,14 @@
 
 import type { WeatherData } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Droplets, Wind, Compass, Info } from "lucide-react"; // Added Info
+import { Droplets, Wind, Compass, Info } from "lucide-react";
 import { getWeatherIcon } from "@/components/icons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+import { format, parseISO } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/language-context";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface CurrentWeatherCardProps {
   weatherData: WeatherData | null;
@@ -16,6 +18,9 @@ interface CurrentWeatherCardProps {
 }
 
 export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCardProps) {
+  const { dateLocale } = useLanguage();
+  const { t } = useTranslation();
+
   if (isLoading) {
     return (
       <Card className="shadow-lg">
@@ -48,40 +53,44 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
     return (
        <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-xl">Weather Information</CardTitle>
-          <CardDescription>No weather data available. Please select a location and date.</CardDescription>
+          <CardTitle className="text-xl">{t('weatherInLocation', { location: '...' })}</CardTitle>
+          <CardDescription>{t('currentWeatherLoading')}</CardDescription>
         </CardHeader>
-         <CardContent><p>Select a location and date to see weather details.</p></CardContent>
+         <CardContent><p>{t('currentWeatherLoading')}</p></CardContent>
       </Card>
     );
   }
 
   const isDayForIcon = typeof weatherData.isDay === 'boolean' ? weatherData.isDay : true;
   const IconComponent = getWeatherIcon(weatherData.conditionCode, weatherData.condition, isDayForIcon);
-  const formattedDate = format(new Date(weatherData.date), "EEEE, MMMM do, yyyy");
+  const formattedDate = format(parseISO(weatherData.date), "EEEE, MMMM do, yyyy", { locale: dateLocale });
 
   return (
     <Card className="shadow-lg bg-card">
       <CardHeader>
         <CardTitle className="text-xl text-primary-foreground bg-primary -m-6 p-6 rounded-t-lg flex items-center justify-between">
-          <span>Weather in {weatherData.location}</span>
+          <span>{t('weatherInLocation', { location: weatherData.location })}</span>
           <Compass />
         </CardTitle>
         <CardDescription className="pt-4 text-sm">
           {formattedDate}
            {weatherData.isGuessed && (
-            <TooltipProvider>
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <span className="ml-2 mt-1 inline-flex items-center text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300 cursor-help">
-                    <Info size={12} className="mr-1" /> AI
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs bg-background border-border shadow-lg p-2">
-                  <p className="text-xs">This is an AI-generated estimate. For an official forecast, please check closer to the date.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+             <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        className="ml-2 mt-0 p-0 h-auto appearance-none focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-1 inline-flex items-center text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300 cursor-help hover:bg-amber-200"
+                        aria-label="AI Estimated Forecast Information"
+                    >
+                        <Info size={12} className="mr-1" /> AI
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" className="max-w-xs bg-background border-border shadow-lg p-3 text-xs">
+                    <p>{t('aiEstimateTooltip')}</p>
+                </PopoverContent>
+            </Popover>
           )}
         </CardDescription>
       </CardHeader>
@@ -98,14 +107,14 @@ export function CurrentWeatherCard({ weatherData, isLoading }: CurrentWeatherCar
           <div className="flex items-center gap-2 mt-4">
             <Droplets className="text-primary" />
             <div>
-              <p className="text-xs text-muted-foreground">Humidity</p>
+              <p className="text-xs text-muted-foreground">{t('humidity')}</p>
               <p className="font-semibold">{weatherData.humidity}%</p>
             </div>
           </div>
           <div className="flex items-center gap-2 mt-4">
             <Wind className="text-primary" />
             <div>
-              <p className="text-xs text-muted-foreground">Wind</p>
+              <p className="text-xs text-muted-foreground">{t('wind')}</p>
               <p className="font-semibold">{weatherData.windSpeed} km/h</p>
             </div>
           </div>
