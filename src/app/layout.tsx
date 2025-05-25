@@ -5,7 +5,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { MainNav } from '@/components/main-nav';
 import { AuthProvider } from '@/hooks/use-auth';
-import GoogleAnalytics from '@/components/google-analytics'; // Import the GA component
+import { AppSettingsProvider } from '@/contexts/app-settings-context'; // Added import
+import GoogleAnalytics from '@/components/google-analytics';
 import { Suspense } from 'react';
 
 const geistSans = Geist({
@@ -20,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Weatherugo',
-  description: 'Your personal guide for weather-based clothing and activity suggestions.',
+  description: 'Your personal weather & travel companion.',
 };
 
 export default function RootLayout({
@@ -39,13 +40,15 @@ export default function RootLayout({
       )}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <AuthProvider>
-          <MainNav />
-          <main className="flex-grow container mx-auto max-w-2xl p-4">
-            {children}
-          </main>
-          <footer className="text-center py-4 text-sm text-muted-foreground border-t mt-auto">
-            <p>&copy; {new Date().getFullYear()} Weatherugo. All rights reserved.</p>
-          </footer>
+          <AppSettingsProvider> {/* Added AppSettingsProvider */}
+            <MainNav />
+            <main className="flex-grow container mx-auto max-w-2xl p-4">
+              {children}
+            </main>
+            <footer className="text-center py-4 text-sm text-muted-foreground border-t mt-auto">
+              <p>&copy; {new Date().getFullYear()} Weatherugo. Your personal weather & travel companion.</p>
+            </footer>
+          </AppSettingsProvider> {/* Added AppSettingsProvider */}
         </AuthProvider>
         <Toaster />
       </body>

@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, ListChecks, Settings } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button"; // Added Button import
+import { Button } from "@/components/ui/button";
 
 export default function AdminDashboardPage() {
   return (
@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
              <p className="text-sm text-muted-foreground">
-              (Coming soon)
+              (Coming soon - View/Edit user travel plans)
             </p>
             {/* <Link href="/admin/travel-plans" passHref><Button variant="outline" className="mt-2 w-full">Manage Travel Plans</Button></Link> */}
           </CardContent>
@@ -46,10 +46,9 @@ export default function AdminDashboardPage() {
             <CardDescription>Configure global application parameters.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              (Coming soon)
-            </p>
-            {/* <Link href="/admin/app-settings" passHref><Button variant="outline" className="mt-2 w-full">Configure Settings</Button></Link> */}
+            <Link href="/admin/app-settings" passHref>
+              <Button variant="outline" className="mt-2 w-full">Configure Settings</Button>
+            </Link>
           </CardContent>
         </Card>
       </div>

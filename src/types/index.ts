@@ -32,8 +32,8 @@ export interface User {
   email: string | null;
   photoURL?: string | null;
   isAdmin?: boolean;
-  isActive?: boolean; // New: To mark user as active or inactive
-  createdAt?: string; // New: ISO string for creation date
+  isActive?: boolean;
+  createdAt?: string;
 }
 
 export interface FamilyProfile {
@@ -52,7 +52,7 @@ export type NotificationFrequency = 'daily' | 'weekly';
 
 // Represents the data structure for storing fetched suggestions in Firestore
 export interface StoredTripSegmentData {
-  segmentId: 'start' | 'middle' | 'end'; // To identify the segment (matches UI segment id)
+  segmentId: 'start' | 'middle' | 'end';
   date: string; // ISO string of the segment's date
   weatherData: WeatherData;
   clothingSuggestions: ClothingSuggestionsOutput;
@@ -120,10 +120,21 @@ export interface GuessedWeatherOutput {
 export interface UserPreferences {
   lastLocation?: string;
   lastSelectedDate?: string;
+  // defaultLocation is now part of AppSettings
 }
 
 // Firestore document for main user profile
 export interface UserProfileData {
     description: string;
     updatedAt: string; // ISO string
+}
+
+// Application-wide settings configurable by admin
+export interface AppSettings {
+  defaultLocation: string;
+  cacheDurationMs: number;
+  maxApiForecastDays: number;
+  defaultFamilyProfile: string;
+  defaultNotificationTime: string; // e.g., "09:00"
+  defaultNotificationFrequency: NotificationFrequency; // 'daily' | 'weekly'
 }
