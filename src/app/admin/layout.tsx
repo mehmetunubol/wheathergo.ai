@@ -7,7 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Home, LogOut, ShieldAlert } from "lucide-react";
+import { Home, LogOut, ShieldAlert, ShieldCheck } from "lucide-react"; // Added ShieldCheck
 
 export default function AdminLayout({
   children,
