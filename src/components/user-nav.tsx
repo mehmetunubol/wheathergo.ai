@@ -14,11 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, Settings, CreditCard, LogIn } from "lucide-react";
+import { LogOut, Settings, CreditCard, LogIn, ShieldCheck } from "lucide-react"; // Added ShieldCheck for Admin
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function UserNav() {
-  const { isAuthenticated, user, logout, isLoading } = useAuth();
+  const { isAuthenticated, user, logout, isLoading, isAdmin } = useAuth(); // Added isAdmin
 
   if (isLoading) {
     return <Skeleton className="h-8 w-8 rounded-full" />;
@@ -79,6 +79,14 @@ export function UserNav() {
               <span>Settings</span>
             </DropdownMenuItem>
           </Link>
+           {isAdmin && ( // Conditionally render Admin Panel link
+            <Link href="/admin" passHref>
+              <DropdownMenuItem>
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                <span>Admin Panel</span>
+              </DropdownMenuItem>
+            </Link>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>

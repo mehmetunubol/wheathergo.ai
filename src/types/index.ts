@@ -26,6 +26,14 @@ export interface WeatherData {
   isGuessed?: boolean; // True if this data is AI-generated
 }
 
+export interface User { // User type as defined in useAuth
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL?: string | null;
+  isAdmin?: boolean; // Added for admin role
+}
+
 export interface FamilyProfile {
   description: string;
 }
@@ -106,3 +114,15 @@ export interface GuessedWeatherOutput {
   locationName?: string; // AI might return a resolved location name
 }
 
+// Firestore document for storing user preferences
+export interface UserPreferences {
+  lastLocation?: string;
+  lastSelectedDate?: string; // ISO string
+  defaultLocation?: string;
+}
+
+// Firestore document for main user profile
+export interface UserProfileData {
+    description: string;
+    updatedAt: string; // ISO string
+}

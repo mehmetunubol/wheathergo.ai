@@ -13,23 +13,16 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  // signInWithRedirect, // Alternative for mobile
-  // OAuthProvider // For Apple, requires more setup
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-interface User {
-  uid: string;
-  displayName: string | null;
-  email: string | null;
-  photoURL?: string | null; 
-}
+import type { User } from '@/types'; // Import our User type
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  isAdmin: boolean; // Added isAdmin
   loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>; // Placeholder for now
+  loginWithApple: () => Promise<void>; 
   loginWithEmailPassword: (email: string, password: string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -38,7 +31,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper to map Firebase error codes to user-friendly messages
 const getAuthErrorMessage = (errorCode: string): string => {
   switch (errorCode) {
     case 'auth/invalid-email':
@@ -62,6 +54,7 @@ const getAuthErrorMessage = (errorCode: string): string => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -71,23 +64,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         const userRef = doc(db, "users", firebaseUser.uid);
         const userSnap = await getDoc(userRef);
+        let userData: User;
+        let userIsAdmin = false;
+
         if (!userSnap.exists()) {
           // Create user document if it doesn't exist
-          await setDoc(userRef, {
+          const newUserDocData = {
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             createdAt: new Date().toISOString(),
             photoURL: firebaseUser.photoURL,
-          });
+            isAdmin: false, // Default isAdmin to false for new users
+          };
+          await setDoc(userRef, newUserDocData);
+          userData = {
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName,
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL,
+            isAdmin: false,
+          };
+          userIsAdmin = false;
+        } else {
+          const firestoreData = userSnap.data();
+          userData = {
+            uid: firebaseUser.uid,
+            displayName: firestoreData.displayName || firebaseUser.displayName,
+            email: firestoreData.email || firebaseUser.email,
+            photoURL: firestoreData.photoURL || firebaseUser.photoURL,
+            isAdmin: firestoreData.isAdmin || false,
+          };
+          userIsAdmin = firestoreData.isAdmin || false;
         }
-        setUser({ 
-          uid: firebaseUser.uid, 
-          displayName: firebaseUser.displayName, 
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL,
-        });
+        setUser(userData);
+        setIsAdmin(userIsAdmin);
       } else {
         setUser(null);
+        setIsAdmin(false);
       }
       setIsLoading(false);
     });
@@ -96,19 +109,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const handleAuthSuccess = () => {
-    router.push('/');
+    // Redirect to home, unless they are trying to access admin and are admin
+    if (pathname.startsWith('/admin') && isAdmin) {
+        // Stay or go to admin dashboard if coming from login
+        if (pathname === '/login') router.push('/admin');
+        // else, they are already in admin, do nothing or refresh data
+    } else if (pathname === '/login' || pathname.startsWith('/admin')) { 
+        router.push('/');
+    }
+    // For other pages, onAuthStateChanged handles keeping them there or redirecting if needed.
   };
 
   const loginWithGoogle = async () => {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      // onAuthStateChanged will handle setting user and redirecting if needed
-      handleAuthSuccess();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      // Ensure user document is created/updated with isAdmin: false if new
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          createdAt: new Date().toISOString(),
+          photoURL: firebaseUser.photoURL,
+          isAdmin: false, // Explicitly set isAdmin to false
+        });
+      }
+      // onAuthStateChanged will handle setting user and admin state
+      // handleAuthSuccess(); // onAuthStateChanged will handle this implicitly now
     } catch (error: any) {
       console.error("Google login error:", error);
-      setIsLoading(false); // Ensure loading is false on error
+      setIsLoading(false);
       throw new Error(getAuthErrorMessage(error.code));
     }
   };
@@ -122,7 +156,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      handleAuthSuccess();
+      // onAuthStateChanged will handle setting user and admin state
+      // handleAuthSuccess();
     } catch (error: any) {
       console.error("Email login error:", error);
       setIsLoading(false);
@@ -134,20 +169,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Set a default display name
       const displayName = email.split('@')[0];
       await updateProfile(userCredential.user, { displayName });
       
-      // Ensure Firestore document is created for new email/password user
       const userRef = doc(db, "users", userCredential.user.uid);
       await setDoc(userRef, {
         email: userCredential.user.email,
         displayName: displayName,
         createdAt: new Date().toISOString(),
-        photoURL: null, // No photoURL for email/password sign-up by default
-      }, { merge: true }); // Use merge if there's a chance of race condition with onAuthStateChanged
-
-      handleAuthSuccess();
+        photoURL: null, 
+        isAdmin: false, // Default new sign-ups to isAdmin: false
+      });
+      // onAuthStateChanged will handle setting user and admin state
+      // handleAuthSuccess();
     } catch (error: any) {
       console.error("Email sign-up error:", error);
       setIsLoading(false);
@@ -157,17 +191,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     setIsLoading(true);
+    const wasAdmin = isAdmin; // check if user was admin before logout
     try {
       await signOut(auth);
-      if (pathname !== '/login' && pathname !== '/') {
+      // User state will be null, isAdmin will be false after onAuthStateChanged runs
+      if (pathname.startsWith('/admin') || (wasAdmin && pathname !== '/login')) {
+         router.push('/login'); // If admin logs out from admin, go to login
+      } else if (pathname !== '/login' && pathname !== '/') {
         router.push('/');
-      } else if (pathname !== '/login') {
-        router.push('/login');
       }
+      // No explicit push to /login needed if not admin and not on specific pages
     } catch (error: any) {
       console.error("Logout error:", error);
-      setIsLoading(false); // Ensure loading is false on error
       throw new Error(getAuthErrorMessage(error.code));
+    } finally {
+        setIsLoading(false); // Ensure loading is false after logout attempt
     }
   };
   
@@ -177,6 +215,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={{ 
       isAuthenticated, 
       user, 
+      isAdmin, // Expose isAdmin
       loginWithGoogle, 
       loginWithApple, 
       loginWithEmailPassword,
