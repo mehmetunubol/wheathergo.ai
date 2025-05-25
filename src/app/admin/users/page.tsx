@@ -1,7 +1,7 @@
 
 "use client";
 
-import * => React from "react";
+import React from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
 import type { User } from "@/types";
