@@ -173,11 +173,15 @@ export const translations: AllTranslations = {
     // Location Date Selector
     dateForecastTooltip: "Forecasts beyond {maxDays} days or in the past are AI-generated estimates. Check closer to the date for official forecasts.",
     // User Nav
+    user: "User",
+    loginButton: "Login",
     subscriptionBilling: "Subscription & Billing",
     adminPanel: "Admin Panel",
+    // Time related
     midnight: "Midnight",
     noon: "Noon",
     atTime: "At {time}",
+    // Trip related
     context: "Context",
     noneProvided: "None provided.",
     travelSuggestionsFor: "Travel suggestions for",
@@ -193,9 +197,93 @@ export const translations: AllTranslations = {
     loadingPlanDetails: "Loading plan details...",
     loadingPlanDetailsError: "Could not load plan details. Please try again or go back.",
     travelPlanNotFound: "Travel plan not found.",
-    user: "User",
-    loginButton: "Login",
+    aiEst: "AI Est.",
+    notificationsConfigured: "notifications will be configured.",
 
+    // Subscription Page
+    subscriptionTitle: "Subscription & Billing",
+    subscriptionDescription: "Manage your Weatherugo subscription and payment details.",
+    comingSoon: "Coming Soon!",
+    comingSoonDesc: "Advanced subscription features and payment options will be available here shortly. Thank you for your patience and interest in supporting Weatherugo!",
+    backToHome: "Back to Home",
+
+    // Privacy Page
+    privacyTitleFull: "Privacy Policy for Weatherugo",
+    effectiveDate: "Effective Date: {date}",
+
+    // Terms Page
+    termsTitleFull: "Terms of Service for Weatherugo",
+
+    // Admin Layout
+    adminSiteName: "Weatherugo Admin",
+    mainSiteNav: "Main Site",
+    adminFooter: "© {year} Weatherugo Admin Panel",
+    verifyingAccess: "Verifying access...",
+    accessDeniedOrLoading: "Access denied or loading...",
+    goToLogin: "Go to Login",
+    goToHomepage: "Go to Homepage",
+
+    // Admin Dashboard
+    adminDashboardTitle: "Admin Dashboard",
+    adminDashboardDescription: "Welcome to the Weatherugo Admin Panel. Manage users, travel plans, and application settings from here.",
+    userManagementCardTitle: "User Management",
+    userManagementCardDesc: "View and manage user accounts.",
+    manageUsersButton: "Manage Users",
+    travelPlansCardTitle: "Travel Plans",
+    travelPlansCardDesc: "Oversee all user travel plans.",
+    appSettingsCardTitle: "Application Settings",
+    appSettingsCardDesc: "Configure global application parameters.",
+    configureSettingsButton: "Configure Settings",
+    comingSoonParenthesis: "(Coming soon)",
+
+    // Admin Users Page
+    userManagementTitle: "User Management",
+    userIdTableHeader: "User ID",
+    emailTableHeader: "Email",
+    displayNameTableHeader: "Display Name",
+    createdAtTableHeader: "Created At",
+    isAdminTableHeader: "Is Admin",
+    isActiveTableHeader: "Is Active",
+    actionsTableHeader: "Actions",
+    noUsersFound: "No users found.",
+    demoteAdminAria: "Demote from admin",
+    promoteAdminAria: "Promote to admin",
+    deactivateUserAria: "Deactivate user",
+    activateUserAria: "Activate user",
+    deleteUserDialogTitle: "Are you sure?",
+    deleteUserDialogDesc: "This action will delete the user's Firestore record. It will NOT delete their Firebase Authentication account. The user might be able to log in again, creating a new record.",
+    deleteRecordButton: "Delete Record",
+    errorFetchingUsers: "Error Fetching Users",
+    adminStatusUpdated: "Admin Status Updated",
+    userStatusUpdated: "User Status Updated",
+    userDeleted: "User Deleted",
+    deleteFailed: "Delete Failed",
+    updateFailed: "Update Failed",
+    actionDenied: "Action Denied",
+
+    // Admin App Settings Page
+    appSettingsTitleFull: "Application Settings",
+    appSettingsDescriptionFull: "Manage global configurations for the Weatherugo application.",
+    locationForecastCardTitle: "Location & Forecast",
+    defaultLocationLabel: "Default Location",
+    autoIpHint: "Set to 'auto:ip' for IP-based detection.",
+    maxApiForecastDaysLabel: "Max Real Forecast Days (WeatherAPI)",
+    maxApiForecastDaysHint: "Days (0-9) for direct API forecast. Beyond this, AI estimates are used. WeatherAPI typically provides 0 (today) to 2 (day after tomorrow).",
+    cachingProfilesCardTitle: "Caching & Profiles",
+    cacheDurationLabel: "Cache Duration (ms) for Homepage",
+    cacheDurationHint: "Duration in milliseconds for local weather/suggestion cache (e.g., 3600000 for 1 hour).",
+    defaultFamilyProfileLabel: "Default Family Profile",
+    defaultFamilyProfileHint: "Used as a fallback if a user hasn't set their own profile.",
+    defaultFamilyProfileExample: "A single adult enjoying good weather.",
+    travelPlanDefaultsCardTitle: "Travel Plan Defaults",
+    defaultNotificationTimeLabel: "Default Notification Time for Travel Plans",
+    defaultNotificationFrequencyLabel: "Default Notification Frequency",
+    saveAllSettingsButton: "Save All Settings",
+    errorLoadingSettingsTitle: "Error Loading Settings",
+    tryAgainButton: "Try Again",
+
+    // README
+    readmeTitle: "Weatherugo Guide",
   },
   tr: {
     // Common
@@ -251,8 +339,8 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    termsPreamble: "Devam ederek",
-    termsAnd: "ve",
+    termsPreamble: "Devam ederek ",
+    termsAnd: " ve ",
     termsConclusion: " kabul etmiş olursunuz.",
     termsOfService: "Hizmet Şartları'nı",
     privacyPolicy: "Gizlilik Politikası'nı",
@@ -360,11 +448,15 @@ export const translations: AllTranslations = {
     // Location Date Selector
     dateForecastTooltip: "{maxDays} günden sonraki veya geçmişteki tahminler YZ tarafından oluşturulmuş tahminlerdir. Resmi tahminler için tarihe yakın kontrol edin.",
     // User Nav
+    user: "Kullanıcı",
+    loginButton: "Giriş Yap",
     subscriptionBilling: "Abonelik & Faturalama",
     adminPanel: "Yönetici Paneli",
+    // Time related
     midnight: "Gece Yarısı",
     noon: "Öğlen",
     atTime: "Saat {time}",
+    // Trip related
     context: "Notlar",
     noneProvided: "Belirtilmemiş.",
     travelSuggestionsFor: "İçin seyahat önerileri:",
@@ -380,10 +472,94 @@ export const translations: AllTranslations = {
     loadingPlanDetails: "Plan detayları yükleniyor...",
     loadingPlanDetailsError: "Plan detayları yüklenemedi. Lütfen tekrar deneyin veya geri dönün.",
     travelPlanNotFound: "Seyahat planı bulunamadı.",
-    user: "Kullanıcı",
-    loginButton: "Giriş Yap",
+    aiEst: "YZ Tahmini",
+    notificationsConfigured: "bildirimleri yapılandırılacak.",
+
+    // Subscription Page
+    subscriptionTitle: "Abonelik & Faturalama",
+    subscriptionDescription: "Weatherugo aboneliğinizi ve ödeme detaylarınızı yönetin.",
+    comingSoon: "Yakında!",
+    comingSoonDesc: "Gelişmiş abonelik özellikleri ve ödeme seçenekleri yakında burada olacak. Sabrınız ve Weatherugo'yu desteklemeye olan ilginiz için teşekkür ederiz!",
+    backToHome: "Ana Sayfaya Dön",
+
+    // Privacy Page
+    privacyTitleFull: "Weatherugo Gizlilik Politikası",
+    effectiveDate: "Geçerlilik Tarihi: {date}",
+
+    // Terms Page
+    termsTitleFull: "Weatherugo Hizmet Şartları",
+
+    // Admin Layout
+    adminSiteName: "Weatherugo Yönetim",
+    mainSiteNav: "Ana Site",
+    adminFooter: "© {year} Weatherugo Yönetim Paneli",
+    verifyingAccess: "Erişim doğrulanıyor...",
+    accessDeniedOrLoading: "Erişim reddedildi veya yükleniyor...",
+    goToLogin: "Giriş Sayfasına Git",
+    goToHomepage: "Ana Sayfaya Git",
+
+    // Admin Dashboard
+    adminDashboardTitle: "Yönetim Paneli",
+    adminDashboardDescription: "Weatherugo Yönetim Paneli'ne hoş geldiniz. Kullanıcıları, seyahat planlarını ve uygulama ayarlarını buradan yönetin.",
+    userManagementCardTitle: "Kullanıcı Yönetimi",
+    userManagementCardDesc: "Kullanıcı hesaplarını görüntüleyin ve yönetin.",
+    manageUsersButton: "Kullanıcıları Yönet",
+    travelPlansCardTitle: "Seyahat Planları",
+    travelPlansCardDesc: "Tüm kullanıcı seyahat planlarını denetleyin.",
+    appSettingsCardTitle: "Uygulama Ayarları",
+    appSettingsCardDesc: "Genel uygulama parametrelerini yapılandırın.",
+    configureSettingsButton: "Ayarları Yapılandır",
+    comingSoonParenthesis: "(Yakında)",
+
+    // Admin Users Page
+    userManagementTitle: "Kullanıcı Yönetimi",
+    userIdTableHeader: "Kullanıcı ID",
+    emailTableHeader: "E-posta",
+    displayNameTableHeader: "Görünen Ad",
+    createdAtTableHeader: "Oluşturulma Tarihi",
+    isAdminTableHeader: "Yönetici mi",
+    isActiveTableHeader: "Aktif mi",
+    actionsTableHeader: "Eylemler",
+    noUsersFound: "Kullanıcı bulunamadı.",
+    demoteAdminAria: "Yöneticilikten çıkar",
+    promoteAdminAria: "Yönetici yap",
+    deactivateUserAria: "Kullanıcıyı devre dışı bırak",
+    activateUserAria: "Kullanıcıyı etkinleştir",
+    deleteUserDialogTitle: "Emin misiniz?",
+    deleteUserDialogDesc: "Bu işlem, kullanıcının Firestore kaydını silecektir. Firebase Authentication hesabını SİLMEZ. Kullanıcı tekrar giriş yaparak yeni bir kayıt oluşturabilir.",
+    deleteRecordButton: "Kaydı Sil",
+    errorFetchingUsers: "Kullanıcılar Getirilirken Hata",
+    adminStatusUpdated: "Yönetici Durumu Güncellendi",
+    userStatusUpdated: "Kullanıcı Durumu Güncellendi",
+    userDeleted: "Kullanıcı Silindi",
+    deleteFailed: "Silme Başarısız",
+    updateFailed: "Güncelleme Başarısız",
+    actionDenied: "Eylem Reddedildi",
+
+    // Admin App Settings Page
+    appSettingsTitleFull: "Uygulama Ayarları",
+    appSettingsDescriptionFull: "Weatherugo uygulaması için genel yapılandırmaları yönetin.",
+    locationForecastCardTitle: "Konum & Tahmin",
+    defaultLocationLabel: "Varsayılan Konum",
+    autoIpHint: "IP tabanlı algılama için 'auto:ip' olarak ayarlayın.",
+    maxApiForecastDaysLabel: "Maks. Gerçek Tahmin Günleri (WeatherAPI)",
+    maxApiForecastDaysHint: "Doğrudan API tahmini için gün sayısı (0-9). Bunun ötesinde YZ tahminleri kullanılır. WeatherAPI genellikle 0 (bugün) ila 2 (yarından sonraki gün) sağlar.",
+    cachingProfilesCardTitle: "Önbellekleme & Profiller",
+    cacheDurationLabel: "Ana Sayfa İçin Önbellek Süresi (ms)",
+    cacheDurationHint: "Yerel hava durumu/öneri önbelleği için milisaniye cinsinden süre (örn: 1 saat için 3600000).",
+    defaultFamilyProfileLabel: "Varsayılan Aile Profili",
+    defaultFamilyProfileHint: "Kullanıcı kendi profilini ayarlamadıysa geri dönüş olarak kullanılır.",
+    defaultFamilyProfileExample: "İyi havanın tadını çıkaran bekar bir yetişkin.",
+    travelPlanDefaultsCardTitle: "Seyahat Planı Varsayılanları",
+    defaultNotificationTimeLabel: "Seyahat Planları İçin Varsayılan Bildirim Saati",
+    defaultNotificationFrequencyLabel: "Varsayılan Bildirim Sıklığı",
+    saveAllSettingsButton: "Tüm Ayarları Kaydet",
+    errorLoadingSettingsTitle: "Ayarlar Yüklenirken Hata",
+    tryAgainButton: "Tekrar Dene",
+
+    // README
+    readmeTitle: "Weatherugo Rehberi",
   },
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
-

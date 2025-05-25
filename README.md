@@ -1,3 +1,4 @@
+
 # Weatherugo Guide
 
 This is the README for the Weatherugo Guide project.
@@ -13,7 +14,7 @@ To get this project up and running locally, follow these steps:
 
 2.  **Configuration:**
     *   Create a `.env.local` file in the root directory.
-    *   Add necessary environment variables for API keys (e.g., weather API, potentially Firebase configuration if used). Refer to any `.env.example` file if provided.
+    *   Add necessary environment variables for API keys (e.g., weather API, Firebase configuration). Refer to any `.env.example` file if provided.
 
 3.  **Start Development Server:**
     *   Run `npm run dev` or `yarn dev`.

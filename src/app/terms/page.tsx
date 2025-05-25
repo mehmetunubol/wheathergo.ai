@@ -5,8 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function TermsOfServicePage() {
+  const { t } = useTranslation();
+  // Placeholder date, replace with dynamic or actual date
+  const effectiveDatePlaceholder = "[Insert Date]";
+
   return (
     <div className="flex flex-col items-center justify-center py-12">
       <Card className="w-full max-w-3xl shadow-xl">
@@ -14,9 +19,9 @@ export default function TermsOfServicePage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
             <FileText className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Terms of Service for Weatherugo</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('termsTitleFull')}</CardTitle>
           <CardDescription className="!mt-2">
-            Effective Date: [Insert Date]
+            {t('effectiveDate', { date: effectiveDatePlaceholder })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 text-sm leading-relaxed text-foreground/90">
@@ -83,10 +88,10 @@ export default function TermsOfServicePage() {
           </section>
           
           <div className="text-center pt-4">
-            <Link href="/" passHref>
+            <Link href="/">
               <Button variant="outline">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Home
+                {t('backToHome')}
               </Button>
             </Link>
           </div>
