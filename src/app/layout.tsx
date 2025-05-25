@@ -6,9 +6,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { MainNav } from '@/components/main-nav';
 import { AuthProvider } from '@/hooks/use-auth';
 import { AppSettingsProvider } from '@/contexts/app-settings-context';
-import { LanguageProvider } from '@/contexts/language-context'; // Added import
+import { LanguageProvider } from '@/contexts/language-context'; 
 import GoogleAnalytics from '@/components/google-analytics';
 import { Suspense } from 'react';
+import { FooterContent } from '@/components/footer-content'; // Import the new client component
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -41,17 +42,15 @@ export default function RootLayout({
       )}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <AuthProvider>
-          <LanguageProvider> {/* Added LanguageProvider */}
+          <LanguageProvider>
             <AppSettingsProvider>
               <MainNav />
               <main className="flex-grow container mx-auto max-w-2xl p-4">
                 {children}
               </main>
-              <footer className="text-center py-4 text-sm text-muted-foreground border-t mt-auto">
-                <p>&copy; {new Date().getFullYear()} Weatherugo by Flow Teknoloji. Your personal weather & travel companion.</p>
-              </footer>
+              <FooterContent /> {/* Use the new client component */}
             </AppSettingsProvider>
-          </LanguageProvider> {/* Added LanguageProvider */}
+          </LanguageProvider>
         </AuthProvider>
         <Toaster />
       </body>

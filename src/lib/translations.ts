@@ -156,7 +156,7 @@ export const translations: AllTranslations = {
     aiSuggestionErrorForDay: "AI suggestions are currently unavailable for this day. Please try again later.",
     weatherDataUnavailableForDay: "Weather data unavailable for this day. Suggestions cannot be loaded.",
     // footer
-    footerText: "© {year} Weatherugo by Flow Teknoloji. Your personal guide for weather-based clothing and activity suggestions.",
+    footerText: "© {year} Weatherugo by Flow Teknoloji. Your personal weather & travel companion.",
     // Current Weather Card
     humidity: "Humidity",
     wind: "Wind",
@@ -563,3 +563,5 @@ export const translations: AllTranslations = {
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
+
+    
