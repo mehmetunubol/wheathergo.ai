@@ -64,12 +64,23 @@ export const translations: AllTranslations = {
     orContinueWith: "Or continue with",
     signInWithGoogle: "Sign in with Google",
     signInWithApple: "Sign in with Apple (Simulated)",
-    termsPreamble: "By continuing, you agree to our",
-    termsAnd: "and",
-    termsConclusion: ".",
+    agreeToTermsPreamble: "I have read and agree to the ",
+    agreeToTermsConjunction: " and ",
+    agreeToTermsPostamble: ".",
     termsOfService: "Terms of Service",
     privacyPolicy: "Privacy Policy",
     appleSignInSimulated: "Apple Sign-In is currently simulated and will use Google Sign-In.",
+    mustAgreeToTermsError: "You must agree to the Terms of Service and Privacy Policy to sign up.",
+    agreeToTermsCheckboxAriaLabel: "Agree to Terms of Service and Privacy Policy",
+    // Firebase Auth Errors
+    authErrorDefault: "An unexpected authentication error occurred. Please try again.",
+    authErrorInvalidEmail: "Invalid email address format.",
+    authErrorUserDisabled: "This user account has been disabled.",
+    authErrorUserNotFound: "No user found with this email.",
+    authErrorWrongPassword: "Incorrect password. Please try again.",
+    authErrorEmailAlreadyInUse: "This email address is already in use by another account.",
+    authErrorWeakPassword: "Password is too weak. Please choose a stronger password.",
+    authErrorOperationNotAllowed: "Email/password accounts are not enabled.",
     // Settings Page
     appSettingsTitle: "Application Settings",
     familyProfileTitle: "Family Profile",
@@ -284,6 +295,9 @@ export const translations: AllTranslations = {
 
     // README
     readmeTitle: "Weatherugo Guide",
+    // Validation
+    validationErrorEmailPasswordRequired: "Please enter both email and password.",
+    validationErrorEmailPasswordSignUpRequired: "Please enter both email and password to sign up.",
   },
   tr: {
     // Common
@@ -339,12 +353,23 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    termsPreamble: "Devam ederek ",
-    termsAnd: " ve ",
-    termsConclusion: " kabul etmiş olursunuz.",
+    agreeToTermsPreamble: "", // Empty for Turkish, links come first
+    agreeToTermsConjunction: " ve ",
+    agreeToTermsPostamble: " okudum ve kabul ediyorum.",
     termsOfService: "Hizmet Şartları'nı",
     privacyPolicy: "Gizlilik Politikası'nı",
     appleSignInSimulated: "Apple ile Giriş şu anda simüle edilmiştir ve Google Girişini kullanacaktır.",
+    mustAgreeToTermsError: "Kaydolmak için Hizmet Şartları'nı ve Gizlilik Politikası'nı kabul etmelisiniz.",
+    agreeToTermsCheckboxAriaLabel: "Hizmet Şartları ve Gizlilik Politikası'nı kabul et",
+    // Firebase Auth Errors
+    authErrorDefault: "Beklenmedik bir kimlik doğrulama hatası oluştu. Lütfen tekrar deneyin.",
+    authErrorInvalidEmail: "Geçersiz e-posta adresi formatı.",
+    authErrorUserDisabled: "Bu kullanıcı hesabı devre dışı bırakılmış.",
+    authErrorUserNotFound: "Bu e-posta ile kullanıcı bulunamadı.",
+    authErrorWrongPassword: "Yanlış şifre. Lütfen tekrar deneyin.",
+    authErrorEmailAlreadyInUse: "Bu e-posta adresi başka bir hesap tarafından zaten kullanılıyor.",
+    authErrorWeakPassword: "Şifre çok zayıf. Lütfen daha güçlü bir şifre seçin.",
+    authErrorOperationNotAllowed: "E-posta/şifre hesapları etkin değil.",
     // Settings Page
     appSettingsTitle: "Uygulama Ayarları",
     familyProfileTitle: "Aile Profili",
@@ -431,7 +456,7 @@ export const translations: AllTranslations = {
     aiSuggestionErrorForDay: "Bu gün için YZ önerileri şu anda mevcut değil. Lütfen daha sonra tekrar deneyin.",
     weatherDataUnavailableForDay: "Bu gün için hava durumu verisi mevcut değil. Öneriler yüklenemiyor.",
      // footer
-    footerText: "© {year} Weatherugo, Flow Teknoloji tarafından. Hava durumuna dayalı giysi ve aktivite önerileri için kişisel rehberiniz.",
+    footerText: "© {year} Weatherugo, Flow Teknoloji tarafından. Kişisel hava durumu & seyahat rehberiniz.",
     // Current Weather Card
     humidity: "Nem",
     wind: "Rüzgar",
@@ -559,9 +584,10 @@ export const translations: AllTranslations = {
 
     // README
     readmeTitle: "Weatherugo Rehberi",
+    // Validation
+    validationErrorEmailPasswordRequired: "Lütfen hem e-posta hem de şifreyi girin.",
+    validationErrorEmailPasswordSignUpRequired: "Kaydolmak için lütfen hem e-posta hem de şifreyi girin.",
   },
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
-
-    

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox import
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Chrome, Apple, Mail, KeyRound } from "lucide-react";
@@ -29,6 +30,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [agreedToTerms, setAgreedToTerms] = React.useState(false); // State for terms agreement
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
@@ -40,7 +42,7 @@ export default function LoginPage() {
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast({ title: t('error'), description: "Please enter both email and password.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorEmailPasswordRequired'), variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
@@ -49,8 +51,8 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Email sign-in error:", error);
       toast({
-        title: t('signIn') + " " + t('error'), // Example "Sign In Error"
-        description: error.message || "An unexpected error occurred. Please try again.",
+        title: t('signIn') + " " + t('error'),
+        description: error.message || t('authErrorDefault'),
         variant: "destructive",
       });
     } finally {
@@ -61,7 +63,15 @@ export default function LoginPage() {
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault(); 
     if (!email || !password) {
-      toast({ title: t('error'), description: "Please enter both email and password to sign up.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorEmailPasswordSignUpRequired'), variant: "destructive" });
+      return;
+    }
+    if (!agreedToTerms) {
+      toast({
+        title: t('error'),
+        description: t('mustAgreeToTermsError'),
+        variant: "destructive",
+      });
       return;
     }
     setIsSubmitting(true);
@@ -70,8 +80,8 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Email sign-up error:", error);
       toast({
-        title: t('signUp') + " " + t('error'), // Example "Sign Up Error"
-        description: error.message || "Could not create account. Please try again.",
+        title: t('signUp') + " " + t('error'),
+        description: error.message || t('authErrorDefault'),
         variant: "destructive",
       });
     } finally {
@@ -156,6 +166,38 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+
+            {/* Terms Agreement Checkbox */}
+            <div className="items-top flex space-x-2 pt-2">
+              <Checkbox
+                id="terms-agreement-checkbox"
+                checked={agreedToTerms}
+                onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                disabled={isSubmitting}
+                aria-label={t('agreeToTermsCheckboxAriaLabel')}
+              />
+              <div className="grid gap-1.5 leading-none">
+                <label
+                  htmlFor="terms-agreement-checkbox"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {t('agreeToTermsPreamble')}
+                  <Link href="/terms" target="_blank" rel="noopener noreferrer">
+                    <span className="underline underline-offset-4 hover:text-primary">
+                      {t('termsOfService')}
+                    </span>
+                  </Link>
+                  {t('agreeToTermsConjunction')}
+                  <Link href="/privacy" target="_blank" rel="noopener noreferrer">
+                    <span className="underline underline-offset-4 hover:text-primary">
+                      {t('privacyPolicy')}
+                    </span>
+                  </Link>
+                  {t('agreeToTermsPostamble')}
+                </label>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-2">
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? t('saving') : t('signIn')}
@@ -187,19 +229,19 @@ export default function LoginPage() {
           </Button>
           
           <p className="px-8 text-center text-sm text-muted-foreground">
-             {t('termsPreamble')}{' '}
-             <Link href="/terms">
-                <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                    {t('termsOfService')}
-                </span>
-             </Link>
-             {' '}{t('termsAnd')}{' '}
-             <Link href="/privacy">
-                <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                    {t('privacyPolicy')}
-                </span>
-             </Link>
-             {t('termsConclusion')}
+            {t('agreeToTermsPreamble')}
+            <Link href="/terms">
+              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                {t('termsOfService')}
+              </span>
+            </Link>
+            {t('agreeToTermsConjunction')}
+            <Link href="/privacy">
+              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
+                {t('privacyPolicy')}
+              </span>
+            </Link>
+            {t('agreeToTermsPostamble')}
           </p>
         </CardContent>
          <CardFooter className="flex flex-col items-center text-center">
