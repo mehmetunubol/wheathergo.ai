@@ -53,16 +53,16 @@ export function MainNav() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-2 mr-6">
           <Cloud className="h-7 w-7 text-primary" />
           <div>
             <span className="font-bold text-lg">Weatherugo</span>
-            <p className={cn(
-              "text-xs text-muted-foreground",
-              isMobile ? "hidden" : "block" // Hide tagline on mobile main bar, show on desktop
+            <span className={cn(
+              "text-xs text-muted-foreground ml-2",
+               isMobile ? "hidden" : "inline" // Hide tagline on mobile main bar, show on desktop
             )}>
               - {t('appTagline')}
-            </p>
+            </span>
           </div>
         </Link>
 
@@ -79,6 +79,9 @@ export function MainNav() {
                    <Cloud className="h-6 w-6 text-primary" /> Weatherugo
                 </SheetTitle>
               </SheetHeader>
+              <div className="p-4 border-b"> {/* Moved UserNav here and added padding + border */}
+                <UserNav />
+              </div>
               <nav className="flex flex-col space-y-1 p-4">
                 {navItems.map((item) => (
                   <SheetClose asChild key={item.href}>
@@ -96,13 +99,11 @@ export function MainNav() {
                   </SheetClose>
                 ))}
               </nav>
-              <div className="mt-auto p-4 border-t">
-                <UserNav />
-              </div>
+              {/* UserNav was previously in mt-auto p-4 border-t */}
             </SheetContent>
           </Sheet>
         ) : (
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 ml-auto">
             <nav className="flex items-center gap-4 text-sm lg:gap-6">
               {navItems.map((item) => (
                 <Link
