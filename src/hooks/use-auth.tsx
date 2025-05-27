@@ -9,6 +9,7 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signOut,
+  OAuthProvider,
   User as FirebaseUser,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -215,8 +216,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const loginWithApple = async () => {
-    console.warn("Apple Sign-In is not fully implemented. Using Google Sign-In as a placeholder.");
-    await loginWithGoogle(); 
+    setIsLoading(true);
+    const provider = new OAuthProvider('apple.com');
+    // Optionally, add scopes or parameters based on your Apple Sign-In configuration
+    // provider.addScope('email');
+    // provider.addScope('name');
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        const newUserDocData: User = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          createdAt: new Date().toISOString(),
+          photoURL: firebaseUser.photoURL,
+          isAdmin: false,
+          isActive: true,
+        };
+        await setDoc(userRef, newUserDocData);
+        await notifyAdminsOfNewUser(newUserDocData); // Notify admins for new Apple user
+      }
+    } catch (error: any) {
+      console.error("Apple login error:", error);
+      setIsLoading(false);
+      throw new Error(getAuthErrorMessage(error.code));
+    }
   };
 
   const loginWithEmailPassword = async (email: string, password: string) => {

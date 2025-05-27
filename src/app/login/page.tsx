@@ -133,6 +133,22 @@ export default function LoginPage() {
           <CardDescription>{t('loginDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Button className="w-full" onClick={loginWithGoogle} disabled={isSubmitting}>
+            <Chrome className="mr-2 h-5 w-5" /> 
+            {t('signInWithGoogle')}
+          </Button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                {t('orContinueWith')}
+              </span>
+            </div>
+          </div>
+
           <form onSubmit={handleEmailSignIn} className="space-y-4">
             <div>
               <Label htmlFor="email">{t('emailLabel')}</Label>
@@ -207,33 +223,17 @@ export default function LoginPage() {
               </Button>
             </div>
           </form>
-
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                {t('orContinueWith')}
-              </span>
-            </div>
-          </div>
-
-          <Button className="w-full" onClick={loginWithGoogle} disabled={isSubmitting}>
-            <Chrome className="mr-2 h-5 w-5" /> 
-            {t('signInWithGoogle')}
-          </Button>
-          <Button variant="outline" className="w-full" onClick={loginWithApple} disabled={isSubmitting}>
+          {/*<Button variant="outline" className="w-full" onClick={loginWithApple} disabled={isSubmitting}>
             <Apple className="mr-2 h-5 w-5" />
             {t('signInWithApple')}
-          </Button>
+          </Button>*/}
           
         </CardContent>
-         <CardFooter className="flex flex-col items-center text-center">
+         {/*<CardFooter className="flex flex-col items-center text-center">
             <p className="text-xs text-muted-foreground">
                 {t('appleSignInSimulated')}
             </p>
-        </CardFooter>
+        </CardFooter>*/}
       </Card>
     </div>
   );

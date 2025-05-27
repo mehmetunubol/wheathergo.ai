@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getAuth, connectAuthEmulator, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 // TODO: Replace with your actual Firebase project configuration
@@ -24,6 +24,7 @@ if (!getApps().length) {
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+
 // To use emulators, uncomment the lines below and ensure emulators are running.
 // if (process.env.NODE_ENV === 'development') {
 //   try {
@@ -36,3 +37,6 @@ const db = getFirestore(app);
 // }
 
 export { app, auth, db };
+
+export const googleProvider = new GoogleAuthProvider();
+export const appleProvider = new OAuthProvider('apple.com');
