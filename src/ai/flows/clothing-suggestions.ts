@@ -37,7 +37,7 @@ const getPromptTemplate = (language: Language = 'en') => {
   
   // Basic prompt translation for demonstration. A more robust solution would use i18n libraries or separate prompt files.
   const basePrompt = language === 'tr' ?
-  `Sen hava koşullarına, sıcaklığa, aile profiline ve konuma göre giysi önerileri sunan kişisel bir stilist YZ'sın.
+  `Sen hava koşullarına, sıcaklığa, aile profiline ve konuma göre giysi önerileri sunan kişisel bir stilist AI'sın.
 
   Hava Durumu: {{{weatherCondition}}}
   Sıcaklık: {{{temperature}}}°C

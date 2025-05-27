@@ -40,7 +40,7 @@ const getPromptTemplate = (language: Language = 'en') => {
   const respondInLang = language === 'tr' ? "Lütfen Türkçe yanıt ver." : "Please respond in English.";
   const basePrompt = language === 'tr' ?
   `
-    Yardımcı bir YZ hava durumu tahmincisisin. Görevin, belirli bir konumda gelecekteki bir tarih için makul, tahmini günlük hava durumu tahmini sağlamaktır.
+    Yardımcı bir AI hava durumu tahmincisisin. Görevin, belirli bir konumda gelecekteki bir tarih için makul, tahmini günlük hava durumu tahmini sağlamaktır.
     Sağlanan tarih 3 günden daha ileride, bu yüzden kesin bir tahmin mümkün değil. Tahminini, biliniyorsa konum ve mevsim için genel klimatolojik örüntülere dayandır veya tipik bir gün için makul varsayımlarda bulun.
 
     Konum: {{{location}}}
@@ -106,7 +106,7 @@ const guessWeatherFlow = ai.defineFlow(
       const { output } = await prompt(input); // Pass the full input including language
       if (!output) {
         console.error('AI guess weather prompt returned no output. Input:', input);
-        const desc = input.language === 'tr' ? "YZ tahmini kullanılamıyor. Lütfen tarihe yakın tekrar kontrol edin." : "AI forecast unavailable. Assuming pleasant weather. Please check closer to the date.";
+        const desc = input.language === 'tr' ? "AI tahmini kullanılamıyor. Lütfen tarihe yakın tekrar kontrol edin." : "AI forecast unavailable. Assuming pleasant weather. Please check closer to the date.";
         return {
           temperature: 20,
           condition: input.language === 'tr' ? "Hoş Hava" : "Pleasant",
@@ -120,7 +120,7 @@ const guessWeatherFlow = ai.defineFlow(
       return output;
     } catch (error) {
       console.error('Error in guessWeatherFlow:', error);
-      const desc = input.language === 'tr' ? "YZ kaynaklı tahmin şu anda kullanılamıyor. Genellikle hoş bir hava varsayılıyor. Daha doğru bir tahmin için lütfen tarihe yakın tekrar kontrol edin." : "AI-generated forecast currently unavailable. Assuming generally pleasant weather. Please check closer to the date for a more accurate forecast.";
+      const desc = input.language === 'tr' ? "AI kaynaklı tahmin şu anda kullanılamıyor. Genellikle hoş bir hava varsayılıyor. Daha doğru bir tahmin için lütfen tarihe yakın tekrar kontrol edin." : "AI-generated forecast currently unavailable. Assuming generally pleasant weather. Please check closer to the date for a more accurate forecast.";
       return {
         temperature: 20,
         condition: input.language === 'tr' ? "Hoş Hava (Tahmin)" : "Pleasant (Estimate)",
