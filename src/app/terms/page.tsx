@@ -9,8 +9,8 @@ import { useTranslation } from "@/hooks/use-translation";
 
 export default function TermsOfServicePage() {
   const { t } = useTranslation();
-  // Placeholder date, replace with dynamic or actual date
-  const effectiveDatePlaceholder = "[Insert Date]";
+  const contactEmail = "weatherugo@gmail.com";
+  const effectiveDate = "May 25, 2024"; // You can make this dynamic if needed
 
   return (
     <div className="flex flex-col items-center justify-center py-12">
@@ -21,70 +21,70 @@ export default function TermsOfServicePage() {
           </div>
           <CardTitle className="text-2xl font-bold">{t('termsTitleFull')}</CardTitle>
           <CardDescription className="!mt-2">
-            {t('effectiveDate', { date: effectiveDatePlaceholder })}
+            {t('effectiveDate', { date: effectiveDate })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 text-sm leading-relaxed text-foreground/90">
-          <p>By using Weatherugo, you agree to these Terms of Service. Please read them carefully.</p>
+          <p>{t('termsPageIntro')}</p>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">1. Use of the App</h2>
-            <p>You agree to use Weatherugo only for lawful purposes and in accordance with these terms.</p>
-            <p className="font-medium mt-2">You must not:</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS1Title')}</h2>
+            <p>{t('termsS1P1')}</p>
+            <p className="font-medium mt-2">{t('termsS1ListIntro')}</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Misuse or disrupt the app</li>
-              <li>Use automated tools to scrape or interact with the platform</li>
-              <li>Post harmful or misleading content</li>
+              <li>{t('termsS1L1')}</li>
+              <li>{t('termsS1L2')}</li>
+              <li>{t('termsS1L3')}</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">2. Account Responsibilities</h2>
-            <p>You are responsible for:</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS2Title')}</h2>
+            <p>{t('termsS2P1')}</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Keeping your login credentials secure</li>
-              <li>All activity under your account</li>
+              <li>{t('termsS2L1')}</li>
+              <li>{t('termsS2L2')}</li>
             </ul>
-            <p className="mt-2">We may suspend or terminate accounts that violate our policies.</p>
+            <p className="mt-2">{t('termsS2P2')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">3. AI Disclaimer</h2>
-            <p>Our app uses Gemini AI to generate suggestions. These are:</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS3Title')}</h2>
+            <p>{t('termsS3P1')}</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>For informational purposes only</li>
-              <li>Not medical, legal, or professional advice</li>
+              <li>{t('termsS3L1')}</li>
+              <li>{t('termsS3L2')}</li>
             </ul>
-            <p className="mt-2">You are responsible for evaluating and using suggestions at your own discretion.</p>
+            <p className="mt-2">{t('termsS3P2')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">4. Third-Party Content</h2>
-            <p>Weather data is sourced from WeatherAPI, and authentication may involve Google or Apple. We do not guarantee the accuracy or availability of third-party content or services.</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS4Title')}</h2>
+            <p>{t('termsS4P1')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">5. Limitation of Liability</h2>
-            <p>Weatherugo is provided “as is” without warranties. We are not liable for:</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS5Title')}</h2>
+            <p>{t('termsS5P1')}</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Errors in weather or AI-generated information</li>
-              <li>Downtime, bugs, or losses resulting from app use</li>
+              <li>{t('termsS5L1')}</li>
+              <li>{t('termsS5L2')}</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">6. Changes to the Terms</h2>
-            <p>We may revise these terms at any time. Continued use of the app means you accept the updated terms.</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS6Title')}</h2>
+            <p>{t('termsS6P1')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">7. Governing Law</h2>
-            <p>These terms are governed by the laws of [Insert Country]. You agree to resolve disputes in the courts of that jurisdiction.</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS7Title')}</h2>
+            <p>{t('termsS7P1', { jurisdiction: t('termsS7P2Placeholder') })}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-2">8. Contact</h2>
-            <p>For questions about these terms, contact: [Insert your email]</p>
+            <h2 className="text-lg font-semibold mb-2">{t('termsS8Title')}</h2>
+            <p>{t('termsS8P1', { email: contactEmail })}</p>
           </section>
           
           <div className="text-center pt-4">
@@ -100,3 +100,5 @@ export default function TermsOfServicePage() {
     </div>
   );
 }
+
+    
