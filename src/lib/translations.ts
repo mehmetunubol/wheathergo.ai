@@ -128,7 +128,7 @@ export const translations: AllTranslations = {
     // Trip Details Dialog
     tripSummaryTitle: "{tripName} - Summary",
     viewFullPlanButton: "View Full Plan",
-    close: "Kapat", // "Kapat" means "Close" in Turkish, kept as it was, assuming it's intended for Turkish UI if language switched. For English, it should be "Close"
+    close: "Close", 
     // Trip Details Page
     backToTravelPlans: "Back to All Travel Plans",
     dailyItineraryAISuggestions: "Daily Itinerary & AI Suggestions",
@@ -361,6 +361,8 @@ export const translations: AllTranslations = {
     blogPostCreatedSuccess: "Blog post created successfully!",
     blogPostUpdatedSuccess: "Blog post updated successfully!",
     blogTitleContentRequired: "Title and Content are required for a blog post.",
+    blogPromptDetailsLabel: "AI Prompt Details (Optional)",
+    blogPromptDetailsPlaceholder: "e.g., Focus on budget-friendly options, target audience is families with young children, make it humorous...",
   },
   tr: {
     // Common
@@ -713,7 +715,11 @@ export const translations: AllTranslations = {
     blogPostCreatedSuccess: "Blog yazısı başarıyla oluşturuldu!",
     blogPostUpdatedSuccess: "Blog yazısı başarıyla güncellendi!",
     blogTitleContentRequired: "Blog yazısı için Başlık ve İçerik gereklidir.",
+    blogPromptDetailsLabel: "YZ İçin Detaylar (İsteğe Bağlı)",
+    blogPromptDetailsPlaceholder: "Örn: Bütçe dostu seçeneklere odaklanın, hedef kitle küçük çocuklu aileler, mizahi bir dil kullanın...",
   },
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
+
+    

@@ -51,6 +51,7 @@ export default function EditBlogPostPage() {
   const [currentTitle, setCurrentTitle] = useState("");
   const [currentSlug, setCurrentSlug] = useState("");
   const [currentContent, setCurrentContent] = useState("");
+  const [currentPromptDetails, setCurrentPromptDetails] = useState(""); // New state for AI prompt details
   const [currentExcerpt, setCurrentExcerpt] = useState("");
   const [currentImageUrl, setCurrentImageUrl] = useState("");
   const [currentTags, setCurrentTags] = useState("");
@@ -74,6 +75,7 @@ export default function EditBlogPostPage() {
         setCurrentImageUrl(data.imageUrl || "");
         setCurrentTags((data.tags || []).join(", "));
         setCurrentIsPublished(data.isPublished);
+        // Note: currentPromptDetails is not loaded from post data as it's a transient field for generation
       } else {
         setError(t('blogPostNotFound'));
       }
@@ -106,7 +108,7 @@ export default function EditBlogPostPage() {
     try {
       const result = await generateBlogContent({ 
         title: currentTitle.trim(),
-        // promptDetails: "Additional context for this post being edited...", // Optional
+        promptDetails: currentPromptDetails.trim() || undefined, // Pass prompt details
         language: language
       });
       if (result && result.generatedContent) {
@@ -232,6 +234,16 @@ export default function EditBlogPostPage() {
              <p className="text-xs text-muted-foreground mt-1">{t('blogSlugDesc')}</p>
           </div>
           <div>
+            <Label htmlFor="promptDetails">{t('blogPromptDetailsLabel')}</Label>
+            <Textarea 
+              id="promptDetails" 
+              value={currentPromptDetails} 
+              onChange={(e) => setCurrentPromptDetails(e.target.value)} 
+              placeholder={t('blogPromptDetailsPlaceholder')}
+              className="min-h-[100px]" 
+            />
+          </div>
+          <div>
             <Label htmlFor="content">{t('content')}</Label>
             <Textarea id="content" value={currentContent} onChange={(e) => setCurrentContent(e.target.value)} placeholder={t('blogContentPlaceholder')} className="min-h-[200px]" />
              <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !currentTitle.trim()}>
@@ -268,3 +280,5 @@ export default function EditBlogPostPage() {
     </div>
   );
 }
+
+    

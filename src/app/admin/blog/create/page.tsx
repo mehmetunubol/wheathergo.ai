@@ -41,6 +41,7 @@ export default function CreateBlogPostPage() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [content, setContent] = useState("");
+  const [promptDetails, setPromptDetails] = useState(""); // New state for AI prompt details
   const [excerpt, setExcerpt] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [tags, setTags] = useState(""); // Comma-separated
@@ -65,7 +66,7 @@ export default function CreateBlogPostPage() {
     try {
       const result = await generateBlogContent({ 
         title: title.trim(), 
-        // promptDetails: "Focus on practical tips for travelers.", // Optional: Add specific prompt details if needed
+        promptDetails: promptDetails.trim() || undefined, // Pass prompt details
         language: language 
       });
       if (result && result.generatedContent) {
@@ -149,6 +150,16 @@ export default function CreateBlogPostPage() {
             <p className="text-xs text-muted-foreground mt-1">{t('blogSlugDesc')}</p>
           </div>
           <div>
+            <Label htmlFor="promptDetails">{t('blogPromptDetailsLabel')}</Label>
+            <Textarea 
+              id="promptDetails" 
+              value={promptDetails} 
+              onChange={(e) => setPromptDetails(e.target.value)} 
+              placeholder={t('blogPromptDetailsPlaceholder')}
+              className="min-h-[100px]" 
+            />
+          </div>
+          <div>
             <Label htmlFor="content">{t('content')}</Label>
             <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} placeholder={t('blogContentPlaceholder')} className="min-h-[200px]" />
             <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !title.trim()}>
@@ -185,3 +196,5 @@ export default function CreateBlogPostPage() {
     </div>
   );
 }
+
+    
