@@ -22,7 +22,7 @@ import {
 export function MainNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(); // Will be false initially, then true/false on client
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const navItems = [
@@ -32,23 +32,9 @@ export function MainNav() {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // Placeholder for initial render while isMobile is undefined to prevent hydration errors / layout shifts
-  if (isMobile === undefined) {
-    return (
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-          <Link href="/" className="flex items-center space-x-2">
-            <Cloud className="h-7 w-7 text-primary" />
-            <div>
-              <span className="font-bold text-lg">Weatherugo</span>
-            </div>
-          </Link>
-          {/* Minimalistic placeholder for the right side */}
-          <div className="h-8 w-20"></div>
-        </div>
-      </header>
-    );
-  }
+  // Removed the 'isMobile === undefined' placeholder block
+  // The component will now initially render the desktop version on the server
+  // and client, then client-side JS will adjust if it's mobile.
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -73,13 +59,13 @@ export function MainNav() {
                 <MenuIcon className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[240px] p-0 flex flex-col"> {/* Reduced width */}
+            <SheetContent side="right" className="w-[240px] p-0 flex flex-col">
               <SheetHeader className="p-4 border-b">
                 <SheetTitle className="text-left flex items-center gap-2">
                    <Cloud className="h-6 w-6 text-primary" /> Weatherugo
                 </SheetTitle>
               </SheetHeader>
-              <div className="p-4 border-b flex flex-col items-center"> {/* Centered UserNav */}
+              <div className="p-4 border-b flex flex-col items-center">
                 <UserNav />
               </div>
               <nav className="flex flex-col space-y-1 p-4">
