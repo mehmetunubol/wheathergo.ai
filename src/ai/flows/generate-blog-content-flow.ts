@@ -20,7 +20,7 @@ const GenerateBlogContentInputSchema = z.object({
 export type GenerateBlogContentInput = z.infer<typeof GenerateBlogContentInputSchema>;
 
 const GenerateBlogContentOutputSchema = z.object({
-  generatedContent: z.string().describe('The AI-generated content for the blog post.'),
+  generatedContent: z.string().describe('The AI-generated content for the blog post, in Markdown format.'),
 });
 export type GenerateBlogContentOutput = z.infer<typeof GenerateBlogContentOutputSchema>;
 
@@ -30,6 +30,7 @@ export async function generateBlogContent(input: GenerateBlogContentInput): Prom
 
 const getPromptTemplate = (language: Language = 'en') => {
   const respondInLang = language === 'tr' ? "Lütfen Türkçe yanıt ver." : "Please respond in English.";
+  const markdownInstruction = language === 'tr' ? "Lütfen içeriği Markdown formatında oluştur." : "Please generate the content in Markdown format.";
   const basePrompt = language === 'tr' ?
   `
   Aşağıdaki başlığa sahip bir blog yazısı için ilgi çekici ve bilgilendirici içerik oluştur: "{{{title}}}".
@@ -38,7 +39,7 @@ const getPromptTemplate = (language: Language = 'en') => {
   İçeriği oluştururken aşağıdaki ek ayrıntıları veya yönlendirmeleri dikkate al:
   "{{{promptDetails}}}"
   {{/if}}
-  Uzun ve kapsamlı bir blog yazısı oluştur.
+  Uzun ve kapsamlı bir blog yazısı oluştur. ${markdownInstruction}
   ${respondInLang}
   `
   :
@@ -49,7 +50,7 @@ const getPromptTemplate = (language: Language = 'en') => {
   Consider the following additional details or prompt when generating the content:
   "{{{promptDetails}}}"
   {{/if}}
-  Generate a lengthy and comprehensive blog post.
+  Generate a lengthy and comprehensive blog post. ${markdownInstruction}
   ${respondInLang}
   `;
   return basePrompt;
@@ -90,3 +91,4 @@ const generateBlogContentFlow = ai.defineFlow(
     }
   }
 );
+
