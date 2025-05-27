@@ -128,7 +128,9 @@ export const translations: AllTranslations = {
     // Trip Details Dialog
     tripSummaryTitle: "{tripName} - Summary",
     viewFullPlanButton: "View Full Plan",
-    close: "Close", 
+    close: "Close",
+    tripSummaryDescription: "This is a summary of your travel plan. For a detailed daily itinerary with weather forecasts and AI-powered suggestions, please view the full plan.",
+    notificationInfo: "{frequency} At {time}",
     // Trip Details Page
     backToTravelPlans: "Back to All Travel Plans",
     dailyItineraryAISuggestions: "Daily Itinerary & AI Suggestions",
@@ -398,7 +400,7 @@ export const translations: AllTranslations = {
     weatherInLocation: "{location} İçin Hava Durumu",
     currentWeatherLoading: "Hava durumu verisi yok. Lütfen bir konum ve tarih seçin.",
     hourlyForecastForDate: "{date} İçin Saatlik Tahmin",
-    hourlyForecastNotAvailable: "AI tahminli hava durumu için detaylı saatlik tahmin mevcut değil.",
+    hourlyForecastNotAvailable: "Detaylı saatlik tahmin AI-tahminli hava durumu için mevcut değil.",
     hourlyForecastNotAvailableForPeriod: "Bu dönem için detaylı saatlik tahmin mevcut değil.",
     suggestions: "Öneriler",
     outfitIdeas: "Kıyafet Fikirleri",
@@ -420,7 +422,7 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    agreeToTermsPreamble: " ", // Keep as a space for Turkish structure
+    agreeToTermsPreamble: " ",
     agreeToTermsConjunction: " ve ",
     agreeToTermsPostamble: " okudum ve kabul ediyorum.",
     termsOfService: "Hizmet Şartları'nı",
@@ -484,6 +486,8 @@ export const translations: AllTranslations = {
     tripSummaryTitle: "{tripName} - Özet",
     viewFullPlanButton: "Tüm Planı Görüntüle",
     close: "Kapat",
+    tripSummaryDescription: "Bu, seyahat planınızın bir özetidir. Detaylı günlük program, hava durumu tahminleri ve AI destekli öneriler için lütfen tüm planı görüntüleyin.",
+    notificationInfo: "{frequency}, Saat {time}",
     // Trip Details Page
     backToTravelPlans: "Tüm Seyahat Planlarına Geri Dön",
     dailyItineraryAISuggestions: "Günlük Program & AI Önerileri",
@@ -553,7 +557,7 @@ export const translations: AllTranslations = {
     context: "Notlar",
     noneProvided: "Belirtilmemiş.",
     travelSuggestionsFor: "İçin seyahat önerileri:",
-    toLocation: "- ", 
+    toLocation: "- ",
     dates: "Tarihler",
     tripNotes: "Seyahat Notları",
     familyProfileUsed: "Öneriler için kullanılan aile profili",
@@ -724,4 +728,3 @@ export const translations: AllTranslations = {
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
 
-    
