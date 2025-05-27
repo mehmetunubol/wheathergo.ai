@@ -16,8 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 
 interface FamilyProfileEditorProps {
-  profile: string; 
-  onProfileSave: (profile: string) => void; 
+  profile: string;
+  onProfileSave: (profile: string) => void;
 }
 
 export function FamilyProfileEditor({
@@ -31,8 +31,7 @@ export function FamilyProfileEditor({
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
 
-  // This default might need translation or to be a key from translations.ts
-  const defaultProfileText = t('familyProfilePlaceholder'); 
+  const defaultProfileText = React.useMemo(() => t('defaultFamilyProfileSettingText'), [t]);
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -44,26 +43,26 @@ export function FamilyProfileEditor({
           if (docSnap.exists()) {
             const profileData = docSnap.data().description || "";
             setCurrentProfile(profileData);
-            onProfileSave(profileData); 
+            onProfileSave(profileData);
           } else {
-            setCurrentProfile(initialProfile || defaultProfileText); 
-            onProfileSave(initialProfile || defaultProfileText);
+            setCurrentProfile(defaultProfileText);
+            onProfileSave(defaultProfileText);
           }
         } catch (error) {
           console.error("Error fetching family profile:", error);
           toast({
             title: t('error'),
-            description: "Could not load your family profile from the cloud.", // Consider t('loadProfileError')
+            description: "Could not load your family profile from the cloud.",
             variant: "destructive",
           });
-          setCurrentProfile(initialProfile || defaultProfileText); 
-          onProfileSave(initialProfile || defaultProfileText);
+          setCurrentProfile(defaultProfileText);
+          onProfileSave(defaultProfileText);
         } finally {
           setIsLoading(false);
         }
       } else if (!authIsLoading) {
         const storedProfile = localStorage.getItem("weatherugo-familyProfile");
-        const profileToSet = storedProfile || initialProfile || defaultProfileText;
+        const profileToSet = storedProfile || defaultProfileText;
         setCurrentProfile(profileToSet);
         onProfileSave(profileToSet);
         setIsLoading(false);
@@ -73,7 +72,22 @@ export function FamilyProfileEditor({
     if (!authIsLoading) {
       fetchProfile();
     }
-  }, [user, isAuthenticated, authIsLoading, toast, initialProfile, onProfileSave, t, defaultProfileText]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isAuthenticated, authIsLoading, defaultProfileText]); // onProfileSave and toast removed from deps
+
+  React.useEffect(() => {
+    // This effect handles updates to currentProfile if initialProfile changes AFTER initial load
+    if (!isLoading && initialProfile !== currentProfile) {
+      // Only update if not loading and initialProfile is different,
+      // and initialProfile isn't just the default (which might have been set locally by this component)
+      if (initialProfile && initialProfile !== defaultProfileText) {
+        setCurrentProfile(initialProfile);
+      } else if (!initialProfile && currentProfile !== defaultProfileText) {
+         // If initialProfile becomes empty, and current isn't the default, reset to default
+        setCurrentProfile(defaultProfileText);
+      }
+    }
+  }, [initialProfile, isLoading, currentProfile, defaultProfileText]);
 
 
   const handleSave = async () => {
@@ -91,7 +105,7 @@ export function FamilyProfileEditor({
     try {
       const profileRef = doc(db, "users", user.uid, "profile", "mainProfile");
       await setDoc(profileRef, { description: currentProfile, updatedAt: new Date().toISOString() }, { merge: true });
-      onProfileSave(currentProfile); 
+      onProfileSave(currentProfile);
       toast({
         title: t('familyProfileSaveSuccess'),
         description: "Your family profile has been updated in the cloud.",
@@ -172,10 +186,12 @@ export function FamilyProfileEditor({
         )}
       </CardContent>
       <CardFooter>
-        <Button onClick={handleSave} className="w-full" disabled={isSaving || isLoading}>
+        <Button onClick={handleSave} className="w-full" disabled={isSaving || isLoading || currentProfile === ""}>
           {isSaving ? t('saving') : <><Save className="mr-2 h-4 w-4" /> {t('saveFamilyProfile')}</>}
         </Button>
       </CardFooter>
     </Card>
   );
 }
+
+    

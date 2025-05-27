@@ -13,12 +13,12 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings as SettingsIcon, Save, UserCircle, Languages } from "lucide-react";
+import { Settings as SettingsIcon, Save, UserCircle, Languages, MapPin as MapPinIcon } from "lucide-react"; // Renamed MapPin to MapPinIcon
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 import type { Language } from "@/types";
+import { DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context"; // Import default settings
 
-const DEFAULT_FAMILY_PROFILE_SETTING = "A single adult enjoying good weather."; // This might need translation or a key
 
 export default function SettingsPage() {
   const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
@@ -35,11 +35,12 @@ export default function SettingsPage() {
     setSelectedLanguage(language);
   }, [language]);
 
+  const translatedDefaultProfileText = React.useMemo(() => t('defaultFamilyProfileSettingText'), [t]);
+
   React.useEffect(() => {
     const loadSettings = async () => {
       if (!isAuthenticated || !user) {
-        // TODO: Consider translating DEFAULT_FAMILY_PROFILE_SETTING or using a translation key
-        setFamilyProfile(DEFAULT_FAMILY_PROFILE_SETTING);
+        setFamilyProfile(translatedDefaultProfileText);
         setIsLoadingSettings(false);
         return;
       }
@@ -49,14 +50,20 @@ export default function SettingsPage() {
         const profileRef = doc(db, "users", user.uid, "profile", "mainProfile");
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists() && profileSnap.data().description) {
-          setFamilyProfile(profileSnap.data().description);
+          const desc = profileSnap.data().description;
+          // If stored profile is the generic English default, show the localized one instead
+          if (desc === DEFAULT_APP_SETTINGS.defaultFamilyProfile) {
+            setFamilyProfile(translatedDefaultProfileText);
+          } else {
+            setFamilyProfile(desc);
+          }
         } else {
-          setFamilyProfile(DEFAULT_FAMILY_PROFILE_SETTING);
+          setFamilyProfile(translatedDefaultProfileText);
         }
       } catch (error) {
         console.error("Error loading settings:", error);
         toast({ title: t('error'), description: "Could not load settings.", variant: "destructive" });
-        setFamilyProfile(DEFAULT_FAMILY_PROFILE_SETTING);
+        setFamilyProfile(translatedDefaultProfileText);
       } finally {
         setIsLoadingSettings(false);
       }
@@ -65,7 +72,7 @@ export default function SettingsPage() {
     if (!authIsLoading) {
       loadSettings();
     }
-  }, [user, isAuthenticated, authIsLoading, toast, t]);
+  }, [user, isAuthenticated, authIsLoading, toast, t, translatedDefaultProfileText]);
 
   const handleSaveFamilyProfile = async () => {
     if (!isAuthenticated || !user) {
@@ -89,7 +96,7 @@ export default function SettingsPage() {
     const lang = newLang as Language;
     setSelectedLanguage(lang);
     setLanguage(lang); // This will update context and localStorage
-    toast({ title: t('language'), description: `Language changed to ${lang === 'tr' ? 'Türkçe' : 'English'}.` });
+    toast({ title: t('language'), description: `${t('language')} ${lang === 'tr' ? 'Türkçe' : 'English'} ${t('selectedStatus') || 'olarak değiştirildi.'}` });
   };
 
 
@@ -123,7 +130,7 @@ export default function SettingsPage() {
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <SettingsIcon size={48} className="text-muted-foreground mb-4" />
         <h1 className="text-2xl font-semibold mb-2">{t('settings')}</h1>
-        <p className="text-muted-foreground mb-4">Please log in to manage your application settings.</p>
+        <p className="text-muted-foreground mb-4">{t('loginToManageSettings') || "Please log in to manage your application settings."}</p>
         <Link href="/login" passHref>
           <Button>{t('login')} / {t('signUp')}</Button>
         </Link>
@@ -185,3 +192,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

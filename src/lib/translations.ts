@@ -35,6 +35,7 @@ export const translations: AllTranslations = {
     familyProfile: "Family Profile",
     familyProfileDescription: "Describe your family members (e.g., ages, sensitivities, pets)",
     familyProfilePlaceholder: "E.g., Two adults, one 2-year-old baby sensitive to cold, one dog.",
+    defaultFamilyProfileSettingText: "A single adult enjoying good weather.", // New key
     familyProfileSaveSuccess: "Your family profile has been updated.",
     familyProfileSaveError: "Could not save your family profile. Please try again.",
     familyProfileSaveLocal: "Your family profile has been saved to this browser. Log in to save to the cloud.",
@@ -70,9 +71,9 @@ export const translations: AllTranslations = {
     agreeToTermsPostamble: ".",
     termsOfService: "Terms of Service",
     privacyPolicy: "Privacy Policy",
-    appleSignInSimulated: "Apple Sign-In is currently simulated and will use Google Sign-In.",
     mustAgreeToTermsError: "You must agree to the Terms of Service and Privacy Policy to sign up.",
     agreeToTermsCheckboxAriaLabel: "Agree to Terms ofService and Privacy Policy",
+    appleSignInSimulated: "Apple Sign-In is currently simulated and will use Google Sign-In.",
     // Firebase Auth Errors
     authErrorDefault: "An unexpected authentication error occurred. Please try again.",
     authErrorInvalidEmail: "Invalid email address format.",
@@ -130,7 +131,7 @@ export const translations: AllTranslations = {
     viewFullPlanButton: "View Full Plan",
     close: "Close",
     tripSummaryDescription: "This is a summary of your travel plan. For a detailed daily itinerary with weather forecasts and AI-powered suggestions, please view the full plan.",
-    notificationInfo: "{frequency} At {time}",
+    notificationInfo: "{frequency} at {time}",
     // Trip Details Page
     backToTravelPlans: "Back to All Travel Plans",
     dailyItineraryAISuggestions: "Daily Itinerary & AI Suggestions",
@@ -463,6 +464,7 @@ export const translations: AllTranslations = {
     familyProfile: "Aile Profili",
     familyProfileDescription: "Aile üyelerinizi tanımlayın (örn: yaşlar, hassasiyetler, evcil hayvanlar)",
     familyProfilePlaceholder: "Örn: İki yetişkin, soğuğa duyarlı 2 yaşında bir bebek, bir köpek.",
+    defaultFamilyProfileSettingText: "İyi havanın tadını çıkaran bekar bir yetişkin.", // New key
     familyProfileSaveSuccess: "Aile profiliniz güncellendi.",
     familyProfileSaveError: "Aile profiliniz kaydedilemedi. Lütfen tekrar deneyin.",
     familyProfileSaveLocal: "Aile profiliniz bu tarayıcıya kaydedildi. Buluta kaydetmek için giriş yapın.",
@@ -493,14 +495,14 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    agreeToTermsPreamble: " ",
+    agreeToTermsPreamble: " ", // Changed to a single space
     agreeToTermsConjunction: " ve ",
     agreeToTermsPostamble: " okudum ve kabul ediyorum.",
     termsOfService: "Hizmet Şartları'nı",
     privacyPolicy: "Gizlilik Politikası'nı",
-    appleSignInSimulated: "Apple ile Giriş şu anda simüle edilmiştir ve Google Girişini kullanacaktır.",
     mustAgreeToTermsError: "Kaydolmak için Hizmet Şartları'nı ve Gizlilik Politikası'nı kabul etmelisiniz.",
     agreeToTermsCheckboxAriaLabel: "Hizmet Şartları ve Gizlilik Politikası'nı kabul et",
+    appleSignInSimulated: "Apple ile Giriş şu anda simüle edilmiştir ve Google Girişini kullanacaktır.",
     // Firebase Auth Errors
     authErrorDefault: "Beklenmedik bir kimlik doğrulama hatası oluştu. Lütfen tekrar deneyin.",
     authErrorInvalidEmail: "Geçersiz e-posta adresi formatı.",
@@ -724,7 +726,7 @@ export const translations: AllTranslations = {
     termsS6P1: "Bu şartları istediğimiz zaman revize edebiliriz. Uygulamayı kullanmaya devam etmeniz, güncellenmiş şartları kabul ettiğiniz anlamına gelir.",
     termsS7Title: "7. Geçerli Hukuk",
     termsS7P1: "Bu şartlar {jurisdiction} yasalarına tabidir. Anlaşmazlıkları o yargı bölgesindeki mahkemelerde çözmeyi kabul edersiniz.",
-    termsS7P2Placeholder: "yetkili yargı bölgenizin", // Placeholder text for {jurisdiction}
+    termsS7P2Placeholder: "yetkili yargı bölgenizin",
     termsS8Title: "8. İletişim",
     termsS8P1: "Bu şartlarla ilgili sorularınız için iletişim: {email}",
 
@@ -869,6 +871,5 @@ export const translations: AllTranslations = {
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
-
 
     
