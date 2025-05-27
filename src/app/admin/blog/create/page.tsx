@@ -20,6 +20,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { generateBlogContent } from "@/ai/flows/generate-blog-content-flow";
 import { useLanguage } from "@/contexts/language-context";
 import dynamic from 'next/dynamic';
+import remarkGfm from 'remark-gfm'; // Import remark-gfm
 
 const MDEditor = dynamic(
   () => import("@uiw/react-md-editor"),
@@ -179,6 +180,9 @@ export default function CreateBlogPostPage() {
                 onChange={(val) => setContent(val || "")}
                 height={400}
                 preview="live"
+                previewOptions={{
+                  remarkPlugins: [remarkGfm],
+                }}
               />
             </div>
           </div>
