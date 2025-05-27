@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { Cloud, CalendarDays, Plane, Menu as MenuIcon } from "lucide-react";
+import { Cloud, CalendarDays, Plane, Menu as MenuIcon, Newspaper } from "lucide-react"; // Added Newspaper
 import { UserNav } from "./user-nav";
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
@@ -28,18 +28,21 @@ export function MainNav() {
   const navItems = [
     { href: "/", labelKey: "weather" as const, icon: <CalendarDays className="h-5 w-5" /> },
     { href: "/travelplanner", labelKey: "travelPlans" as const, icon: <Plane className="h-5 w-5" /> },
+    { href: "/blog", labelKey: "blogTitle" as const, icon: <Newspaper className="h-5 w-5" /> }, // Added Blog
   ];
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   const weatherNavItem = navItems.find(item => item.labelKey === "weather");
   const travelPlansNavItem = navItems.find(item => item.labelKey === "travelPlans");
+  const blogNavItem = navItems.find(item => item.labelKey === "blogTitle");
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
         {/* Logo and App Name - Always on the left */}
-        <Link href="/" className="flex items-center space-x-2 mr-6">
+        <Link href="/" className="flex items-center space-x-2 mr-4">
           <Cloud className="h-7 w-7 text-primary" />
           <div>
             <span className="font-bold text-lg">Weatherugo</span>
@@ -77,6 +80,7 @@ export function MainNav() {
         {/* Navigation for Mobile */}
         {isMobile && (
           <div className="flex items-center space-x-2">
+             {/* Display Travel Plans and Blog links directly on mobile header */}
             {travelPlansNavItem && (
               <Link
                 href={travelPlansNavItem.href}
@@ -86,7 +90,19 @@ export function MainNav() {
                 )}
               >
                 {travelPlansNavItem.icon}
-                {t(travelPlansNavItem.labelKey)}
+                {/* {t(travelPlansNavItem.labelKey)} */} {/* Text can be omitted for space */}
+              </Link>
+            )}
+            {blogNavItem && (
+              <Link
+                href={blogNavItem.href}
+                className={cn(
+                  "transition-colors hover:text-foreground/80 flex items-center gap-1 text-sm font-medium",
+                  pathname === blogNavItem.href ? "text-foreground" : "text-foreground/60"
+                )}
+              >
+                {blogNavItem.icon}
+                 {/* {t(blogNavItem.labelKey)} */} {/* Text can be omitted for space */}
               </Link>
             )}
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -118,6 +134,38 @@ export function MainNav() {
                         {weatherNavItem.icon}
                         {t(weatherNavItem.labelKey)}
                       </Link>
+                    </SheetClose>
+                  )}
+                   {/* Travel Plans and Blog links if they were not outside */}
+                   {/* This ensures they appear if layout changes or to have them in one place */}
+                  {travelPlansNavItem && (
+                     <SheetClose asChild key={travelPlansNavItem.href + "-sheet"}>
+                        <Link
+                            href={travelPlansNavItem.href}
+                            className={cn(
+                            "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                            pathname === travelPlansNavItem.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
+                            )}
+                            onClick={closeMobileMenu}
+                        >
+                            {travelPlansNavItem.icon}
+                            {t(travelPlansNavItem.labelKey)}
+                        </Link>
+                    </SheetClose>
+                  )}
+                  {blogNavItem && (
+                     <SheetClose asChild key={blogNavItem.href + "-sheet"}>
+                        <Link
+                            href={blogNavItem.href}
+                            className={cn(
+                            "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                            pathname === blogNavItem.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
+                            )}
+                            onClick={closeMobileMenu}
+                        >
+                            {blogNavItem.icon}
+                            {t(blogNavItem.labelKey)}
+                        </Link>
                     </SheetClose>
                   )}
                 </nav>

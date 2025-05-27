@@ -166,3 +166,20 @@ export interface AppSettings {
   defaultNotificationTime: string; // e.g., "09:00"
   defaultNotificationFrequency: NotificationFrequency; // 'daily' | 'weekly'
 }
+
+// Blog Post Type
+export interface BlogPost {
+  id?: string; // Firestore document ID
+  title: string;
+  slug: string; // URL-friendly identifier
+  content: string; // For now, plain text or simple HTML
+  authorId: string;
+  authorName: string | null;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+  publishedAt?: string | null; // ISO string, null if not published
+  isPublished: boolean;
+  excerpt?: string; // Short summary
+  imageUrl?: string; // URL for a cover image
+  tags?: string[];
+}

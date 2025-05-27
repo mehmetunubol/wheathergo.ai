@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, ListChecks, Settings } from "lucide-react";
+import { Users, ListChecks, Settings, Newspaper } from "lucide-react"; // Added Newspaper
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
@@ -30,6 +30,18 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2"><Newspaper className="text-primary"/> {t('blogManagementCardTitle')}</CardTitle>
+            <CardDescription>{t('blogManagementCardDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/admin/blog" passHref>
+              <Button variant="outline" className="mt-2 w-full">{t('manageBlogButton')}</Button>
+            </Link>
+          </CardContent>
+        </Card>
+        
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="text-xl flex items-center gap-2"><ListChecks className="text-primary"/> {t('travelPlansCardTitle')}</CardTitle>
