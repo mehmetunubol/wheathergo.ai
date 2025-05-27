@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore"; // Removed serverTimestamp
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { BlogPost } from "@/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,12 @@ import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/hooks/use-translation";
 import { generateBlogContent } from "@/ai/flows/generate-blog-content-flow";
 import { useLanguage } from "@/contexts/language-context";
+import dynamic from 'next/dynamic';
+
+const MDEditor = dynamic(
+  () => import("@uiw/react-md-editor"),
+  { ssr: false }
+);
 
 // Basic slugify function (same as in create page)
 function slugify(text: string): string {
@@ -51,7 +57,7 @@ export default function EditBlogPostPage() {
   const [currentTitle, setCurrentTitle] = useState("");
   const [currentSlug, setCurrentSlug] = useState("");
   const [currentContent, setCurrentContent] = useState("");
-  const [currentPromptDetails, setCurrentPromptDetails] = useState(""); // New state for AI prompt details
+  const [currentPromptDetails, setCurrentPromptDetails] = useState("");
   const [currentExcerpt, setCurrentExcerpt] = useState("");
   const [currentImageUrl, setCurrentImageUrl] = useState("");
   const [currentTags, setCurrentTags] = useState("");
@@ -75,7 +81,6 @@ export default function EditBlogPostPage() {
         setCurrentImageUrl(data.imageUrl || "");
         setCurrentTags((data.tags || []).join(", "));
         setCurrentIsPublished(data.isPublished);
-        // Note: currentPromptDetails is not loaded from post data as it's a transient field for generation
       } else {
         setError(t('blogPostNotFound'));
       }
@@ -92,7 +97,7 @@ export default function EditBlogPostPage() {
   }, [fetchPost]);
   
   useEffect(() => {
-    if (currentTitle && post.slug !== slugify(currentTitle)) { // Only auto-update slug if it's different or was auto-generated
+    if (currentTitle && post.slug !== slugify(currentTitle)) {
       setCurrentSlug(slugify(currentTitle));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,11 +113,10 @@ export default function EditBlogPostPage() {
     try {
       const result = await generateBlogContent({ 
         title: currentTitle.trim(),
-        promptDetails: currentPromptDetails.trim() || undefined, // Pass prompt details
+        promptDetails: currentPromptDetails.trim() || undefined,
         language: language
       });
       if (result && result.generatedContent) {
-        // Append or replace content - appending for now
         setCurrentContent(prevContent => prevContent ? prevContent + "\n\n---\n\n" + result.generatedContent : result.generatedContent);
         toast({ title: t('aiGeneratedContentTitle'), description: t('aiGeneratedContentDesc') });
       } else {
@@ -145,22 +149,20 @@ export default function EditBlogPostPage() {
       content: currentContent.trim(),
       updatedAt: now,
       isPublished: publishAction,
-      // publishedAt: post.isPublished && !publishAction ? null : (publishAction && !post.publishedAt ? now : post.publishedAt), // Handled below
       excerpt: currentExcerpt.trim() || currentContent.substring(0, 150) + (currentContent.length > 150 ? "..." : ""),
       imageUrl: currentImageUrl.trim() || undefined,
       tags: currentTags.split(",").map(tag => tag.trim()).filter(tag => tag),
     };
-     // If we are publishing now and it wasn't published before, set publishedAt
+
     if (publishAction && !post.isPublished) {
         updatedPostData.publishedAt = now;
-    } else if (publishAction && post.isPublished && post.publishedAt) { // Keep existing publishedAt if already published and staying published
+    } else if (publishAction && post.isPublished && post.publishedAt) {
         updatedPostData.publishedAt = post.publishedAt;
     }
-    // If we are unpublishing, set publishedAt to null
-    else if (!publishAction && post.isPublished) { // Unpublishing
+    else if (!publishAction && post.isPublished) {
         updatedPostData.publishedAt = null;
     }
-     else if (!publishAction && !post.isPublished) { // Staying unpublished
+     else if (!publishAction && !post.isPublished) {
         updatedPostData.publishedAt = null;
     }
 
@@ -245,7 +247,14 @@ export default function EditBlogPostPage() {
           </div>
           <div>
             <Label htmlFor="content">{t('content')}</Label>
-            <Textarea id="content" value={currentContent} onChange={(e) => setCurrentContent(e.target.value)} placeholder={t('blogContentPlaceholder')} className="min-h-[200px]" />
+            <div className="mt-1" data-color-mode="light">
+              <MDEditor
+                value={currentContent}
+                onChange={(val) => setCurrentContent(val || "")}
+                height={400}
+                preview="live"
+              />
+            </div>
              <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !currentTitle.trim()}>
               <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
             </Button>
@@ -269,7 +278,7 @@ export default function EditBlogPostPage() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={() => handleSubmit(currentIsPublished)} disabled={isSaving}> {/* Save with current publish status */}
+          <Button variant="outline" onClick={() => handleSubmit(currentIsPublished)} disabled={isSaving}>
             <Save className="mr-2 h-4 w-4" /> {t('saveChangesButton')}
           </Button>
           <Button onClick={() => handleSubmit(!currentIsPublished)} disabled={isSaving}>
@@ -280,5 +289,3 @@ export default function EditBlogPostPage() {
     </div>
   );
 }
-
-    

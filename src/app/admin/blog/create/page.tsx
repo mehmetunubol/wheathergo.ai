@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore"; // Removed serverTimestamp for now
+import { collection, addDoc } from "firebase/firestore";
 import type { BlogPost } from "@/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,12 @@ import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/hooks/use-translation";
 import { generateBlogContent } from "@/ai/flows/generate-blog-content-flow";
 import { useLanguage } from "@/contexts/language-context";
+import dynamic from 'next/dynamic';
+
+const MDEditor = dynamic(
+  () => import("@uiw/react-md-editor"),
+  { ssr: false }
+);
 
 // Basic slugify function
 function slugify(text: string): string {
@@ -41,7 +47,7 @@ export default function CreateBlogPostPage() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [content, setContent] = useState("");
-  const [promptDetails, setPromptDetails] = useState(""); // New state for AI prompt details
+  const [promptDetails, setPromptDetails] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [tags, setTags] = useState(""); // Comma-separated
@@ -66,7 +72,7 @@ export default function CreateBlogPostPage() {
     try {
       const result = await generateBlogContent({ 
         title: title.trim(), 
-        promptDetails: promptDetails.trim() || undefined, // Pass prompt details
+        promptDetails: promptDetails.trim() || undefined,
         language: language 
       });
       if (result && result.generatedContent) {
@@ -108,6 +114,7 @@ export default function CreateBlogPostPage() {
       excerpt: excerpt.trim() || content.substring(0, 150) + (content.length > 150 ? "..." : ""),
       imageUrl: imageUrl.trim() || undefined,
       tags: tags.split(",").map(tag => tag.trim()).filter(tag => tag),
+      likeCount: 0,
     };
 
     try {
@@ -161,7 +168,14 @@ export default function CreateBlogPostPage() {
           </div>
           <div>
             <Label htmlFor="content">{t('content')}</Label>
-            <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} placeholder={t('blogContentPlaceholder')} className="min-h-[200px]" />
+            <div className="mt-1" data-color-mode="light">
+              <MDEditor
+                value={content}
+                onChange={(val) => setContent(val || "")}
+                height={400}
+                preview="live"
+              />
+            </div>
             <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !title.trim()}>
               <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
             </Button>
@@ -196,5 +210,3 @@ export default function CreateBlogPostPage() {
     </div>
   );
 }
-
-    
