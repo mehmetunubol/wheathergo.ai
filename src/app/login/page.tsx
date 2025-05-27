@@ -176,7 +176,7 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 aria-label={t('agreeToTermsCheckboxAriaLabel')}
               />
-              <div className="grid gap-1.5 leading-none">
+              <div className="grid gap-1.5 leading-none text-center text-sm text-muted-foreground">
                 <label
                   htmlFor="terms-agreement-checkbox"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
@@ -228,21 +228,6 @@ export default function LoginPage() {
             {t('signInWithApple')}
           </Button>
           
-          <p className="px-8 text-center text-sm text-muted-foreground">
-            {t('agreeToTermsPreamble')}
-            <Link href="/terms">
-              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                {t('termsOfService')}
-              </span>
-            </Link>
-            {t('agreeToTermsConjunction')}
-            <Link href="/privacy">
-              <span className="underline underline-offset-4 hover:text-primary cursor-pointer">
-                {t('privacyPolicy')}
-              </span>
-            </Link>
-            {t('agreeToTermsPostamble')}
-          </p>
         </CardContent>
          <CardFooter className="flex flex-col items-center text-center">
             <p className="text-xs text-muted-foreground">
