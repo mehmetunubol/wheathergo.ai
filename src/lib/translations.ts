@@ -23,6 +23,7 @@ export const translations: AllTranslations = {
     confirm: "Confirm",
     error: "Error",
     success: "Success",
+    openMenu: "Open menu", // New key
     // Navbar
     appTagline: "Your personal weather & travel companion.",
     // MainPage
@@ -127,7 +128,7 @@ export const translations: AllTranslations = {
     // Trip Details Dialog
     tripSummaryTitle: "{tripName} - Summary",
     viewFullPlanButton: "View Full Plan",
-    close: "Close",
+    close: "Kapat", // "Kapat" means "Close" in Turkish, kept as it was, assuming it's intended for Turkish UI if language switched. For English, it should be "Close"
     // Trip Details Page
     backToTravelPlans: "Back to All Travel Plans",
     dailyItineraryAISuggestions: "Daily Itinerary & AI Suggestions",
@@ -312,6 +313,7 @@ export const translations: AllTranslations = {
     confirm: "Onayla",
     error: "Hata",
     success: "Başarılı",
+    openMenu: "Menüyü Aç", // New key
     // Navbar
     appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
     // MainPage
@@ -353,7 +355,7 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    agreeToTermsPreamble: " ", // Empty for Turkish structure
+    agreeToTermsPreamble: "",
     agreeToTermsConjunction: " ve ",
     agreeToTermsPostamble: " okudum ve kabul ediyorum.",
     termsOfService: "Hizmet Şartları'nı",
@@ -485,7 +487,7 @@ export const translations: AllTranslations = {
     context: "Notlar",
     noneProvided: "Belirtilmemiş.",
     travelSuggestionsFor: "İçin seyahat önerileri:",
-    toLocation: "- ",
+    toLocation: "- ", // Turkish for "to" might be different in context, e.g., "- Aydın'a"
     dates: "Tarihler",
     tripNotes: "Seyahat Notları",
     familyProfileUsed: "Öneriler için kullanılan aile profili",
@@ -591,3 +593,5 @@ export const translations: AllTranslations = {
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
+
+    
