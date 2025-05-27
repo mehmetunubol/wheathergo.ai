@@ -155,7 +155,7 @@ export default function TripDetailsPage() {
 
   React.useEffect(() => {
     if (!plan || !user || !familyProfile || appSettingsLoading) {
-      setSegments([]); // Clear segments if plan is not available
+      setSegments([]); 
       return;
     }
   
@@ -224,6 +224,21 @@ export default function TripDetailsPage() {
             
             try {
               activities = await suggestActivities({ weatherCondition: weather.condition, temperature: weather.temperature, familyProfile: combinedProfileForAI, timeOfDay: "day", locationPreferences: plan.location, language: language }); 
+              
+              const serviceBusyMsgEn = "AI suggestion service is currently busy. Please try again in a moment.";
+              const serviceBusyMsgTr = t('aiServiceBusy'); 
+              
+              if (activities && activities.indoorActivities.length === 1 && 
+                  (activities.indoorActivities[0] === serviceBusyMsgEn || activities.indoorActivities[0] === serviceBusyMsgTr)) {
+                toast({ 
+                    title: t('activitySuggestionErrorTitle'),
+                    description: activities.indoorActivities[0], 
+                    variant: "default" 
+                });
+                activities = { indoorActivities: [], outdoorActivities: [] }; // Treat as empty
+                segmentError = segmentError ? `${segmentError} ${t('aiServiceBusy')}` : t('aiServiceBusy'); // Append or set error
+              }
+
             } catch (aiError: any) { 
               console.error(`Error fetching activity suggestions for segment ${uiSegment.id}:`, aiError);
               if (segmentError) segmentError += ` ${t('activitySuggestionErrorDefault')}`; else segmentError = t('activitySuggestionErrorDefault');
@@ -295,10 +310,10 @@ export default function TripDetailsPage() {
     processAllSegments();
 
     return () => {
-      activeFetches = false; // Cancel ongoing fetches if component unmounts or dependencies change
+      activeFetches = false; 
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments, tripId, user, familyProfile, language, t, appSettings.maxApiForecastDays, appSettingsLoading]); // Removed plan?.storedSuggestions
+  }, [segments, tripId, user, familyProfile, language, t, appSettings.maxApiForecastDays, appSettingsLoading]); 
 
 
   const handleRegenerateSuggestions = async () => {
@@ -586,3 +601,4 @@ export default function TripDetailsPage() {
     </div>
   );
 }
+

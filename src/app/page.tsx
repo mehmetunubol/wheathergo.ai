@@ -33,7 +33,7 @@ function getTimeOfDay(dateWithTime: Date): string {
   return "evening";
 }
 
-const DEFAULT_LOCATION = "auto:ip"; // Hardcoded default for simplicity, could be from settings
+const DEFAULT_LOCATION_FALLBACK = "auto:ip"; 
 
 export default function HomePage() {
   const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); 
@@ -62,12 +62,10 @@ export default function HomePage() {
   const prevUserUID = React.useRef<string | undefined>(undefined);
 
   React.useEffect(() => {
-    if (!appSettingsLoading) {
-      if (isLoadingProfileFromEditor || familyProfile === "") {
-        setFamilyProfile(appSettings.defaultFamilyProfile || "");
-      }
+    if (!appSettingsLoading && (familyProfile === "" || isLoadingProfileFromEditor)) {
+      setFamilyProfile(appSettings.defaultFamilyProfile || "");
     }
-  }, [appSettingsLoading, appSettings.defaultFamilyProfile, isLoadingProfileFromEditor, familyProfile]);
+  }, [appSettingsLoading, appSettings.defaultFamilyProfile, familyProfile, isLoadingProfileFromEditor]);
 
 
   const handleProfileUpdate = React.useCallback((newProfile: string) => {
@@ -104,7 +102,7 @@ export default function HomePage() {
 
       setIsLoadingPreferences(true);
       const userJustLoggedIn = isAuthenticated && user && user.uid !== prevUserUID.current;
-      let initialLocation = appSettings.defaultLocation; 
+      let initialLocationResolved = appSettings.defaultLocation || DEFAULT_LOCATION_FALLBACK; 
 
       try {
         if (isAuthenticated && user) {
@@ -114,7 +112,7 @@ export default function HomePage() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             if (data.lastLocation) {
-              initialLocation = data.lastLocation;
+              initialLocationResolved = data.lastLocation;
             } 
             
             if (userJustLoggedIn) {
@@ -132,18 +130,14 @@ export default function HomePage() {
           } else {
             const storedLocation = localStorage.getItem("weatherugo-location");
             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-              initialLocation = storedLocation;
-            } else {
-              initialLocation = appSettings.defaultLocation; 
+              initialLocationResolved = storedLocation;
             }
             setSelectedDate(new Date()); 
           }
         } else {
           const storedLocation = localStorage.getItem("weatherugo-location");
           if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-            initialLocation = storedLocation;
-          } else {
-             initialLocation = appSettings.defaultLocation; 
+            initialLocationResolved = storedLocation;
           }
           setSelectedDate(new Date());
         }
@@ -151,13 +145,11 @@ export default function HomePage() {
         console.error("Error during preferences loading:", error);
         const storedLocation = localStorage.getItem("weatherugo-location");
         if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-            initialLocation = storedLocation;
-        } else {
-           initialLocation = appSettings.defaultLocation;
+            initialLocationResolved = storedLocation;
         }
         setSelectedDate(new Date());
       } finally {
-        setLocation(initialLocation || DEFAULT_LOCATION);
+        setLocation(initialLocationResolved);
         setIsLoadingPreferences(false);
       }
     };
@@ -174,9 +166,9 @@ export default function HomePage() {
 
 
   React.useEffect(() => {
-    if (location && location.toLowerCase() !== "auto:ip") {
+    if (location && location.toLowerCase() !== "auto:ip" && !isLoadingPreferences && !authIsLoading && !appSettingsLoading) {
       localStorage.setItem("weatherugo-location", location);
-      if (isAuthenticated && user && !isLoadingPreferences && !authIsLoading && !appSettingsLoading) { 
+      if (isAuthenticated && user) { 
         const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
         setDoc(prefsRef, { lastLocation: location }, { merge: true })
           .catch(error => console.error("Error saving location to Firestore:", error));
@@ -195,8 +187,7 @@ export default function HomePage() {
 
   React.useEffect(() => {
     async function getWeatherAndSuggestions() {
-      if (authIsLoading || isLoadingProfileFromEditor || isLoadingPreferences || appSettingsLoading || !location) return; 
-      if (!selectedDate) return;
+      if (authIsLoading || isLoadingProfileFromEditor || isLoadingPreferences || appSettingsLoading || !location || !selectedDate) return; 
 
       const CACHE_DURATION_MS = appSettings.cacheDurationMs;
       const MAX_API_FORECAST_DAYS = appSettings.maxApiForecastDays;
@@ -350,7 +341,22 @@ export default function HomePage() {
           try {
             const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location, language: language };
             const activities = await suggestActivities(activityInput);
-            setActivitySuggestions(activities);
+
+            const serviceBusyMsgEn = "AI suggestion service is currently busy. Please try again in a moment.";
+            const serviceBusyMsgTr = t('aiServiceBusy'); // Use translated version
+
+            if (activities.indoorActivities.length === 1 && 
+                (activities.indoorActivities[0] === serviceBusyMsgEn || activities.indoorActivities[0] === serviceBusyMsgTr)) {
+                
+                toast({ 
+                    title: t('activitySuggestionErrorTitle'),
+                    description: activities.indoorActivities[0], 
+                    variant: "default" 
+                });
+                setActivitySuggestions({ indoorActivities: [], outdoorActivities: [] });
+            } else {
+                setActivitySuggestions(activities);
+            }
             localStorage.setItem(activityCacheKey, JSON.stringify({ timestamp: currentTime, data: activities }));
           } catch (error: any) {
             console.error("Failed to get activity suggestions:", error);
@@ -372,7 +378,7 @@ export default function HomePage() {
       getWeatherAndSuggestions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.defaultFamilyProfile, language]); 
+  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language]); 
   
   const getFilteredHourlyForecast = (): HourlyForecastData[] => {
     if (!weatherData?.forecast || weatherData.isGuessed) return []; 
@@ -383,16 +389,20 @@ export default function HomePage() {
     return weatherData.forecast.filter(item => {
         let itemHour = -1;
         const timeString = item.time;
-        const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i);
-        if (match) {
+        const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i); // Handles "3 PM" or "10 AM"
+        const isoMatch = timeString.match(/\d{4}-\d{2}-\d{2}T(\d{2}):\d{2}/); // Handles ISO like "2023-05-20T15:00"
+        
+        if (match) { // "3 PM" format
             itemHour = parseInt(match[1], 10);
-            const period = match[2].toUpperCase();
+            const period = match[2]?.toUpperCase(); // Optional chaining for period
             if (period === 'PM' && itemHour !== 12) {
                 itemHour += 12;
             } else if (period === 'AM' && itemHour === 12) { 
                 itemHour = 0;
             }
-        } else {
+        } else if (isoMatch) { // ISO time format
+             itemHour = parseInt(isoMatch[1], 10);
+        } else { // Fallback for "HH:mm" or just hour
             try {
               const itemDate = parseISO(item.time); 
               if (isValid(itemDate)) {
@@ -500,3 +510,4 @@ export default function HomePage() {
     </div>
   );
 }
+

@@ -167,6 +167,7 @@ export const translations: AllTranslations = {
     activitySuggestionErrorDefault: "Could not fetch activity suggestions. AI service may be unavailable.",
     aiSuggestionErrorForDay: "AI suggestions are currently unavailable for this day. Please try again later.",
     weatherDataUnavailableForDay: "Weather data unavailable for this day. Suggestions cannot be loaded.",
+    aiServiceBusy: "AI suggestion service is currently busy. Please try again in a moment.",
     // footer
     footerText: "© {year} Weatherugo by Flow Teknoloji. Your personal weather & travel companion.",
     // Current Weather Card
@@ -419,7 +420,7 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    agreeToTermsPreamble: " ",
+    agreeToTermsPreamble: " ", // Keep as a space for Turkish structure
     agreeToTermsConjunction: " ve ",
     agreeToTermsPostamble: " okudum ve kabul ediyorum.",
     termsOfService: "Hizmet Şartları'nı",
@@ -521,7 +522,8 @@ export const translations: AllTranslations = {
     activitySuggestionErrorDefault: "Aktivite önerileri getirilemedi. AI servisi geçici olarak kullanılamıyor olabilir.",
     aiSuggestionErrorForDay: "AI önerileri bu gün için şu anda mevcut değil. Lütfen daha sonra tekrar deneyin.",
     weatherDataUnavailableForDay: "Bu gün için hava durumu verisi mevcut değil. Öneriler yüklenemiyor.",
-     // footer
+    aiServiceBusy: "AI öneri servisi şu anda meşgul. Lütfen birazdan tekrar deneyin.",
+    // footer
     footerText: "© {year} Weatherugo, Flow Teknoloji tarafından. Kişisel hava durumu & seyahat rehberiniz.",
     // Current Weather Card
     humidity: "Nem",

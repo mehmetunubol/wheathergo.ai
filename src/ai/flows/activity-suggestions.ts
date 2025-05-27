@@ -92,9 +92,23 @@ const activitySuggestionsFlow = ai.defineFlow(
         return { indoorActivities: [], outdoorActivities: [] };
       }
       return output;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in activitySuggestionsFlow:', error);
-      throw error;
+      const errorMessage = error.message || String(error);
+      // Check for specific "model overloaded" or "service unavailable" messages
+      if (errorMessage.includes('503') || 
+          errorMessage.toLowerCase().includes('model is overloaded') || 
+          errorMessage.toLowerCase().includes('service is currently unavailable')) {
+        const busyMessage = input.language === 'tr' 
+          ? "AI öneri servisi şu anda meşgul. Lütfen birazdan tekrar deneyin." 
+          : "AI suggestion service is currently busy. Please try again in a moment.";
+        return { 
+          indoorActivities: [busyMessage], 
+          outdoorActivities: [] 
+        };
+      }
+      throw error; // Re-throw other types of errors
     }
   }
 );
+
