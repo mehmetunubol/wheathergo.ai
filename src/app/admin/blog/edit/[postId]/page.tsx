@@ -245,6 +245,11 @@ export default function EditBlogPostPage() {
               className="min-h-[100px]" 
             />
           </div>
+           <div className="mt-2">
+             <Button onClick={handleGenerateWithAI} variant="outline" size="sm" disabled={isGeneratingAI || !currentTitle.trim()}>
+              <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
+            </Button>
+          </div>
           <div>
             <Label htmlFor="content">{t('content')}</Label>
             <div className="mt-1" data-color-mode="light">
@@ -255,9 +260,6 @@ export default function EditBlogPostPage() {
                 preview="live"
               />
             </div>
-             <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !currentTitle.trim()}>
-              <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
-            </Button>
           </div>
           <div>
             <Label htmlFor="excerpt">{t('excerptOptional')}</Label>

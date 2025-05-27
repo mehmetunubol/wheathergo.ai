@@ -114,6 +114,7 @@ export default function CreateBlogPostPage() {
       excerpt: excerpt.trim() || content.substring(0, 150) + (content.length > 150 ? "..." : ""),
       imageUrl: imageUrl.trim() || undefined,
       tags: tags.split(",").map(tag => tag.trim()).filter(tag => tag),
+      likeCount: 0,
     };
 
     try {
@@ -165,6 +166,11 @@ export default function CreateBlogPostPage() {
               className="min-h-[100px]" 
             />
           </div>
+          <div className="mt-2">
+             <Button onClick={handleGenerateWithAI} variant="outline" size="sm" disabled={isGeneratingAI || !title.trim()}>
+              <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
+            </Button>
+          </div>
           <div>
             <Label htmlFor="content">{t('content')}</Label>
             <div className="mt-1" data-color-mode="light">
@@ -175,9 +181,6 @@ export default function CreateBlogPostPage() {
                 preview="live"
               />
             </div>
-            <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !title.trim()}>
-              <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
-            </Button>
           </div>
           <div>
             <Label htmlFor="excerpt">{t('excerptOptional')}</Label>
