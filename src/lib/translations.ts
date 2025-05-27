@@ -128,7 +128,7 @@ export const translations: AllTranslations = {
     // Trip Details Dialog
     tripSummaryTitle: "{tripName} - Summary",
     viewFullPlanButton: "View Full Plan",
-    close: "Kapat", 
+    close: "Close", 
     // Trip Details Page
     backToTravelPlans: "Back to All Travel Plans",
     dailyItineraryAISuggestions: "Daily Itinerary & AI Suggestions",
@@ -419,7 +419,7 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    agreeToTermsPreamble: "",
+    agreeToTermsPreamble: " ",
     agreeToTermsConjunction: " ve ",
     agreeToTermsPostamble: " okudum ve kabul ediyorum.",
     termsOfService: "Hizmet Şartları'nı",
@@ -519,7 +519,7 @@ export const translations: AllTranslations = {
     outfitSuggestionErrorDefault: "Kıyafet önerileri getirilemedi. AI servisi geçici olarak kullanılamıyor olabilir.",
     activitySuggestionErrorTitle: "Aktivite Önerisi Hatası",
     activitySuggestionErrorDefault: "Aktivite önerileri getirilemedi. AI servisi geçici olarak kullanılamıyor olabilir.",
-    aiSuggestionErrorForDay: "Bu gün için AI önerileri şu anda mevcut değil. Lütfen daha sonra tekrar deneyin.",
+    aiSuggestionErrorForDay: "AI önerileri bu gün için şu anda mevcut değil. Lütfen daha sonra tekrar deneyin.",
     weatherDataUnavailableForDay: "Bu gün için hava durumu verisi mevcut değil. Öneriler yüklenemiyor.",
      // footer
     footerText: "© {year} Weatherugo, Flow Teknoloji tarafından. Kişisel hava durumu & seyahat rehberiniz.",
@@ -551,7 +551,7 @@ export const translations: AllTranslations = {
     context: "Notlar",
     noneProvided: "Belirtilmemiş.",
     travelSuggestionsFor: "İçin seyahat önerileri:",
-    toLocation: "- ", // Turkish for "to" might be different in context, e.g., "- Aydın'a"
+    toLocation: "- ", 
     dates: "Tarihler",
     tripNotes: "Seyahat Notları",
     familyProfileUsed: "Öneriler için kullanılan aile profili",
@@ -721,3 +721,5 @@ export const translations: AllTranslations = {
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
+
+    
