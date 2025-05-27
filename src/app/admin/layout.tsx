@@ -69,18 +69,6 @@ export default function AdminLayout({
             <ShieldCheck className="h-6 w-6 text-primary" />
             <span className="font-bold text-lg">{t('adminSiteName')}</span>
           </Link>
-          <nav className="flex items-center space-x-4">
-            <Link href="/" passHref>
-              <Button variant="ghost" size="sm">
-                <Home className="mr-2 h-4 w-4" />
-                {t('mainSiteNav')}
-              </Button>
-            </Link>
-            <Button variant="outline" size="sm" onClick={logout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              {t('logout')}
-            </Button>
-          </nav>
         </div>
       </header>
       <main className="flex-grow container mx-auto max-w-4xl p-6">
