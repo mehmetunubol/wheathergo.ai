@@ -114,7 +114,6 @@ export default function CreateBlogPostPage() {
       excerpt: excerpt.trim() || content.substring(0, 150) + (content.length > 150 ? "..." : ""),
       imageUrl: imageUrl.trim() || undefined,
       tags: tags.split(",").map(tag => tag.trim()).filter(tag => tag),
-      likeCount: 0,
     };
 
     try {

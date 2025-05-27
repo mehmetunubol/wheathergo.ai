@@ -128,7 +128,7 @@ export const translations: AllTranslations = {
     // Trip Details Dialog
     tripSummaryTitle: "{tripName} - Summary",
     viewFullPlanButton: "View Full Plan",
-    close: "Close", 
+    close: "Kapat", 
     // Trip Details Page
     backToTravelPlans: "Back to All Travel Plans",
     dailyItineraryAISuggestions: "Daily Itinerary & AI Suggestions",
@@ -721,5 +721,3 @@ export const translations: AllTranslations = {
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
-
-    

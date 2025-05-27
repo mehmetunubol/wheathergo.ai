@@ -5,17 +5,15 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, doc, updateDoc, setDoc } from "firebase/firestore"; // Added setDoc
-import type { BlogPost, UserBlogPostReaction } from "@/types";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import type { BlogPost } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, CalendarDays, User, Edit3, ThumbsUp } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Edit3 } from "lucide-react";
 import { format, parseISO } from 'date-fns';
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -25,17 +23,12 @@ export default function BlogPostPage() {
   const { dateLocale } = useLanguage();
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
-  const { toast } = useToast();
 
   const [post, setPost] = useState<BlogPost | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [currentLikeCount, setCurrentLikeCount] = useState(0);
-  const [userReaction, setUserReaction] = useState<UserBlogPostReaction | null>(null);
-  const [reactionLoading, setReactionLoading] = useState(false);
-
-  const fetchPostAndReaction = useCallback(async () => {
+  const fetchPost = useCallback(async () => {
     if (!slug) {
       setIsLoading(false);
       setError(t('slugMissingError'));
@@ -60,19 +53,6 @@ export default function BlogPostPage() {
         const docSnap = querySnapshot.docs[0];
         const postData = { id: docSnap.id, ...docSnap.data() } as BlogPost;
         setPost(postData);
-        setCurrentLikeCount(postData.likeCount || 0);
-
-        if (isAuthenticated && user && postData.id) {
-          const reactionRef = doc(db, "userBlogReactions", user.uid, "likedPosts", postData.id);
-          const reactionSnap = await getDoc(reactionRef);
-          if (reactionSnap.exists()) {
-            setUserReaction(reactionSnap.data() as UserBlogPostReaction);
-          } else {
-            setUserReaction(null);
-          }
-        } else {
-          setUserReaction(null);
-        }
       }
     } catch (err) {
       console.error("Error fetching blog post by slug:", err);
@@ -80,44 +60,11 @@ export default function BlogPostPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, t, isAuthenticated, user]);
+  }, [slug, t]);
 
   useEffect(() => {
-    fetchPostAndReaction();
-  }, [fetchPostAndReaction]);
-
-  const handleLikePost = async () => {
-    if (!isAuthenticated || !user || !post || !post.id) {
-      toast({ title: t('loginRequired'), description: t('loginToLikePosts'), variant: "destructive" });
-      return;
-    }
-    setReactionLoading(true);
-    const postRef = doc(db, "blogPosts", post.id);
-    const reactionRef = doc(db, "userBlogReactions", user.uid, "likedPosts", post.id);
-
-    try {
-      if (userReaction) { // User is unliking
-        await updateDoc(postRef, { likeCount: Math.max(0, (post.likeCount || 0) - 1) });
-        await deleteDoc(reactionRef);
-        setUserReaction(null);
-        setCurrentLikeCount(prev => Math.max(0, prev - 1));
-        toast({ title: t('success'), description: t('reactionSaved') });
-      } else { // User is liking
-        await updateDoc(postRef, { likeCount: (post.likeCount || 0) + 1 });
-        await setDoc(reactionRef, { postId: post.id, userId: user.uid, type: 'like', reactedAt: new Date().toISOString() });
-        setUserReaction({ postId: post.id, userId: user.uid, type: 'like', reactedAt: new Date().toISOString() });
-        setCurrentLikeCount(prev => prev + 1);
-        toast({ title: t('success'), description: t('reactionSaved') });
-      }
-    } catch (err) {
-      console.error("Error handling like:", err);
-      toast({ title: t('error'), description: t('reactionError'), variant: "destructive" });
-      // Revert optimistic updates on error if needed, or refetch
-      fetchPostAndReaction(); 
-    } finally {
-      setReactionLoading(false);
-    }
-  };
+    fetchPost();
+  }, [fetchPost]);
 
 
   if (isLoading) {
@@ -190,23 +137,6 @@ export default function BlogPostPage() {
       <div className="prose prose-lg dark:prose-invert max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
       </div>
-
-      <div className="mt-6 flex items-center space-x-4">
-        <Button 
-          onClick={handleLikePost} 
-          variant={userReaction ? "secondary" : "outline"} 
-          size="sm" 
-          disabled={reactionLoading || !isAuthenticated}
-          aria-pressed={!!userReaction}
-        >
-          <ThumbsUp className={`mr-2 h-4 w-4 ${userReaction ? "text-primary" : ""}`} />
-          {userReaction ? t('likedButton') : t('likeButton')} ({currentLikeCount})
-        </Button>
-        {/* Placeholder for comments button */}
-        {/* <Button variant="outline" size="sm" disabled> <MessageCircle className="mr-2 h-4 w-4" /> {t('commentsButton')} (0) </Button> */}
-      </div>
-      {!isAuthenticated && <p className="text-xs text-muted-foreground mt-2">{t('loginToLikePostsShort')}</p>}
-
 
       {post.tags && post.tags.length > 0 && (
         <div className="mt-6">
