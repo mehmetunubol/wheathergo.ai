@@ -9,7 +9,7 @@ import { AppSettingsProvider } from '@/contexts/app-settings-context';
 import { LanguageProvider } from '@/contexts/language-context'; 
 import GoogleAnalytics from '@/components/google-analytics';
 import { Suspense } from 'react';
-import { FooterContent } from '@/components/footer-content'; // Import the new client component
+import { FooterContent } from '@/components/footer-content';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -21,9 +21,14 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+// Metadata cannot be dynamic with "use client", so we keep it static
+// If dynamic metadata is needed, this component needs refactoring or metadata can be set in child pages
 export const metadata: Metadata = {
   title: 'Weatherugo',
   description: 'Your personal guide for weather-based clothing and activity suggestions.',
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_ID,
+  },
 };
 
 export default function RootLayout({
@@ -41,17 +46,17 @@ export default function RootLayout({
         </Suspense>
       )}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
-        <AuthProvider>
-          <LanguageProvider>
+        <LanguageProvider>
+          <AuthProvider>
             <AppSettingsProvider>
               <MainNav />
               <main className="flex-grow container mx-auto max-w-2xl p-4">
                 {children}
               </main>
-              <FooterContent /> {/* Use the new client component */}
+              <FooterContent />
             </AppSettingsProvider>
-          </LanguageProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </LanguageProvider>
         <Toaster />
       </body>
     </html>

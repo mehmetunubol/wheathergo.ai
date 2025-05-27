@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /trip/
+
+Sitemap: YOUR_APP_BASE_URL/sitemap.xml
+# Please replace YOUR_APP_BASE_URL with the actual deployed URL of your application (e.g., https://www.weatherugo.com)
