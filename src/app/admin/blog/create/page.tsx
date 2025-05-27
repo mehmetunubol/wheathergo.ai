@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore"; // Removed serverTimestamp for now
 import type { BlogPost } from "@/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowLeft, Save, Send, Brain } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/hooks/use-translation";
+import { generateBlogContent } from "@/ai/flows/generate-blog-content-flow";
+import { useLanguage } from "@/contexts/language-context";
 
 // Basic slugify function
 function slugify(text: string): string {
@@ -34,6 +36,7 @@ export default function CreateBlogPostPage() {
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { language } = useLanguage();
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -54,19 +57,29 @@ export default function CreateBlogPostPage() {
   }, [title]);
 
   const handleGenerateWithAI = async () => {
-    if (!title) {
+    if (!title.trim()) {
       toast({ title: t('error'), description: t('blogAIGenTitleRequired'), variant: "destructive" });
       return;
     }
     setIsGeneratingAI(true);
-    // Placeholder for actual AI call
-    // const aiContent = await generateBlogContent({ title: title, promptDetails: "Write a blog post about this." });
-    // setContent(aiContent.generatedContent);
-    setTimeout(() => { // Simulate AI generation
-      setContent(t('blogAIGenPlaceholderContent', { title: title }));
-      toast({ title: t('aiGeneratedContentTitle'), description: t('aiGeneratedContentDesc') });
+    try {
+      const result = await generateBlogContent({ 
+        title: title.trim(), 
+        // promptDetails: "Focus on practical tips for travelers.", // Optional: Add specific prompt details if needed
+        language: language 
+      });
+      if (result && result.generatedContent) {
+        setContent(result.generatedContent);
+        toast({ title: t('aiGeneratedContentTitle'), description: t('aiGeneratedContentDesc') });
+      } else {
+        throw new Error("AI did not return content.");
+      }
+    } catch (err) {
+      console.error("Error generating blog content with AI:", err);
+      toast({ title: t('error'), description: (err as Error).message || "Failed to generate content with AI.", variant: "destructive" });
+    } finally {
       setIsGeneratingAI(false);
-    }, 2000);
+    }
   };
 
   const handleSubmit = async (publishAction: boolean) => {
@@ -138,7 +151,7 @@ export default function CreateBlogPostPage() {
           <div>
             <Label htmlFor="content">{t('content')}</Label>
             <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} placeholder={t('blogContentPlaceholder')} className="min-h-[200px]" />
-            <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !title}>
+            <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !title.trim()}>
               <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
             </Button>
           </div>
@@ -148,7 +161,7 @@ export default function CreateBlogPostPage() {
           </div>
           <div>
             <Label htmlFor="imageUrl">{t('imageUrlOptional')}</Label>
-            <Input id="imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
+            <Input id="imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://placehold.co/600x400.png" data-ai-hint="blog header" />
           </div>
           <div>
             <Label htmlFor="tags">{t('tagsOptional')}</Label>

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore"; // Removed serverTimestamp
 import type { BlogPost } from "@/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Save, Send, Brain, AlertTriangle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/hooks/use-translation";
+import { generateBlogContent } from "@/ai/flows/generate-blog-content-flow";
+import { useLanguage } from "@/contexts/language-context";
 
 // Basic slugify function (same as in create page)
 function slugify(text: string): string {
@@ -38,6 +40,7 @@ export default function EditBlogPostPage() {
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { language } = useLanguage();
 
   const [post, setPost] = useState<Partial<BlogPost>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -95,17 +98,30 @@ export default function EditBlogPostPage() {
 
 
   const handleGenerateWithAI = async () => {
-     if (!currentTitle) {
+     if (!currentTitle.trim()) {
       toast({ title: t('error'), description: t('blogAIGenTitleRequired'), variant: "destructive" });
       return;
     }
     setIsGeneratingAI(true);
-    // Placeholder for actual AI call
-    setTimeout(() => { // Simulate AI generation
-      setCurrentContent(currentContent + "\n\n" + t('blogAIGenPlaceholderContent', {title: currentTitle}));
-      toast({ title: t('aiGeneratedContentTitle'), description: t('aiGeneratedContentDesc') });
+    try {
+      const result = await generateBlogContent({ 
+        title: currentTitle.trim(),
+        // promptDetails: "Additional context for this post being edited...", // Optional
+        language: language
+      });
+      if (result && result.generatedContent) {
+        // Append or replace content - appending for now
+        setCurrentContent(prevContent => prevContent ? prevContent + "\n\n---\n\n" + result.generatedContent : result.generatedContent);
+        toast({ title: t('aiGeneratedContentTitle'), description: t('aiGeneratedContentDesc') });
+      } else {
+        throw new Error("AI did not return content.");
+      }
+    } catch (err) {
+      console.error("Error generating blog content with AI:", err);
+      toast({ title: t('error'), description: (err as Error).message || "Failed to generate content with AI.", variant: "destructive" });
+    } finally {
       setIsGeneratingAI(false);
-    }, 2000);
+    }
   };
 
   const handleSubmit = async (publishAction: boolean) => {
@@ -120,13 +136,14 @@ export default function EditBlogPostPage() {
 
     setIsSaving(true);
     const now = new Date().toISOString();
+    
     const updatedPostData: Partial<BlogPost> = {
       title: currentTitle.trim(),
       slug: currentSlug.trim() || slugify(currentTitle.trim()),
       content: currentContent.trim(),
       updatedAt: now,
       isPublished: publishAction,
-      publishedAt: post.isPublished && !publishAction ? null : (publishAction && !post.publishedAt ? now : post.publishedAt), // Handle publish/unpublish logic
+      // publishedAt: post.isPublished && !publishAction ? null : (publishAction && !post.publishedAt ? now : post.publishedAt), // Handled below
       excerpt: currentExcerpt.trim() || currentContent.substring(0, 150) + (currentContent.length > 150 ? "..." : ""),
       imageUrl: currentImageUrl.trim() || undefined,
       tags: currentTags.split(",").map(tag => tag.trim()).filter(tag => tag),
@@ -134,9 +151,14 @@ export default function EditBlogPostPage() {
      // If we are publishing now and it wasn't published before, set publishedAt
     if (publishAction && !post.isPublished) {
         updatedPostData.publishedAt = now;
+    } else if (publishAction && post.isPublished && post.publishedAt) { // Keep existing publishedAt if already published and staying published
+        updatedPostData.publishedAt = post.publishedAt;
     }
     // If we are unpublishing, set publishedAt to null
-    if (!publishAction && post.isPublished) {
+    else if (!publishAction && post.isPublished) { // Unpublishing
+        updatedPostData.publishedAt = null;
+    }
+     else if (!publishAction && !post.isPublished) { // Staying unpublished
         updatedPostData.publishedAt = null;
     }
 
@@ -212,7 +234,7 @@ export default function EditBlogPostPage() {
           <div>
             <Label htmlFor="content">{t('content')}</Label>
             <Textarea id="content" value={currentContent} onChange={(e) => setCurrentContent(e.target.value)} placeholder={t('blogContentPlaceholder')} className="min-h-[200px]" />
-             <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !currentTitle}>
+             <Button onClick={handleGenerateWithAI} variant="outline" size="sm" className="mt-2" disabled={isGeneratingAI || !currentTitle.trim()}>
               <Brain className="mr-2 h-4 w-4" /> {isGeneratingAI ? t('generatingButton') : t('generateWithAIButton')}
             </Button>
           </div>
@@ -222,7 +244,7 @@ export default function EditBlogPostPage() {
           </div>
           <div>
             <Label htmlFor="imageUrl">{t('imageUrlOptional')}</Label>
-            <Input id="imageUrl" value={currentImageUrl} onChange={(e) => setCurrentImageUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
+            <Input id="imageUrl" value={currentImageUrl} onChange={(e) => setCurrentImageUrl(e.target.value)} placeholder="https://placehold.co/600x400.png" data-ai-hint="blog header edit"/>
           </div>
           <div>
             <Label htmlFor="tags">{t('tagsOptional')}</Label>
@@ -246,4 +268,3 @@ export default function EditBlogPostPage() {
     </div>
   );
 }
-
