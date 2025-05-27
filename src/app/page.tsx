@@ -33,16 +33,17 @@ function getTimeOfDay(dateWithTime: Date): string {
   return "evening";
 }
 
+const DEFAULT_LOCATION = "auto:ip"; // Hardcoded default for simplicity, could be from settings
+
 export default function HomePage() {
   const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); 
   const { language, dateLocale } = useLanguage();
   const { t } = useTranslation();
+  const pathname = usePathname();
 
   const [location, setLocation] = React.useState<string>(""); 
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
   
-  // Initialize familyProfile state.
-  // It will be properly set once appSettings are loaded or by FamilyProfileEditor's initial load.
   const [familyProfile, setFamilyProfile] = React.useState<string>("");
   const [isLoadingProfileFromEditor, setIsLoadingProfileFromEditor] = React.useState(true); 
   
@@ -58,15 +59,10 @@ export default function HomePage() {
 
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
-  const pathname = usePathname();
   const prevUserUID = React.useRef<string | undefined>(undefined);
 
-  // Effect to initialize familyProfile from appSettings once they are loaded.
-  // This acts as the initial default before FamilyProfileEditor potentially loads a user-specific one.
   React.useEffect(() => {
     if (!appSettingsLoading) {
-      // Only set if familyProfile hasn't been set by FamilyProfileEditor yet
-      // or if it's still the very initial empty string.
       if (isLoadingProfileFromEditor || familyProfile === "") {
         setFamilyProfile(appSettings.defaultFamilyProfile || "");
       }
@@ -87,8 +83,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // This effect updates familyProfile if appSettings change, but only if
-  // familyProfile is currently the generic default from DEFAULT_APP_SETTINGS or uninitialized.
   React.useEffect(() => {
     if (!appSettingsLoading && !isLoadingProfileFromEditor) {
       const needsUpdateFromAppSettings =
@@ -140,7 +134,7 @@ export default function HomePage() {
             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
               initialLocation = storedLocation;
             } else {
-              initialLocation = appSettings.defaultLocation; // Fallback to app settings default
+              initialLocation = appSettings.defaultLocation; 
             }
             setSelectedDate(new Date()); 
           }
@@ -149,7 +143,7 @@ export default function HomePage() {
           if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             initialLocation = storedLocation;
           } else {
-             initialLocation = appSettings.defaultLocation; // Fallback to app settings default for non-auth users
+             initialLocation = appSettings.defaultLocation; 
           }
           setSelectedDate(new Date());
         }
@@ -163,7 +157,7 @@ export default function HomePage() {
         }
         setSelectedDate(new Date());
       } finally {
-        setLocation(initialLocation);
+        setLocation(initialLocation || DEFAULT_LOCATION);
         setIsLoadingPreferences(false);
       }
     };
@@ -256,7 +250,7 @@ export default function HomePage() {
                     if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
                         if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
                             toast({
-                                title: t('weather') + " " + t('success') + "!", // Example of translating toast
+                                title: t('weather') + " " + t('success') + "!", 
                                 description: `${t('weatherInLocation', { location: data.location })} ${t('weatherHasChanged')} ${data.temperature}°C ${t('and')} ${data.condition.toLowerCase()}.`,
                             });
                         }
@@ -388,7 +382,6 @@ export default function HomePage() {
     const currentHourToDisplayFrom = getHours(selectedDate); 
     return weatherData.forecast.filter(item => {
         let itemHour = -1;
-        // Try to parse time from "May 22, 10 PM" or "10 PM" format
         const timeString = item.time;
         const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i);
         if (match) {
@@ -396,17 +389,16 @@ export default function HomePage() {
             const period = match[2].toUpperCase();
             if (period === 'PM' && itemHour !== 12) {
                 itemHour += 12;
-            } else if (period === 'AM' && itemHour === 12) { // Midnight case
+            } else if (period === 'AM' && itemHour === 12) { 
                 itemHour = 0;
             }
         } else {
-           // Fallback for just "HH:MM" or ISO attempt
             try {
-              const itemDate = parseISO(item.time); // Handles full ISO string if present
+              const itemDate = parseISO(item.time); 
               if (isValid(itemDate)) {
                  itemHour = getHours(itemDate);
               } else {
-                 const plainHourMatch = item.time.match(/^(\d{1,2})/); // e.g. "22:00"
+                 const plainHourMatch = item.time.match(/^(\d{1,2})/); 
                  if (plainHourMatch) itemHour = parseInt(plainHourMatch[1], 10);
               }
             } catch { /* ignore parsing errors for this fallback */ }
@@ -415,7 +407,7 @@ export default function HomePage() {
         if (itemHour !== -1) {
             return itemHour >= currentHourToDisplayFrom;
         }
-        return true; // If parsing fails, include it to be safe or log error
+        return true; 
     });
   };
 
@@ -490,7 +482,7 @@ export default function HomePage() {
             {t('travelPlannerSubPrompt', { authPrompt: !isAuthenticated ? t('travelPlannerAuthPrompt') : ''})}
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
-            <Link href="/notifications" passHref>
+            <Link href="/travelplanner" passHref>
               <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
                 <Plane className="mr-2 h-5 w-5" /> {t('exploreTravelPlans')}
               </Button>

@@ -22,19 +22,15 @@ import {
 export function MainNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const isMobile = useIsMobile(); // Will be false initially, then true/false on client
+  const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const navItems = [
     { href: "/", labelKey: "weather" as const, icon: <CalendarDays className="h-5 w-5" /> },
-    { href: "/notifications", labelKey: "travelPlans" as const, icon: <Plane className="h-5 w-5" /> },
+    { href: "/travelplanner", labelKey: "travelPlans" as const, icon: <Plane className="h-5 w-5" /> },
   ];
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
-  // Removed the 'isMobile === undefined' placeholder block
-  // The component will now initially render the desktop version on the server
-  // and client, then client-side JS will adjust if it's mobile.
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -88,7 +84,7 @@ export function MainNav() {
             </SheetContent>
           </Sheet>
         ) : (
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 ml-auto">
             <nav className="flex items-center gap-4 text-sm lg:gap-6">
               {navItems.map((item) => (
                 <Link

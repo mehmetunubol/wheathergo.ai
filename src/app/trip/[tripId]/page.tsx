@@ -9,8 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft, Mail, Clock, Repeat, RefreshCw, Edit3, Eye, AlertTriangle } from "lucide-react";
-import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isSameDay, isValid, isBefore, endOfDay } from "date-fns"; // Added endOfDay
+import { AlertCircle, Download, Share2, Plane, CalendarDays, MapPin, Info, CloudSun, Thermometer, ArrowLeft, Mail, Clock, Repeat, RefreshCw, Edit3, Eye, AlertTriangle, Building, Tent } from "lucide-react";
+import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isSameDay, isValid, isBefore, endOfDay } from "date-fns"; 
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
@@ -27,7 +27,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { useAppSettings } from "@/contexts/app-settings-context";
 
 
-const DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS = "An adult traveler."; // Needs translation or key
+const DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS = "An adult traveler.";
 
 export default function TripDetailsPage() {
   const params = useParams();
@@ -54,43 +54,39 @@ export default function TripDetailsPage() {
   const getUniqueDateSegments = React.useCallback((currentPlan: TravelPlanItem | null): TripSegmentSuggestions[] => {
     if (!currentPlan) return [];
     
-    let parsedStartDateTry, parsedEndDateTry;
+    let parsedStartDate, parsedEndDate;
     try {
-        parsedStartDateTry = startOfDay(parseISO(currentPlan.startDate));
-        parsedEndDateTry = startOfDay(parseISO(currentPlan.endDate));
+        parsedStartDate = startOfDay(parseISO(currentPlan.startDate));
+        parsedEndDate = startOfDay(parseISO(currentPlan.endDate));
     } catch (e) {
         console.error("Invalid date format in travel plan during parsing:", currentPlan, e);
-        setPageError(t('errorLoadingDataForDay')); // Generic error
+        setPageError(t('errorLoadingDataForDay')); 
         return [];
     }
 
-    if (!isValid(parsedStartDateTry) || !isValid(parsedEndDateTry)) {
+    if (!isValid(parsedStartDate) || !isValid(parsedEndDate)) {
         console.error("Invalid start or end date in travel plan:", currentPlan);
         setPageError(t('errorLoadingDataForDay'));
         return [];
     }
-    const parsedStartDate = parsedStartDateTry;
-    const parsedEndDate = parsedEndDateTry;
 
     const duration = differenceInCalendarDays(parsedEndDate, parsedStartDate);
     if (duration < 0) {
         console.error("End date is before start date:", currentPlan);
-        setPageError(t('error')); // Generic error, specific one can be added
+        setPageError(t('error')); 
         return [];
     }
     
-    const potentialSegments: TripSegmentSuggestions[] = [];
     const segmentsMap = new Map<string, TripSegmentSuggestions>();
 
-    const addSegment = (date: Date, id: 'start' | 'middle' | 'end', labelPrefixKey: string) => {
+    const addOrUpdateSegment = (date: Date, id: 'start' | 'middle' | 'end', labelPrefixKey: string) => {
         const dateStr = format(date, 'yyyy-MM-dd');
-        const label = `${t(labelPrefixKey as any) || labelPrefixKey} (${format(date, "MMM d, yyyy", { locale: dateLocale })})`;
-        // Only add if not already present with a higher priority id, or if it's a new date
-        if (!segmentsMap.has(dateStr) || 
-            (id === 'start') ||
-            (id === 'end' && segmentsMap.get(dateStr)?.id !== 'start') ||
-            (id === 'middle' && !['start', 'end'].includes(segmentsMap.get(dateStr)?.id || ''))
-        ) {
+        const label = `${t(labelPrefixKey as any)} (${format(date, "MMM d, yyyy", { locale: dateLocale })})`;
+        
+        const existingSegment = segmentsMap.get(dateStr);
+        const priorityOrder = { start: 1, middle: 2, end: 3 };
+
+        if (!existingSegment || priorityOrder[id] < priorityOrder[existingSegment.id as 'start' | 'middle' | 'end']) {
             segmentsMap.set(dateStr, {
               date: date,
               id: id,
@@ -100,18 +96,18 @@ export default function TripDetailsPage() {
         }
     };
     
-    addSegment(parsedStartDate, 'start', 'Start of Trip');
+    addOrUpdateSegment(parsedStartDate, 'start', 'Start of Trip');
 
     if (duration >= 2) { 
-      const middleOffset = Math.floor(duration / 2.0); // Use floor for consistency
+      const middleOffset = Math.floor(duration / 2.0);
       const middleDateCand = startOfDay(addDays(parsedStartDate, middleOffset));
       if (!isSameDay(middleDateCand, parsedStartDate) && !isSameDay(middleDateCand, parsedEndDate)) {
-         addSegment(middleDateCand, 'middle', 'Middle of Trip');
+         addOrUpdateSegment(middleDateCand, 'middle', 'Middle of Trip');
       }
     }
     
     if (!isSameDay(parsedEndDate, parsedStartDate)) {
-      addSegment(parsedEndDate, 'end', 'End of Trip');
+      addOrUpdateSegment(parsedEndDate, 'end', 'End of Trip');
     }
     
     return Array.from(segmentsMap.values())
@@ -142,7 +138,7 @@ export default function TripDetailsPage() {
           setPlan({ id: planSnap.id, ...planSnap.data() } as TravelPlanItem);
           setPageError(null);
         } else {
-          setPageError(t('travelPlanNotFound')); // Need a translation key
+          setPageError(t('travelPlanNotFound')); 
           setPlan(null);
         }
       } catch (error) {
@@ -158,26 +154,23 @@ export default function TripDetailsPage() {
 
 
   React.useEffect(() => {
-    if (overallLoading || !plan || !user || !familyProfile || appSettingsLoading) {
+    if (!plan || !user || !familyProfile || appSettingsLoading) {
+      setSegments([]); // Clear segments if plan is not available
       return;
     }
-
-    const initialUiSegments = getUniqueDateSegments(plan);
-    
-    setSegments(prevSegments => {
-      if (isRegenerating) {
-        return initialUiSegments.map(seg => ({ ...seg, isLoading: true, error: null, source: undefined }));
-      }
-      // If not regenerating, merge with existing to preserve loaded data if plan hasn't changed structurally
-      if (prevSegments.length === initialUiSegments.length && 
-          prevSegments.every((ps, idx) => ps.id === initialUiSegments[idx].id && isSameDay(ps.date, initialUiSegments[idx].date))) {
-        return prevSegments;
-      }
-      return initialUiSegments.map(uiSeg => {
+  
+    const initialUiSegmentsBase = getUniqueDateSegments(plan);
+  
+    if (isRegenerating) {
+      setSegments(initialUiSegmentsBase.map(seg => ({ ...seg, isLoading: true, error: null, source: undefined })));
+    } else {
+      const newSegments = initialUiSegmentsBase.map(uiSeg => {
         const stored = plan.storedSuggestions?.find(ss => ss.segmentId === uiSeg.id && isValid(parseISO(ss.date)) && isSameDay(parseISO(ss.date), uiSeg.date));
         if (stored) {
           return {
-            ...uiSeg,
+            id: uiSeg.id,
+            label: uiSeg.label,
+            date: uiSeg.date, 
             weatherData: stored.weatherData,
             clothingSuggestions: stored.clothingSuggestions,
             activitySuggestions: stored.activitySuggestions,
@@ -186,16 +179,22 @@ export default function TripDetailsPage() {
         }
         return { ...uiSeg, isLoading: true, error: null, source: undefined };
       });
-    });
-
-  }, [plan, user, familyProfile, getUniqueDateSegments, overallLoading, isRegenerating, appSettingsLoading]);
+      setSegments(newSegments);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps  
+  }, [plan, user, familyProfile, isRegenerating, appSettingsLoading]); 
 
 
   React.useEffect(() => {
     if (!plan || !user || !familyProfile || segments.length === 0 || appSettingsLoading) return;
 
     const segmentsToFetch = segments.filter(s => s.isLoading);
-    if (segmentsToFetch.length === 0 && !isRegenerating) return;
+    if (segmentsToFetch.length === 0) {
+      if (isRegenerating) setIsRegenerating(false);
+      return;
+    }
+
+    let activeFetches = true;
 
     const processAllSegments = async () => {
       let newStoredSuggestionsArray: StoredTripSegmentData[] = isRegenerating ? [] : [...(plan.storedSuggestions || [])];
@@ -204,9 +203,10 @@ export default function TripDetailsPage() {
       const combinedProfileForAI = `Global Profile: ${familyProfile}. ${plan.tripContext ? `Trip Notes: ${plan.tripContext.trim()}` : `Trip Notes: ${t('noneProvided') || 'None provided.'}`}`;
 
       const segmentPromises = segmentsToFetch.map(async (uiSegment) => {
+        if (!activeFetches) return null; 
         let segmentDataToUse: Partial<TripSegmentSuggestions> = { isLoading: true, error: null };
         try {
-          const weather = await fetchWeather(plan.location, uiSegment.date, appSettings.maxApiForecastDays);
+          const weather = await fetchWeather(plan.location, uiSegment.date, appSettings.maxApiForecastDays, language);
           segmentDataToUse.weatherData = weather; 
 
           let clothing: ClothingSuggestionsOutput | null = null;
@@ -263,10 +263,15 @@ export default function TripDetailsPage() {
           segmentDataToUse.weatherData = null; 
         }
         
-        setSegments(prev => prev.map(s => s.id === uiSegment.id && s.date.getTime() === uiSegment.date.getTime() ? { ...s, ...segmentDataToUse } : s));
+        if (activeFetches) {
+          setSegments(prev => prev.map(s => s.id === uiSegment.id && s.date.getTime() === uiSegment.date.getTime() ? { ...s, ...segmentDataToUse } : s));
+        }
+        return null; 
       });
 
       await Promise.all(segmentPromises);
+      if (!activeFetches) return;
+
 
       if (wasFirestoreUpdated) {
         try {
@@ -287,11 +292,13 @@ export default function TripDetailsPage() {
       }
     };
     
-    if(segmentsToFetch.length > 0 || isRegenerating) {
-        processAllSegments();
-    }
+    processAllSegments();
+
+    return () => {
+      activeFetches = false; // Cancel ongoing fetches if component unmounts or dependencies change
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments, plan?.storedSuggestions, tripId, user, familyProfile, isRegenerating, language, t, appSettings.maxApiForecastDays, appSettingsLoading]);
+  }, [segments, tripId, user, familyProfile, language, t, appSettings.maxApiForecastDays, appSettingsLoading]); // Removed plan?.storedSuggestions
 
 
   const handleRegenerateSuggestions = async () => {
@@ -403,7 +410,7 @@ export default function TripDetailsPage() {
         <CardHeader><CardTitle className="text-xl flex items-center gap-2 text-destructive"><AlertCircle /> {t('error')}</CardTitle></CardHeader>
         <CardContent>
           <p>{pageError}</p>
-          <Button onClick={() => router.push('/notifications')} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}</Button>
+          <Button onClick={() => router.push('/travelplanner')} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}</Button>
         </CardContent>
       </Card>
     );
@@ -414,7 +421,7 @@ export default function TripDetailsPage() {
          <Card className="mt-4 shadow-lg">
             <CardHeader><CardTitle>{t('loadingPlanDetails')}</CardTitle></CardHeader>
             <CardContent><p>{t('loadingPlanDetailsError')}</p>
-             <Button onClick={() => router.push('/notifications')} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}</Button>
+             <Button onClick={() => router.push('/travelplanner')} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}</Button>
             </CardContent>
          </Card>
     );
@@ -422,7 +429,7 @@ export default function TripDetailsPage() {
   
   return (
     <div className="space-y-6 py-4">
-        <Button variant="outline" onClick={() => router.push('/notifications')} className="mb-4">
+        <Button variant="outline" onClick={() => router.push('/travelplanner')} className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}
         </Button>
 
@@ -534,7 +541,7 @@ export default function TripDetailsPage() {
                                                   </div>
                                                   <div>
                                                   <h4 className="font-semibold mb-1 text-md flex items-center gap-1.5"><CloudSun size={18}/> {t('activityIdeas')}</h4>
-                                                  {segment.activitySuggestions ? (<>{segment.activitySuggestions.indoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1">{t('indoor')}</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.indoorActivities.map((item, index) => (<li key={`indoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{segment.activitySuggestions.outdoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1">{t('outdoor')}</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.outdoorActivities.map((item, index) => (<li key={`outdoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{(segment.activitySuggestions.indoorActivities.length === 0 && segment.activitySuggestions.outdoorActivities.length === 0) && (<p className="text-sm text-muted-foreground">{t('noActivitiesSuggested')}</p>)}</>) : (!segment.isLoading && <p className="text-sm text-muted-foreground">{t('activitySuggestionsUnavailable')}</p>)}
+                                                  {segment.activitySuggestions ? (<>{segment.activitySuggestions.indoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1 flex items-center gap-1"><Building size={14}/> {t('indoor')}</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.indoorActivities.map((item, index) => (<li key={`indoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{segment.activitySuggestions.outdoorActivities.length > 0 && (<><p className="text-sm font-medium mt-1 flex items-center gap-1"><Tent size={14}/> {t('outdoor')}</p><ul className="list-disc list-inside space-y-0.5 text-sm pl-1">{segment.activitySuggestions.outdoorActivities.map((item, index) => (<li key={`outdoor-${segment.id}-${index}`}>{item}</li>))}</ul></>)}{(segment.activitySuggestions.indoorActivities.length === 0 && segment.activitySuggestions.outdoorActivities.length === 0) && (<p className="text-sm text-muted-foreground">{t('noActivitiesSuggested')}</p>)}</>) : (!segment.isLoading && <p className="text-sm text-muted-foreground">{t('activitySuggestionsUnavailable')}</p>)}
                                                   </div>
                                               </div>
                                           )}
