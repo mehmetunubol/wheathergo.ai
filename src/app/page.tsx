@@ -61,12 +61,6 @@ export default function HomePage() {
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
   const prevUserUID = React.useRef<string | undefined>(undefined);
 
-  React.useEffect(() => {
-    if (!appSettingsLoading && (familyProfile === "" || isLoadingProfileFromEditor)) {
-      setFamilyProfile(appSettings.defaultFamilyProfile || "");
-    }
-  }, [appSettingsLoading, appSettings.defaultFamilyProfile, familyProfile, isLoadingProfileFromEditor]);
-
 
   const handleProfileUpdate = React.useCallback((newProfile: string) => {
     setFamilyProfile(newProfile);
@@ -80,20 +74,6 @@ export default function HomePage() {
       setSelectedDate(new Date()); 
     }
   }, []);
-
-  React.useEffect(() => {
-    if (!appSettingsLoading && !isLoadingProfileFromEditor) {
-      const needsUpdateFromAppSettings =
-        (familyProfile === DEFAULT_APP_SETTINGS.defaultFamilyProfile || familyProfile === "" || familyProfile === undefined) &&
-        appSettings.defaultFamilyProfile &&
-        familyProfile !== appSettings.defaultFamilyProfile;
-
-      if (needsUpdateFromAppSettings) {
-        setFamilyProfile(appSettings.defaultFamilyProfile);
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appSettingsLoading, appSettings.defaultFamilyProfile, isLoadingProfileFromEditor]);
 
 
   React.useEffect(() => {
@@ -128,13 +108,14 @@ export default function HomePage() {
                setSelectedDate(new Date());
             }
           } else {
+            // No Firestore prefs, check localStorage for location if it was set before login
             const storedLocation = localStorage.getItem("weatherugo-location");
             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
               initialLocationResolved = storedLocation;
             }
             setSelectedDate(new Date()); 
           }
-        } else {
+        } else { // Not authenticated
           const storedLocation = localStorage.getItem("weatherugo-location");
           if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             initialLocationResolved = storedLocation;
@@ -162,7 +143,8 @@ export default function HomePage() {
         prevUserUID.current = user?.uid;
     }
 
-  }, [isAuthenticated, user, authIsLoading, appSettingsLoading, appSettings.defaultLocation, pathname]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.uid, authIsLoading, appSettingsLoading, appSettings.defaultLocation, pathname]);
 
 
   React.useEffect(() => {
@@ -258,7 +240,7 @@ export default function HomePage() {
         } catch (error: any) {
           console.error(`Client-side fetch weather error for "${location}":`, error.message);
           let toastDescription = error.message || t('weatherApiDefaultError');
-          if (error.message && error.message.toLowerCase().includes("api key")) {
+           if (error.message && error.message.toLowerCase().includes("api key")) {
              toastDescription = t('weatherApiApiKeyError');
           } else if (error.message && error.message.toLowerCase().includes("no matching location found")) {
             toastDescription = t('weatherApiNoLocationError', {location: location});
@@ -343,7 +325,7 @@ export default function HomePage() {
             const activities = await suggestActivities(activityInput);
 
             const serviceBusyMsgEn = "AI suggestion service is currently busy. Please try again in a moment.";
-            const serviceBusyMsgTr = t('aiServiceBusy'); // Use translated version
+            const serviceBusyMsgTr = t('aiServiceBusy'); 
 
             if (activities.indoorActivities.length === 1 && 
                 (activities.indoorActivities[0] === serviceBusyMsgEn || activities.indoorActivities[0] === serviceBusyMsgTr)) {
@@ -378,7 +360,7 @@ export default function HomePage() {
       getWeatherAndSuggestions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language]); 
+  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, t]); // Added t to deps for toast
   
   const getFilteredHourlyForecast = (): HourlyForecastData[] => {
     if (!weatherData?.forecast || weatherData.isGuessed) return []; 
@@ -389,35 +371,44 @@ export default function HomePage() {
     return weatherData.forecast.filter(item => {
         let itemHour = -1;
         const timeString = item.time;
-        const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i); // Handles "3 PM" or "10 AM"
-        const isoMatch = timeString.match(/\d{4}-\d{2}-\d{2}T(\d{2}):\d{2}/); // Handles ISO like "2023-05-20T15:00"
-        
-        if (match) { // "3 PM" format
-            itemHour = parseInt(match[1], 10);
-            const period = match[2]?.toUpperCase(); // Optional chaining for period
-            if (period === 'PM' && itemHour !== 12) {
-                itemHour += 12;
-            } else if (period === 'AM' && itemHour === 12) { 
-                itemHour = 0;
+
+        // Try parsing ISO-like datetime string first (e.g., "2023-05-20T15:00")
+        try {
+          const itemDateFromISO = parseISO(timeString);
+          if (isValid(itemDateFromISO)) {
+            itemHour = getHours(itemDateFromISO);
+          }
+        } catch (e) { /* ignore */ }
+
+        // If ISO parsing failed or didn't yield a valid hour, try "h a" format
+        if (itemHour === -1) {
+            const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i); // Handles "3 PM" or "10 AM"
+            if (match) {
+                itemHour = parseInt(match[1], 10);
+                const period = match[2]?.toUpperCase();
+                if (period === 'PM' && itemHour !== 12) {
+                    itemHour += 12;
+                } else if (period === 'AM' && itemHour === 12) { 
+                    itemHour = 0;
+                }
             }
-        } else if (isoMatch) { // ISO time format
-             itemHour = parseInt(isoMatch[1], 10);
-        } else { // Fallback for "HH:mm" or just hour
+        }
+        
+        // Fallback for simple "HH:mm" or just hour if all else fails
+        if (itemHour === -1) {
             try {
-              const itemDate = parseISO(item.time); 
-              if (isValid(itemDate)) {
-                 itemHour = getHours(itemDate);
-              } else {
-                 const plainHourMatch = item.time.match(/^(\d{1,2})/); 
-                 if (plainHourMatch) itemHour = parseInt(plainHourMatch[1], 10);
+              // This regex tries to match HH:mm or HH at the beginning of the string
+              const plainHourMatch = timeString.match(/^(\d{1,2})(:\d{2})?/);
+              if (plainHourMatch && plainHourMatch[1]) {
+                itemHour = parseInt(plainHourMatch[1], 10);
               }
-            } catch { /* ignore parsing errors for this fallback */ }
+            } catch { /* ignore */ }
         }
         
         if (itemHour !== -1) {
             return itemHour >= currentHourToDisplayFrom;
         }
-        return true; 
+        return true; // If time cannot be parsed, include it by default to be safe
     });
   };
 
@@ -430,7 +421,7 @@ export default function HomePage() {
         </div>
         <Skeleton className="h-[200px] w-full" />
         <Skeleton className="h-[150px] w-full" />
-        <Skeleton className="h-[180px] w-full" />
+        <Skeleton className="h-[180px]w-full" />
         <Skeleton className="h-[180px] w-full" />
       </div>
     );
@@ -511,3 +502,4 @@ export default function HomePage() {
   );
 }
 
+    
