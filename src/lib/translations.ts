@@ -63,6 +63,11 @@ export const translations: AllTranslations = {
     loginToVisualizeTitle: "Visualize Your Outfit with AI!",
     loginToVisualizeDescription: "Log in or sign up to use our AI-powered image generation and see your suggested outfit come to life.",
     loginToVisualizeButton: "Log In to Visualize",
+    startOfTripLabel: "Start of Trip",
+    middleOfTripLabel: "Middle of Trip",
+    endOfTripLabel: "End of Trip",
+    sharePlanDetailsNotLoaded: "Plan details are not loaded.",
+    shareSuggestionsLoadingOrIncomplete: "Suggestions are loading or weather data is incomplete for some days.",
   },
   tr: {
     ...trTranslations,
@@ -115,6 +120,11 @@ export const translations: AllTranslations = {
     loginToVisualizeTitle: "Kıyafetinizi AI ile Görselleştirin!",
     loginToVisualizeDescription: "Önerilen kıyafetinizin canlandığını görmek için AI destekli resim oluşturma özelliğimizi kullanmak üzere giriş yapın veya kaydolun.",
     loginToVisualizeButton: "Görselleştirmek İçin Giriş Yapın",
+    startOfTripLabel: "Seyahat Başlangıcı",
+    middleOfTripLabel: "Seyahat Ortası",
+    endOfTripLabel: "Seyahat Sonu",
+    sharePlanDetailsNotLoaded: "Plan detayları yüklenmedi.",
+    shareSuggestionsLoadingOrIncomplete: "Öneriler yükleniyor veya bazı günler için hava durumu verileri eksik.",
   },
 };
 

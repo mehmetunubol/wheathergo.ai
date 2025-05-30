@@ -123,7 +123,6 @@ export const enTranslations = {
   loginToSeePlans: "Log in to see your saved travel plans.",
   viewSummary: "View",
   deleteTravelPlan: "Delete travel plan",
-  notificationsSimulatedFooter: "Daily/Weekly email notifications with suggestions are simulated. Full functionality would require a backend service.",
   notificationsConfiguredPremium: "Email notifications are configured for your travel plans.",
   notificationsPremiumFeature: "Automated email notifications for travel plans are a premium feature. Upgrade to receive daily/weekly updates!",
   // Trip Details Dialog
@@ -158,6 +157,11 @@ export const enTranslations = {
   copiedToClipboardDesc: "Suggestions copied. Web Share API not available.",
   copyFailed: "Copy Failed",
   copyFailedDesc: "Could not copy suggestions to clipboard.",
+  startOfTripLabel: "Start of Trip",
+  middleOfTripLabel: "Middle of Trip",
+  endOfTripLabel: "End of Trip",
+  sharePlanDetailsNotLoaded: "Plan details are not loaded.",
+  shareSuggestionsLoadingOrIncomplete: "Suggestions are loading or weather data is incomplete for some days.",
   // Weather API errors
   weatherApiErrorTitle: "Weather Data Error",
   weatherApiDefaultError: "Could not retrieve weather data. Please try a different location or check again later.",

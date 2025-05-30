@@ -123,7 +123,6 @@ export const trTranslations = {
   loginToSeePlans: "Kaydedilmiş seyahat planlarınızı görmek için giriş yapın.",
   viewSummary: "Görüntüle",
   deleteTravelPlan: "Seyahat planını sil",
-  notificationsSimulatedFooter: "Günlük/Haftalık e-posta bildirimleri ve öneriler simüle edilmiştir. Tam işlevsellik bir arka uç servisi gerektirir.",
   notificationsConfiguredPremium: "Seyahat planlarınız için e-posta bildirimleri yapılandırıldı.",
   notificationsPremiumFeature: "Seyahat planları için otomatik e-posta bildirimleri premium bir özelliktir. Seyahatleriniz için günlük/haftalık güncellemeler almak için yükseltin!",
   // Trip Details Dialog
@@ -158,6 +157,11 @@ export const trTranslations = {
   copiedToClipboardDesc: "Öneriler kopyalandı. Web Paylaşım API'si mevcut değil.",
   copyFailed: "Kopyalama Başarısız Oldu",
   copyFailedDesc: "Öneriler panoya kopyalanamadı.",
+  startOfTripLabel: "Seyahat Başlangıcı",
+  middleOfTripLabel: "Seyahat Ortası",
+  endOfTripLabel: "Seyahat Sonu",
+  sharePlanDetailsNotLoaded: "Plan detayları yüklenmedi.",
+  shareSuggestionsLoadingOrIncomplete: "Öneriler yükleniyor veya bazı günler için hava durumu verileri eksik.",
   // Weather API errors
   weatherApiErrorTitle: "Hava Durumu Veri Hatası",
   weatherApiDefaultError: "Hava durumu verileri alınamadı. Lütfen farklı bir konum deneyin veya daha sonra tekrar kontrol edin.",
