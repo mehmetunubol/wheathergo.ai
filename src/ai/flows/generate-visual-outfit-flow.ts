@@ -55,28 +55,28 @@ const getPromptTemplate = (language: Language, isDay: boolean | undefined) => {
     The 'Family Profile' and 'Clothing Suggestions' might be in Turkish.
     First, conceptually translate these Turkish inputs into English visual descriptions.
     For example, if weather condition is 'Açık', interpret as 'Clear' or 'Sunny' for the image.
+    If Family Profile is 'genç bir anne ve bebek', understand this as 'a young mother and her baby' for subject depiction.
     Then, use these English descriptions to create the final image prompt.
     The final image prompt MUST be in English.
     `;
   }
 
   const dayNightContext = isDay === false ? "nighttime scene" : "daytime scene";
+  const imageStyle = "Charming fashion illustration, stylized, clear focus on clothing items.";
 
   return `
     ${translationInstruction}
 
-    You are an AI image generation assistant. Your task is to create a single, visually descriptive prompt for an image generation model (like DALL-E or Midjourney) and then generate the image.
-    The final image should be a realistic fashion photograph or a high-quality illustration.
+    You are an AI image generation assistant. Your task is to generate an image based on the following visual description.
+    Style: ${imageStyle}
 
-    Input Details:
-    - Family Profile to visualize: {{{familyProfile}}} (Derive a visual characterization in English, e.g., 'a family with a toddler', 'a young couple'. Do NOT directly quote this profile text unless it's a simple, universally visual element like a color. Focus on translating the *meaning* of the family structure into an English visual description.)
-    - Weather: {{{weatherData.condition}}} at {{{weatherData.temperature}}}°C in {{{weatherData.location}}}. It is a ${dayNightContext}. (If weather condition is in Turkish, e.g., 'Açık', interpret as 'Clear' or 'Sunny' for the image.)
-    - Suggested Clothing Items: {{#each clothingSuggestions.suggestions}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}. (If clothing items are in Turkish, ensure the visual description for the image is in English.)
-    - Reasoning for Clothing: {{{clothingSuggestions.reasoning}}}
+    Visual Description Construction:
+    - Subjects: From the 'Family Profile' ({{{familyProfile}}}), derive a concise visual characterization in English. For example, if the profile means 'a young mother and her baby', depict exactly that: a young woman with a baby, not other adults. Focus on the number and general types of people (e.g., 'a solo traveler', 'two adults and a toddler').
+    - Attire: The subjects should be wearing clothing items suitable for the 'Suggested Clothing Items' ({{#each clothingSuggestions.suggestions}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}). If clothing items are in Turkish, ensure the visual description for the image is in English.
+    - Environment: Place the subjects in '{{{weatherData.location}}}' experiencing '{{{weatherData.condition}}}' weather at {{{weatherData.temperature}}}°C. The scene should be a ${dayNightContext}. If weather condition is in Turkish (e.g., 'Açık'), interpret as 'Clear' or 'Sunny' for the image.
 
-    Based on ALL the above details, generate an image depicting suitable people (derived from the family profile) wearing the suggested clothing in the described weather and location context.
-    Focus on a clear depiction of the outfits.
-    The output image should be a single, coherent scene.
+    Based on the above, create an image. The image should clearly depict the people wearing the suggested clothing in the described weather and location context.
+    Ensure the output image is a single, coherent scene. Do not include any of this instructional text in the image.
   `;
 };
 
