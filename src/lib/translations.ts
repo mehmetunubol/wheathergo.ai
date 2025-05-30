@@ -373,6 +373,15 @@ export const translations: AllTranslations = {
     saveAllSettingsButton: "Save All Settings",
     errorLoadingSettingsTitle: "Error Loading Settings",
     tryAgainButton: "Try Again",
+    usageLimitsCardTitle: "Usage Limits (Hardcoded)",
+    usageLimitsCardDesc: "These limits are currently set in the code and not configurable here.",
+    freeTierLimits: "Free Tier Limits",
+    premiumTierLimits: "Premium Tier Limits (Example)",
+    dailyImageGenerations: "Daily Image Generations",
+    dailyOutfitSuggestions: "Daily Outfit Suggestions",
+    dailyActivitySuggestions: "Daily Activity Suggestions",
+    maxTravelPlans: "Max Travel Plans",
+
 
     // README
     readmeTitle: "Weatherugo Guide",
@@ -828,6 +837,14 @@ export const translations: AllTranslations = {
     saveAllSettingsButton: "Tüm Ayarları Kaydet",
     errorLoadingSettingsTitle: "Ayarlar Yüklenirken Hata",
     tryAgainButton: "Tekrar Dene",
+    usageLimitsCardTitle: "Kullanım Limitleri (Sabit Kodlu)",
+    usageLimitsCardDesc: "Bu limitler şu anda kodda ayarlanmıştır ve buradan yapılandırılamaz.",
+    freeTierLimits: "Ücretsiz Seviye Limitleri",
+    premiumTierLimits: "Premium Seviye Limitleri (Örnek)",
+    dailyImageGenerations: "Günlük Görüntü Oluşturma",
+    dailyOutfitSuggestions: "Günlük Kıyafet Önerileri",
+    dailyActivitySuggestions: "Günlük Aktivite Önerileri",
+    maxTravelPlans: "Maks. Seyahat Planı",
 
     // README
     readmeTitle: "Weatherugo Rehberi",
@@ -923,3 +940,5 @@ export const translations: AllTranslations = {
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
+
+    

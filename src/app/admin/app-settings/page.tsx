@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle } from "lucide-react";
+import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle, BarChart3 } from "lucide-react"; // Added BarChart3
 import type { NotificationFrequency, AppSettings as AppSettingsType } from "@/types"; 
+import { USAGE_LIMITS } from "@/types"; // Import USAGE_LIMITS
 import { useTranslation } from "@/hooks/use-translation";
 
 export default function AdminAppSettingsPage() {
@@ -64,7 +65,7 @@ export default function AdminAppSettingsPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold flex items-center gap-2"><Settings /> {t('appSettingsTitleFull')}</h1>
-        {[...Array(3)].map((_, i) => (
+        {[...Array(4)].map((_, i) => ( // Increased skeleton count
           <Card key={i}>
             <CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader>
             <CardContent className="space-y-4">
@@ -166,6 +167,33 @@ export default function AdminAppSettingsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2"><BarChart3 /> {t('usageLimitsCardTitle')}</CardTitle>
+          <CardDescription>{t('usageLimitsCardDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <h4 className="font-semibold text-md mb-2">{t('freeTierLimits')}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <p><strong>{t('dailyImageGenerations')}:</strong> {USAGE_LIMITS.freeTier.dailyImageGenerations}</p>
+              <p><strong>{t('dailyOutfitSuggestions')}:</strong> {USAGE_LIMITS.freeTier.dailyOutfitSuggestions}</p>
+              <p><strong>{t('dailyActivitySuggestions')}:</strong> {USAGE_LIMITS.freeTier.dailyActivitySuggestions}</p>
+              <p><strong>{t('maxTravelPlans')}:</strong> {USAGE_LIMITS.freeTier.maxTravelPlans}</p>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-md mb-2">{t('premiumTierLimits')}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <p><strong>{t('dailyImageGenerations')}:</strong> {USAGE_LIMITS.premiumTier.dailyImageGenerations}</p>
+              <p><strong>{t('dailyOutfitSuggestions')}:</strong> {USAGE_LIMITS.premiumTier.dailyOutfitSuggestions}</p>
+              <p><strong>{t('dailyActivitySuggestions')}:</strong> {USAGE_LIMITS.premiumTier.dailyActivitySuggestions}</p>
+              <p><strong>{t('maxTravelPlans')}:</strong> {USAGE_LIMITS.premiumTier.maxTravelPlans}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button type="submit" disabled={isSaving || isLoadingSettings}>
           <Save className="mr-2 h-4 w-4" /> {isSaving ? t('saving') : t('saveAllSettingsButton')}
@@ -174,3 +202,5 @@ export default function AdminAppSettingsPage() {
     </form>
   );
 }
+
+    
