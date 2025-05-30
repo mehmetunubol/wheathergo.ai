@@ -25,6 +25,7 @@ export const translations: AllTranslations = {
     premiumComingSoonDesc: "Direct upgrades to our Premium Tier will be available here shortly. We're working on integrating a seamless payment system.",
     premiumTrialRequest: "In the meantime, if you'd like to be considered for a trial of our Premium features, please contact an administrator.",
     contactAdminButton: "Contact Admin",
+    imageGenerationAIBusyError: "The AI image generator is currently busy or encountered an issue. Please try again in a few moments.",
   },
   tr: {
     ...trTranslations,
@@ -39,8 +40,10 @@ export const translations: AllTranslations = {
     premiumComingSoonDesc: "Premium Seviyemize doğrudan yükseltmeler yakında burada olacak. Sorunsuz bir ödeme sistemi entegre etmek için çalışıyoruz.",
     premiumTrialRequest: "Bu arada, Premium özelliklerimizi denemek için değerlendirilmek isterseniz, lütfen bir yöneticiyle iletişime geçin.",
     contactAdminButton: "Yöneticiyle İletişime Geç",
+    imageGenerationAIBusyError: "AI resim oluşturucu şu anda meşgul veya bir sorunla karşılaştı. Lütfen birkaç dakika içinde tekrar deneyin.",
   },
 };
 
 // Ensure enTranslations is imported before this line
 export type TranslationKey = keyof typeof translations.en; // Use 'en' as the canonical source for keys
+

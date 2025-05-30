@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import type { WeatherData, ClothingSuggestionsOutput, Language, User, DailyUsage, AppSettings } from "@/types";
-// import { USAGE_LIMITS } from "@/types"; // Import USAGE_LIMITS - No longer needed, use appSettings
 import { generateVisualOutfit } from "@/ai/flows/generate-visual-outfit-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +11,7 @@ import { ImageIcon, Sparkles, AlertTriangle, Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useAuth } from "@/hooks/use-auth";
-import { useAppSettings } from "@/contexts/app-settings-context"; // Import useAppSettings
+import { useAppSettings } from "@/contexts/app-settings-context"; 
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
 import { format } from 'date-fns';
@@ -35,7 +34,7 @@ export function OutfitVisualizationCard({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
-  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); // Use appSettings
+  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); 
 
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
   const [isProcessingImage, setIsProcessingImage] = React.useState(false);
@@ -43,7 +42,7 @@ export function OutfitVisualizationCard({
   const [canGenerateImage, setCanGenerateImage] = React.useState(true); 
 
   const checkImageGenerationLimit = React.useCallback(async () => {
-    if (appSettingsLoading) return false; // Wait for settings to load
+    if (appSettingsLoading) return false; 
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const limits = user?.isPremium ? appSettings.premiumTierLimits : appSettings.freeTierLimits;
@@ -79,7 +78,7 @@ export function OutfitVisualizationCard({
   }, [isAuthenticated, user, t, toast, appSettings.freeTierLimits, appSettings.premiumTierLimits, appSettingsLoading]);
 
   const updateImageGenerationCount = async () => {
-    if (appSettingsLoading) return; // Should not happen if check passed, but good practice
+    if (appSettingsLoading) return; 
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     if (!isAuthenticated || !user) {
@@ -155,18 +154,16 @@ export function OutfitVisualizationCard({
           description: t('visualizationSuccessDesc'),
         });
       } else {
+        // This case should ideally be caught by errors thrown from generateVisualOutfitFlow
         throw new Error(t('imageGenerationErrorDefault'));
       }
     } catch (error: any) {
-      console.error("Outfit visualization error:", error);
-      let userFriendlyError = t('imageGenerationErrorDefault');
-       if (error.message && error.message.includes('API key issue')) {
+      console.error("Outfit visualization error (client-side catch):", error);
+      let userFriendlyError = t('imageGenerationAIBusyError'); // Default to "AI busy"
+       if (error.message && error.message.toLowerCase().includes('api key issue')) {
         userFriendlyError = t('imageGenerationApiKeyError');
-      } else if (error.message && error.message.startsWith('AI image generation failed to produce an image URL')) {
-        userFriendlyError = error.message; 
-      } else if (error.message) {
-         userFriendlyError = `Failed to generate outfit image: ${error.message}`;
       }
+      // Detailed error is logged above, user sees the friendly message.
 
       setGenerationError(userFriendlyError);
       toast({
@@ -228,3 +225,4 @@ export function OutfitVisualizationCard({
     </Card>
   );
 }
+
