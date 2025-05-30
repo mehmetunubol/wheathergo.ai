@@ -26,6 +26,8 @@ export const translations: AllTranslations = {
     premiumTrialRequest: "In the meantime, if you'd like to be considered for a trial of our Premium features, please contact an administrator.",
     contactAdminButton: "Contact Admin",
     imageGenerationAIBusyError: "The AI image generator is currently busy or encountered an issue. Please try again in a few moments.",
+    notificationsConfiguredPremium: "Email notifications are configured for your travel plans.",
+    notificationsPremiumFeature: "Automated email notifications for travel plans are a premium feature. Upgrade to receive daily/weekly updates!",
   },
   tr: {
     ...trTranslations,
@@ -41,9 +43,12 @@ export const translations: AllTranslations = {
     premiumTrialRequest: "Bu arada, Premium özelliklerimizi denemek için değerlendirilmek isterseniz, lütfen bir yöneticiyle iletişime geçin.",
     contactAdminButton: "Yöneticiyle İletişime Geç",
     imageGenerationAIBusyError: "AI resim oluşturucu şu anda meşgul veya bir sorunla karşılaştı. Lütfen birkaç dakika içinde tekrar deneyin.",
+    notificationsConfiguredPremium: "Seyahat planlarınız için e-posta bildirimleri yapılandırıldı.",
+    notificationsPremiumFeature: "Seyahat planları için otomatik e-posta bildirimleri premium bir özelliktir. Seyahatleriniz için günlük/haftalık güncellemeler almak için yükseltin!",
   },
 };
 
 // Ensure enTranslations is imported before this line
 export type TranslationKey = keyof typeof translations.en; // Use 'en' as the canonical source for keys
+
 

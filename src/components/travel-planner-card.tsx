@@ -3,8 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { TravelPlanItem, NotificationFrequency, AppSettings } from "@/types";
-// import { USAGE_LIMITS } from "@/types"; // No longer needed, use appSettings
+import type { TravelPlanItem, NotificationFrequency } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -379,7 +378,10 @@ export function TravelPlannerCard() {
         </CardContent>
          <CardFooter>
           <p className="text-xs text-muted-foreground">
-            {t('notificationsSimulatedFooter')}
+            {isAuthenticated && user?.isPremium 
+              ? t('notificationsConfiguredPremium')
+              : t('notificationsPremiumFeature')
+            }
           </p>
         </CardFooter>
       </Card>
@@ -394,3 +396,4 @@ export function TravelPlannerCard() {
     </>
   );
 }
+
