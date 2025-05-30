@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { Cloud, CalendarDays, Plane, Menu as MenuIcon, Newspaper } from "lucide-react"; // Added Newspaper
-import { UserNav } from "./user-nav";
+import { Cloud, CalendarDays, Plane, Menu as MenuIcon, Newspaper, Settings, CreditCard, LogOut, LogIn, ShieldCheck, UserCircle, Home } from "lucide-react";
+import { UserNav } from "./user-nav"; // UserNav is now just for Avatar
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
@@ -17,31 +17,46 @@ import {
   SheetTitle,
   SheetTrigger,
   SheetClose,
+  SheetFooter,
 } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hooks/use-auth";
+import { Avatar } from "./ui/avatar"; // Import Avatar if UserNav only returns Avatar component
 
 export function MainNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const { isAuthenticated, user, logout, isAdmin, isLoading } = useAuth();
 
-  const navItems = [
+  const appNavItems = [
     { href: "/", labelKey: "weather" as const, icon: <CalendarDays className="h-5 w-5" /> },
     { href: "/travelplanner", labelKey: "travelPlans" as const, icon: <Plane className="h-5 w-5" /> },
-    { href: "/blog", labelKey: "blogTitle" as const, icon: <Newspaper className="h-5 w-5" /> }, // Added Blog
+    { href: "/blog", labelKey: "blogTitle" as const, icon: <Newspaper className="h-5 w-5" /> },
   ];
+
+  const userNavItems = isAuthenticated ? [
+    { href: "/subscription", labelKey: "subscriptionBilling" as const, icon: <CreditCard className="h-5 w-5" /> },
+    { href: "/settings", labelKey: "settings" as const, icon: <Settings className="h-5 w-5" /> },
+    ...(isAdmin ? [{ href: "/admin", labelKey: "adminPanel" as const, icon: <ShieldCheck className="h-5 w-5" /> }] : []),
+  ] : [];
+
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  const weatherNavItem = navItems.find(item => item.labelKey === "weather");
-  const travelPlansNavItem = navItems.find(item => item.labelKey === "travelPlans");
-  const blogNavItem = navItems.find(item => item.labelKey === "blogTitle");
-
+  const getInitials = (name: string | null) => {
+    if (!name) return "U";
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-        {/* Logo and App Name - Always on the left */}
         <Link href="/" className="flex items-center space-x-2 mr-4">
           <Cloud className="h-7 w-7 text-primary" />
           <div>
@@ -55,16 +70,16 @@ export function MainNav() {
           </div>
         </Link>
 
-        {/* Navigation for Desktop */}
+        {/* Desktop Navigation */}
         {!isMobile && (
-          <div className="flex items-center space-x-4">
-            <nav className="flex items-center gap-4 text-sm lg:gap-6">
-              {navItems.map((item) => (
+          <div className="flex-1 flex items-center justify-end space-x-4">
+            <nav className="flex items-center gap-4 text-sm lg:gap-5">
+              {appNavItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "transition-colors hover:text-foreground/80 flex items-center gap-1",
+                    "transition-colors hover:text-foreground/80 flex items-center gap-1.5",
                     pathname === item.href ? "text-foreground font-semibold" : "text-foreground/60"
                   )}
                 >
@@ -73,102 +88,122 @@ export function MainNav() {
                 </Link>
               ))}
             </nav>
-            <UserNav />
+            
+            <div className="flex items-center gap-3">
+              {isAuthenticated && userNavItems.map((item) => (
+                 <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "transition-colors hover:text-foreground/80 text-sm flex items-center gap-1.5",
+                      pathname === item.href ? "text-foreground font-semibold" : "text-foreground/60"
+                    )}
+                  >
+                    {item.icon}
+                    {t(item.labelKey)}
+                  </Link>
+              ))}
+              {isAuthenticated ? (
+                <>
+                  <UserNav /> {/* Simplified UserNav for avatar */}
+                  <Button variant="ghost" size="sm" onClick={logout} className="text-foreground/60 hover:text-foreground/80">
+                    <LogOut className="mr-1.5 h-4 w-4" />
+                    {t('logout')}
+                  </Button>
+                </>
+              ) : (
+                <Link href="/login" passHref>
+                  <Button variant="outline" size="sm">
+                    <LogIn className="mr-1.5 h-4 w-4" />
+                    {t('loginButton')}
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Navigation for Mobile */}
+        {/* Mobile Navigation Trigger */}
         {isMobile && (
-          <div className="flex items-center space-x-2">
-             {/* Display Travel Plans and Blog links directly on mobile header */}
-            {travelPlansNavItem && (
-              <Link
-                href={travelPlansNavItem.href}
-                className={cn(
-                  "transition-colors hover:text-foreground/80 flex items-center gap-1 text-sm font-medium",
-                  pathname === travelPlansNavItem.href ? "text-foreground" : "text-foreground/60"
-                )}
-              >
-                {travelPlansNavItem.icon}
-                {/* {t(travelPlansNavItem.labelKey)} */} {/* Text can be omitted for space */}
-              </Link>
-            )}
-            {blogNavItem && (
-              <Link
-                href={blogNavItem.href}
-                className={cn(
-                  "transition-colors hover:text-foreground/80 flex items-center gap-1 text-sm font-medium",
-                  pathname === blogNavItem.href ? "text-foreground" : "text-foreground/60"
-                )}
-              >
-                {blogNavItem.icon}
-                 {/* {t(blogNavItem.labelKey)} */} {/* Text can be omitted for space */}
-              </Link>
-            )}
+          <div className="flex items-center">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label={t('openMenu')}>
                   <MenuIcon className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[240px] p-0 flex flex-col">
+              <SheetContent side="right" className="w-[280px] p-0 flex flex-col">
                 <SheetHeader className="p-4 border-b">
                   <SheetTitle className="text-left flex items-center gap-2">
                      <Cloud className="h-6 w-6 text-primary" /> Weatherugo
                   </SheetTitle>
                 </SheetHeader>
-                <div className="p-4 border-b flex flex-col items-center">
-                  <UserNav />
-                </div>
-                <nav className="flex flex-col space-y-1 p-4">
-                  {weatherNavItem && (
-                    <SheetClose asChild key={weatherNavItem.href}>
+
+                {isAuthenticated && user && (
+                  <div className="p-4 border-b flex items-center gap-3">
+                    <UserNav /> {/* Avatar */}
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{user.displayName || t('user')}</span>
+                      {user.email && <span className="text-xs text-muted-foreground">{user.email}</span>}
+                    </div>
+                  </div>
+                )}
+                
+                <nav className="flex-1 flex flex-col space-y-1 p-4 overflow-y-auto">
+                  {appNavItems.map((item) => (
+                    <SheetClose asChild key={`mobile-${item.href}`}>
                       <Link
-                        href={weatherNavItem.href}
+                        href={item.href}
                         className={cn(
                           "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                          pathname === weatherNavItem.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
+                          pathname === item.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
                         )}
                         onClick={closeMobileMenu}
                       >
-                        {weatherNavItem.icon}
-                        {t(weatherNavItem.labelKey)}
+                        {item.icon}
+                        {t(item.labelKey)}
+                      </Link>
+                    </SheetClose>
+                  ))}
+
+                  {isAuthenticated && userNavItems.length > 0 && <Separator className="my-3" />}
+
+                  {isAuthenticated && userNavItems.map((item) => (
+                     <SheetClose asChild key={`mobile-user-${item.href}`}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                          pathname === item.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
+                        )}
+                        onClick={closeMobileMenu}
+                      >
+                        {item.icon}
+                        {t(item.labelKey)}
+                      </Link>
+                    </SheetClose>
+                  ))}
+                </nav>
+
+                <SheetFooter className="p-4 border-t mt-auto">
+                  {isAuthenticated ? (
+                    <SheetClose asChild>
+                      <Button variant="outline" className="w-full" onClick={() => { logout(); closeMobileMenu(); }}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        {t('logout')}
+                      </Button>
+                    </SheetClose>
+                  ) : (
+                    <SheetClose asChild>
+                      <Link href="/login" passHref>
+                        <Button className="w-full" onClick={closeMobileMenu}>
+                           <LogIn className="mr-2 h-4 w-4" />
+                          {t('loginButton')}
+                        </Button>
                       </Link>
                     </SheetClose>
                   )}
-                   {/* Travel Plans and Blog links if they were not outside */}
-                   {/* This ensures they appear if layout changes or to have them in one place */}
-                  {travelPlansNavItem && (
-                     <SheetClose asChild key={travelPlansNavItem.href + "-sheet"}>
-                        <Link
-                            href={travelPlansNavItem.href}
-                            className={cn(
-                            "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                            pathname === travelPlansNavItem.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
-                            )}
-                            onClick={closeMobileMenu}
-                        >
-                            {travelPlansNavItem.icon}
-                            {t(travelPlansNavItem.labelKey)}
-                        </Link>
-                    </SheetClose>
-                  )}
-                  {blogNavItem && (
-                     <SheetClose asChild key={blogNavItem.href + "-sheet"}>
-                        <Link
-                            href={blogNavItem.href}
-                            className={cn(
-                            "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                            pathname === blogNavItem.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
-                            )}
-                            onClick={closeMobileMenu}
-                        >
-                            {blogNavItem.icon}
-                            {t(blogNavItem.labelKey)}
-                        </Link>
-                    </SheetClose>
-                  )}
-                </nav>
+                </SheetFooter>
               </SheetContent>
             </Sheet>
           </div>
