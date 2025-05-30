@@ -612,12 +612,29 @@ export default function TripDetailsPage() {
                     </Alert>
                 )}
 
-                <div className="flex justify-end space-x-2 mt-6 pt-6 border-t">
-                    <Button variant="outline" onClick={handleRegenerateSuggestions} disabled={segments.length === 0 || isRegenerating || overallLoading || pageError !== null || segments.some(s => s.isLoading)}>
+                <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 md:justify-end mt-6 pt-6 border-t">
+                    <Button
+                        variant="outline"
+                        className="w-full md:w-auto"
+                        onClick={handleRegenerateSuggestions}
+                        disabled={segments.length === 0 || isRegenerating || overallLoading || pageError !== null || segments.some(s => s.isLoading)}
+                    >
                         <RefreshCw className="mr-2 h-4 w-4" /> {isRegenerating ? t('regenerating') : t('regenerateAllSuggestions')}
                     </Button>
-                    <Button onClick={handleDownload} disabled={!allSegmentsProcessed || segments.length === 0 || isRegenerating}><Download className="mr-2 h-4 w-4" /> {t('download')}</Button>
-                    <Button onClick={handleShare} disabled={!allSegmentsProcessed || segments.length === 0 || isRegenerating}><Share2 className="mr-2 h-4 w-4" /> {t('share')}</Button>
+                    <Button
+                        className="w-full md:w-auto"
+                        onClick={handleDownload}
+                        disabled={!allSegmentsProcessed || segments.length === 0 || isRegenerating}
+                    >
+                        <Download className="mr-2 h-4 w-4" /> {t('download')}
+                    </Button>
+                    <Button
+                        className="w-full md:w-auto"
+                        onClick={handleShare}
+                        disabled={!allSegmentsProcessed || segments.length === 0 || isRegenerating}
+                    >
+                        <Share2 className="mr-2 h-4 w-4" /> {t('share')}
+                    </Button>
                 </div>
             </CardContent>
         </Card>
