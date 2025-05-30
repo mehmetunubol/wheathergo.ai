@@ -35,7 +35,7 @@ export const translations: AllTranslations = {
     familyProfile: "Family Profile",
     familyProfileDescription: "Describe your family members (e.g., ages, sensitivities, pets)",
     familyProfilePlaceholder: "E.g., Two adults, one 2-year-old baby sensitive to cold, one dog.",
-    defaultFamilyProfileSettingText: "A single adult enjoying good weather.", // New key
+    defaultFamilyProfileSettingText: "A single adult enjoying good weather.",
     familyProfileSaveSuccess: "Your family profile has been updated.",
     familyProfileSaveError: "Could not save your family profile. Please try again.",
     familyProfileSaveLocal: "Your family profile has been saved to this browser. Log in to save to the cloud.",
@@ -55,6 +55,8 @@ export const translations: AllTranslations = {
     travelPlannerAuthPrompt: "Sign up or log in to save your plans and enable (simulated) email notifications!",
     exploreTravelPlans: "Explore Travel Plans",
     signUpLogin: "Sign Up / Log In",
+    weatherHasChanged: "weather has changed to", // Example: London weather has changed to 15°C and Sunny.
+    and: "and",
     // Login Page
     welcomeToWeatherugo: "Welcome to Weatherugo!",
     loginDescription: "Sign in or create an account to save your preferences and travel plans.",
@@ -72,8 +74,9 @@ export const translations: AllTranslations = {
     termsOfService: "Terms of Service",
     privacyPolicy: "Privacy Policy",
     mustAgreeToTermsError: "You must agree to the Terms of Service and Privacy Policy to sign up.",
-    agreeToTermsCheckboxAriaLabel: "Agree to Terms ofService and Privacy Policy",
+    agreeToTermsCheckboxAriaLabel: "Agree to Terms of Service and Privacy Policy",
     appleSignInSimulated: "Apple Sign-In is currently simulated and will use Google Sign-In.",
+    completeSecurityCheck: "Please complete the security check before signing up.",
     // Firebase Auth Errors
     authErrorDefault: "An unexpected authentication error occurred. Please try again.",
     authErrorInvalidEmail: "Invalid email address format.",
@@ -90,6 +93,8 @@ export const translations: AllTranslations = {
     saveFamilyProfile: "Save Family Profile",
     language: "Language",
     languageSelection: "Select Application Language",
+    loginToManageSettings: "Please log in to manage your application settings.",
+    selectedStatus: "selected",
     // Notifications (Travel Planner) Page
     travelPlannerTitle: "Travel Planner",
     travelPlannerDescription: "Manage your travel plans and set up daily email notifications for weather updates and suggestions during your trips.",
@@ -297,7 +302,7 @@ export const translations: AllTranslations = {
     termsS6P1: "We may revise these terms at any time. Continued use of the app means you accept the updated terms.",
     termsS7Title: "7. Governing Law",
     termsS7P1: "These terms are governed by the laws of {jurisdiction}. You agree to resolve disputes in the courts of that jurisdiction.",
-    termsS7P2Placeholder: "your governing jurisdiction", // Placeholder text for {jurisdiction}
+    termsS7P2Placeholder: "your governing jurisdiction",
     termsS8Title: "8. Contact",
     termsS8P1: "For questions about these terms, contact: {email}",
 
@@ -438,6 +443,19 @@ export const translations: AllTranslations = {
     blogTitleContentRequired: "Title and Content are required for a blog post.",
     blogPromptDetailsLabel: "AI Prompt Details (Optional)",
     blogPromptDetailsPlaceholder: "e.g., Focus on budget-friendly options, target audience is families with young children, make it humorous...",
+
+    // Outfit Visualization Card
+    visualizeOutfitTitle: "Visualize Outfit",
+    visualizeOutfitDescription: "Let AI generate an image of the suggested outfit in the current weather!",
+    generateOutfitImageButton: "Visualize with AI",
+    generatingImageMessage: "Generating image...",
+    visualizedOutfitAlt: "AI-generated visualization of the suggested outfit",
+    visualizationSuccessTitle: "Image Generated!",
+    visualizationSuccessDesc: "Your outfit visualization is ready.",
+    imageGenerationErrorTitle: "Image Generation Failed",
+    imageGenerationErrorDefault: "Sorry, we couldn't generate the image right now. Please try again later.",
+    imageGenerationApiKeyError: "Image generation failed: API key issue. Please contact support.",
+    visualizationPrerequisitesError: "Weather and outfit suggestions must be loaded first.",
   },
   tr: {
     // Common
@@ -464,7 +482,7 @@ export const translations: AllTranslations = {
     familyProfile: "Aile Profili",
     familyProfileDescription: "Aile üyelerinizi tanımlayın (örn: yaşlar, hassasiyetler, evcil hayvanlar)",
     familyProfilePlaceholder: "Örn: İki yetişkin, soğuğa duyarlı 2 yaşında bir bebek, bir köpek.",
-    defaultFamilyProfileSettingText: "İyi havanın tadını çıkaran bekar bir yetişkin.", // New key
+    defaultFamilyProfileSettingText: "İyi havanın tadını çıkaran bekar bir yetişkin.",
     familyProfileSaveSuccess: "Aile profiliniz güncellendi.",
     familyProfileSaveError: "Aile profiliniz kaydedilemedi. Lütfen tekrar deneyin.",
     familyProfileSaveLocal: "Aile profiliniz bu tarayıcıya kaydedildi. Buluta kaydetmek için giriş yapın.",
@@ -484,6 +502,8 @@ export const translations: AllTranslations = {
     travelPlannerAuthPrompt: "Planlarınızı kaydetmek ve (simüle edilmiş) e-posta bildirimlerini etkinleştirmek için kaydolun veya giriş yapın!",
     exploreTravelPlans: "Seyahat Planlarını Keşfet",
     signUpLogin: "Kaydol / Giriş Yap",
+    weatherHasChanged: "hava durumu şuna değişti:", // Örnek: Londra hava durumu 15°C ve Güneşli olarak değişti.
+    and: "ve",
     // Login Page
     welcomeToWeatherugo: "Weatherugo'ya Hoş Geldiniz!",
     loginDescription: "Tercihlerinizi ve seyahat planlarınızı kaydetmek için giriş yapın veya hesap oluşturun.",
@@ -495,7 +515,7 @@ export const translations: AllTranslations = {
     orContinueWith: "Veya şununla devam et",
     signInWithGoogle: "Google ile Giriş Yap",
     signInWithApple: "Apple ile Giriş Yap (Simüle Edilmiş)",
-    agreeToTermsPreamble: " ", // Changed to a single space
+    agreeToTermsPreamble: " ",
     agreeToTermsConjunction: " ve ",
     agreeToTermsPostamble: " okudum ve kabul ediyorum.",
     termsOfService: "Hizmet Şartları'nı",
@@ -503,6 +523,7 @@ export const translations: AllTranslations = {
     mustAgreeToTermsError: "Kaydolmak için Hizmet Şartları'nı ve Gizlilik Politikası'nı kabul etmelisiniz.",
     agreeToTermsCheckboxAriaLabel: "Hizmet Şartları ve Gizlilik Politikası'nı kabul et",
     appleSignInSimulated: "Apple ile Giriş şu anda simüle edilmiştir ve Google Girişini kullanacaktır.",
+    completeSecurityCheck: "Lütfen kaydolmadan önce güvenlik kontrolünü tamamlayın.",
     // Firebase Auth Errors
     authErrorDefault: "Beklenmedik bir kimlik doğrulama hatası oluştu. Lütfen tekrar deneyin.",
     authErrorInvalidEmail: "Geçersiz e-posta adresi formatı.",
@@ -519,6 +540,8 @@ export const translations: AllTranslations = {
     saveFamilyProfile: "Aile Profilini Kaydet",
     language: "Dil",
     languageSelection: "Uygulama Dilini Seçin",
+    loginToManageSettings: "Uygulama ayarlarınızı yönetmek için lütfen giriş yapın.",
+    selectedStatus: "olarak seçildi",
     // Notifications (Travel Planner) Page
     travelPlannerTitle: "Seyahat Planlayıcı",
     travelPlannerDescription: "Seyahat planlarınızı yönetin ve seyahatleriniz sırasında hava durumu güncellemeleri ve öneriler için günlük e-posta bildirimleri ayarlayın.",
@@ -867,9 +890,20 @@ export const translations: AllTranslations = {
     blogTitleContentRequired: "Blog yazısı için Başlık ve İçerik gereklidir.",
     blogPromptDetailsLabel: "AI İçin Detaylar (İsteğe Bağlı)",
     blogPromptDetailsPlaceholder: "Örn: Bütçe dostu seçeneklere odaklanın, hedef kitle küçük çocuklu aileler, mizahi bir dil kullanın...",
+
+    // Outfit Visualization Card
+    visualizeOutfitTitle: "Kıyafeti Görselleştir",
+    visualizeOutfitDescription: "AI'nın önerilen kıyafeti mevcut hava koşullarında görselleştirmesine izin verin!",
+    generateOutfitImageButton: "AI ile Görselleştir",
+    generatingImageMessage: "Görüntü oluşturuluyor...",
+    visualizedOutfitAlt: "Önerilen kıyafetin AI tarafından oluşturulmuş görselleştirmesi",
+    visualizationSuccessTitle: "Görüntü Oluşturuldu!",
+    visualizationSuccessDesc: "Kıyafet görselleştirmeniz hazır.",
+    imageGenerationErrorTitle: "Görüntü Oluşturma Başarısız",
+    imageGenerationErrorDefault: "Üzgünüz, şu anda görüntüyü oluşturamadık. Lütfen daha sonra tekrar deneyin.",
+    imageGenerationApiKeyError: "Görüntü oluşturma başarısız: API anahtarı sorunu. Lütfen destekle iletişime geçin.",
+    visualizationPrerequisitesError: "Önce hava durumu ve kıyafet önerileri yüklenmelidir.",
   },
 };
 
 export type TranslationKey = keyof typeof translations.en; // Assuming 'en' has all keys
-
-    

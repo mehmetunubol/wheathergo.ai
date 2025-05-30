@@ -112,7 +112,7 @@ export type CachedActivitySuggestions = CachedItem<ActivitySuggestionsOutput>;
 export interface GuessedWeatherInput {
   location: string;
   date: string; // YYYY-MM-DD
-  language?: Language; // Added language
+  language?: Language;
 }
 
 export interface GuessedWeatherOutput {
@@ -131,7 +131,8 @@ export interface ClothingSuggestionsInput {
   temperature: number;
   familyProfile: string;
   location: string;
-  language?: Language; // Added language
+  timeOfDay?: string;
+  language?: Language;
 }
 
 // AI Flow for activity suggestions
@@ -141,7 +142,7 @@ export interface ActivitySuggestionsInput {
   familyProfile: string;
   timeOfDay: string;
   locationPreferences?: string;
-  language?: Language; // Added language
+  language?: Language;
 }
 
 
@@ -172,7 +173,7 @@ export interface BlogPost {
   id?: string; // Firestore document ID
   title: string;
   slug: string; // URL-friendly identifier
-  content: string; // For now, plain text or simple HTML
+  content: string; // Markdown content
   authorId: string;
   authorName: string | null;
   createdAt: string; // ISO string
@@ -182,4 +183,29 @@ export interface BlogPost {
   excerpt?: string; // Short summary
   imageUrl?: string; // URL for a cover image
   tags?: string[];
+}
+
+// Input for the new generateVisualOutfitFlow
+export interface GenerateVisualOutfitInput {
+  weatherData: WeatherData;
+  familyProfile: string;
+  clothingSuggestions: ClothingSuggestionsOutput;
+  language: Language;
+}
+
+// Output for the new generateVisualOutfitFlow
+export interface GenerateVisualOutfitOutput {
+  generatedImageUrl: string | null; // Data URI
+}
+
+// Input for Blog Content Generation
+export interface GenerateBlogContentInput {
+  title: string;
+  promptDetails?: string;
+  language?: Language;
+}
+
+// Output for Blog Content Generation
+export interface GenerateBlogContentOutput {
+  generatedContent: string; // Markdown content
 }
