@@ -86,9 +86,24 @@ const suggestClothingFlow = ai.defineFlow(
         return { suggestions: [], reasoning: input.language === 'tr' ? "Şu anda öneri oluşturulamadı." : "Could not generate suggestions at this time." };
       }
       return output;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in suggestClothingFlow:', error);
-      throw error;
+      const errorMessage = error.message || String(error);
+      // Check for specific "rate limit", "quota", "model overloaded", or "service unavailable" messages
+      if (errorMessage.includes('429') || 
+          errorMessage.toLowerCase().includes('quota') ||
+          errorMessage.toLowerCase().includes('rate limit') ||
+          errorMessage.toLowerCase().includes('model is overloaded') || 
+          errorMessage.toLowerCase().includes('service is currently unavailable')) {
+        const busyMessage = input.language === 'tr' 
+          ? "AI öneri servisi şu anda meşgul veya limit aşıldı. Lütfen birazdan tekrar deneyin." 
+          : "AI suggestion service is currently busy or rate limited. Please try again in a moment.";
+        return { 
+          suggestions: [busyMessage], 
+          reasoning: ""
+        };
+      }
+      throw error; // Re-throw other types of errors
     }
   }
 );
