@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function MainNav() {
   const pathname = usePathname();
@@ -47,7 +46,7 @@ export function MainNav() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center px-4">
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-2 mr-auto"> {/* mr-auto to push other items to right if flex-grow is not enough or structure changes */}
           <Cloud className="h-7 w-7 text-primary" />
           <div>
             <span className="font-bold text-lg">Weatherugo</span>
@@ -60,34 +59,50 @@ export function MainNav() {
           </div>
         </Link>
 
+        {/* Spacer - this will push subsequent items to the right */}
         <div className="flex-grow" />
 
-        {/* Desktop-only Icon Links */}
+        {/* Desktop Navigation Links (Icon + Text) */}
         <nav className="hidden md:flex items-center space-x-1 mr-2">
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/travelplanner" passHref>
-                  <Button variant="ghost" size="icon" aria-label={t('travelPlans')}>
-                    <Plane />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent><p>{t('travelPlans')}</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/blog" passHref>
-                  <Button variant="ghost" size="icon" aria-label={t('blogTitle')}>
-                    <Newspaper />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent><p>{t('blogTitle')}</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {appNavItems
+            .filter(item => item.href !== "/") // Exclude home link as it's the logo
+            .map((item) => (
+              <Link
+                key={`desktop-nav-${item.href}`}
+                href={item.href}
+                passHref
+              >
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-sm",
+                    pathname === item.href
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  {React.cloneElement(item.icon, { className: "h-4 w-4" })}
+                  {t(item.labelKey)}
+                </Button>
+              </Link>
+          ))}
         </nav>
 
+        {/* Mobile-only Icon Links (left of hamburger) */}
+        <div className="flex md:hidden items-center space-x-0">
+          <Link href="/travelplanner" passHref>
+            <Button variant="ghost" size="icon" aria-label={t('travelPlans')}>
+              <Plane />
+            </Button>
+          </Link>
+          <Link href="/blog" passHref>
+            <Button variant="ghost" size="icon" aria-label={t('blogTitle')}>
+              <Newspaper />
+            </Button>
+          </Link>
+        </div>
+        
+        {/* Hamburger Menu Trigger */}
         <div className="flex items-center">
           <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <SheetTrigger asChild>
