@@ -7,7 +7,7 @@ import { UserNav } from "./user-nav";
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
-import { useIsMobile } from "@/hooks/use-mobile"; // Still useful for other responsive elements like tagline
+import { useIsMobile } from "@/hooks/use-mobile";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,11 +21,12 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function MainNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const isMobile = useIsMobile(); // Keep for responsive tagline or other minor elements
+  const isMobileForTagline = useIsMobile(); // For tagline visibility
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
@@ -41,25 +42,54 @@ export function MainNav() {
     ...(isAdmin ? [{ href: "/admin", labelKey: "adminPanel" as const, icon: <ShieldCheck className="h-5 w-5" /> }] : []),
   ] : [];
 
-
   const closeMenu = () => setIsMenuOpen(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center space-x-2 mr-auto">
+      <div className="container flex h-16 max-w-screen-2xl items-center px-4">
+        <Link href="/" className="flex items-center space-x-2">
           <Cloud className="h-7 w-7 text-primary" />
           <div>
             <span className="font-bold text-lg">Weatherugo</span>
             <span className={cn(
               "text-xs text-muted-foreground ml-2",
-               isMobile ? "hidden" : "inline" 
+               isMobileForTagline ? "hidden" : "inline"
             )}>
               - {t('appTagline')}
             </span>
           </div>
         </Link>
 
+        {/* Spacer to push subsequent items to the right */}
+        <div className="flex-grow" />
+
+        {/* Desktop-only Icon Links */}
+        <nav className="hidden md:flex items-center space-x-1 mr-2">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/travelplanner" passHref>
+                  <Button variant="ghost" size="icon" aria-label={t('travelPlans')}>
+                    <Plane />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent><p>{t('travelPlans')}</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/blog" passHref>
+                  <Button variant="ghost" size="icon" aria-label={t('blogTitle')}>
+                    <Newspaper />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent><p>{t('blogTitle')}</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </nav>
+
+        {/* Hamburger Menu Trigger (always visible) */}
         <div className="flex items-center">
           <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <SheetTrigger asChild>
@@ -77,7 +107,7 @@ export function MainNav() {
               {isAuthenticated && user && (
                 <div className="p-4 border-b flex items-center gap-3">
                   <UserNav /> {/* Avatar */}
-                  <div className="flex flex-col">
+                  <div className="flex flex-col overflow-hidden">
                     <span className="text-sm font-medium truncate" title={user.displayName || t('user')}>{user.displayName || t('user')}</span>
                     {user.email && <span className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</span>}
                   </div>
