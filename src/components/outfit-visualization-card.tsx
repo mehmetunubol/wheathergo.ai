@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import type { WeatherData, ClothingSuggestionsOutput, Language, User, DailyUsage } from "@/types";
-import { USAGE_LIMITS } from "@/types"; // Import limits
+import type { WeatherData, ClothingSuggestionsOutput, Language, User, DailyUsage, AppSettings } from "@/types";
+// import { USAGE_LIMITS } from "@/types"; // Import USAGE_LIMITS - No longer needed, use appSettings
 import { generateVisualOutfit } from "@/ai/flows/generate-visual-outfit-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { ImageIcon, Sparkles, AlertTriangle, Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useAuth } from "@/hooks/use-auth";
+import { useAppSettings } from "@/contexts/app-settings-context"; // Import useAppSettings
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
 import { format } from 'date-fns';
@@ -34,33 +35,36 @@ export function OutfitVisualizationCard({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); // Use appSettings
 
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
   const [isProcessingImage, setIsProcessingImage] = React.useState(false);
   const [generationError, setGenerationError] = React.useState<string | null>(null);
-  const [canGenerateImage, setCanGenerateImage] = React.useState(true); // Assume true initially
+  const [canGenerateImage, setCanGenerateImage] = React.useState(true); 
 
   const checkImageGenerationLimit = React.useCallback(async () => {
+    if (appSettingsLoading) return false; // Wait for settings to load
+
     const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const limits = user?.isPremium ? appSettings.premiumTierLimits : appSettings.freeTierLimits;
+    const currentLimit = limits.dailyImageGenerations;
+
     if (!isAuthenticated || !user) {
-      // Non-authenticated user logic (localStorage)
       const storedUsageRaw = localStorage.getItem('weatherugo-dailyImageGenerations');
       const storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
-      if (storedUsage.date === todayStr && storedUsage.count >= USAGE_LIMITS.freeTier.dailyImageGenerations) {
+      if (storedUsage.date === todayStr && storedUsage.count >= currentLimit) {
         toast({ title: t('limitReachedTitle'), description: t('dailyImageGenerationLimitReached'), variant: "destructive" });
         return false;
       }
       return true;
     } else {
-      // Authenticated user logic (Firestore)
       const userDocRef = doc(db, "users", user.uid);
       try {
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data() as User;
-          const limit = userData.isPremium ? USAGE_LIMITS.premiumTier.dailyImageGenerations : USAGE_LIMITS.freeTier.dailyImageGenerations;
           const usage = userData.dailyImageGenerations || { count: 0, date: '' };
-          if (usage.date === todayStr && usage.count >= limit) {
+          if (usage.date === todayStr && usage.count >= currentLimit) {
             toast({ title: t('limitReachedTitle'), description: t('dailyImageGenerationLimitReached'), variant: "destructive" });
             return false;
           }
@@ -68,16 +72,17 @@ export function OutfitVisualizationCard({
       } catch (error) {
         console.error("Error checking image generation limit:", error);
         toast({ title: t('error'), description: "Could not verify usage limits.", variant: "destructive" });
-        return false; // Prevent generation if limit check fails
+        return false; 
       }
       return true;
     }
-  }, [isAuthenticated, user, t, toast]);
+  }, [isAuthenticated, user, t, toast, appSettings.freeTierLimits, appSettings.premiumTierLimits, appSettingsLoading]);
 
   const updateImageGenerationCount = async () => {
+    if (appSettingsLoading) return; // Should not happen if check passed, but good practice
+
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     if (!isAuthenticated || !user) {
-      // Non-authenticated user logic (localStorage)
       const storedUsageRaw = localStorage.getItem('weatherugo-dailyImageGenerations');
       let storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
       if (storedUsage.date === todayStr) {
@@ -87,7 +92,6 @@ export function OutfitVisualizationCard({
       }
       localStorage.setItem('weatherugo-dailyImageGenerations', JSON.stringify(storedUsage));
     } else {
-      // Authenticated user logic (Firestore)
       const userDocRef = doc(db, "users", user.uid);
       try {
         await runTransaction(db, async (transaction) => {
@@ -104,7 +108,6 @@ export function OutfitVisualizationCard({
         });
       } catch (error) {
         console.error("Error updating image generation count:", error);
-        // Optionally notify user, but primary action (image generation) already happened
       }
     }
   };
@@ -120,12 +123,17 @@ export function OutfitVisualizationCard({
       return;
     }
 
-    const canProceed = await checkImageGenerationLimit();
-    if (!canProceed) {
-        setCanGenerateImage(false); // Update UI if needed, e.g. to disable button more permanently for the session
+    if (appSettingsLoading) {
+        toast({ title: t('error'), description: "App settings still loading, please wait.", variant: "destructive"});
         return;
     }
-    setCanGenerateImage(true); // Reset if previously false
+
+    const canProceed = await checkImageGenerationLimit();
+    if (!canProceed) {
+        setCanGenerateImage(false); 
+        return;
+    }
+    setCanGenerateImage(true);
 
     setIsProcessingImage(true);
     setGeneratedImageUrl(null);
@@ -151,9 +159,15 @@ export function OutfitVisualizationCard({
       }
     } catch (error: any) {
       console.error("Outfit visualization error:", error);
-      const userFriendlyError = error.message && error.message.includes('API key issue')
-        ? t('imageGenerationApiKeyError')
-        : t('imageGenerationErrorDefault');
+      let userFriendlyError = t('imageGenerationErrorDefault');
+       if (error.message && error.message.includes('API key issue')) {
+        userFriendlyError = t('imageGenerationApiKeyError');
+      } else if (error.message && error.message.startsWith('AI image generation failed to produce an image URL')) {
+        userFriendlyError = error.message; 
+      } else if (error.message) {
+         userFriendlyError = `Failed to generate outfit image: ${error.message}`;
+      }
+
       setGenerationError(userFriendlyError);
       toast({
         title: t('imageGenerationErrorTitle'),
@@ -165,7 +179,7 @@ export function OutfitVisualizationCard({
     }
   };
 
-  const canTryToGenerate = weatherData && clothingSuggestions && clothingSuggestions.suggestions.length > 0 && familyProfile && !isLoadingParentData && canGenerateImage;
+  const canTryToGenerate = weatherData && clothingSuggestions && clothingSuggestions.suggestions.length > 0 && familyProfile && !isLoadingParentData && canGenerateImage && !appSettingsLoading;
 
   return (
     <Card className="shadow-lg">

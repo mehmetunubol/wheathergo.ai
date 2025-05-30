@@ -159,13 +159,19 @@ export interface ActivitySuggestionsInput {
 export interface UserPreferences {
   lastLocation?: string;
   lastSelectedDate?: string;
-  defaultLocation?: string;
 }
 
 // Firestore document for main user profile
 export interface UserProfileData {
     description: string;
     updatedAt: string; // ISO string
+}
+
+interface UsageLimitTier {
+  dailyImageGenerations: number;
+  dailyOutfitSuggestions: number;
+  dailyActivitySuggestions: number;
+  maxTravelPlans: number;
 }
 
 // Application-wide settings configurable by admin
@@ -176,6 +182,8 @@ export interface AppSettings {
   defaultFamilyProfile: string;
   defaultNotificationTime: string; // e.g., "09:00"
   defaultNotificationFrequency: NotificationFrequency; // 'daily' | 'weekly'
+  freeTierLimits: UsageLimitTier;
+  premiumTierLimits: UsageLimitTier;
 }
 
 // Blog Post Type
@@ -236,20 +244,16 @@ export interface GenerateBlogContentOutput {
   generatedContent: string; // Markdown content
 }
 
-// Usage Limits Configuration
-export const USAGE_LIMITS = {
-  freeTier: {
-    dailyImageGenerations: 3,
-    dailyOutfitSuggestions: 10,
-    dailyActivitySuggestions: 10,
-    maxTravelPlans: 10,
-  },
-  premiumTier: { // Example for future use
-    dailyImageGenerations: 50,
-    dailyOutfitSuggestions: 100,
-    dailyActivitySuggestions: 100,
-    maxTravelPlans: 100,
-  },
+// Input for Simplified Image Prompt Generation
+export interface GenerateSimplifiedImagePromptInput {
+  weatherData: WeatherData;
+  familyProfile: string;
+  clothingSuggestions: ClothingSuggestionsOutput;
+  language: Language;
+}
+export type GenerateSimplifiedImagePromptOutput = {
+  simplifiedImagePrompt: string;
 };
 
-export type UsageLimitType = 'imageGenerations' | 'outfitSuggestions' | 'activitySuggestions';
+// Type removed, usage limits are now part of AppSettings
+// export type UsageLimitType = 'imageGenerations' | 'outfitSuggestions' | 'activitySuggestions' | 'maxTravelPlans';

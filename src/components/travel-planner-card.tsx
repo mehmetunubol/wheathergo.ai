@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { TravelPlanItem, NotificationFrequency, UsageLimitType } from "@/types";
-import { USAGE_LIMITS } from "@/types"; // Import limits
+import type { TravelPlanItem, NotificationFrequency, AppSettings } from "@/types";
+// import { USAGE_LIMITS } from "@/types"; // No longer needed, use appSettings
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -80,7 +80,7 @@ export function TravelPlannerCard() {
   }, [appSettingsLoading, appSettings.defaultNotificationTime, appSettings.defaultNotificationFrequency]);
 
   React.useEffect(() => {
-    if (authIsLoading) return; 
+    if (authIsLoading || appSettingsLoading) return; 
 
     if (isAuthenticated && user) {
       setIsLoadingPlans(true);
@@ -104,7 +104,7 @@ export function TravelPlannerCard() {
       setTravelPlans([]);
       setIsLoadingPlans(false);
     }
-  }, [isAuthenticated, user, authIsLoading, toast, t]);
+  }, [isAuthenticated, user, authIsLoading, toast, t, appSettingsLoading]);
 
 
   const handleAddTravelPlan = async () => {
@@ -124,9 +124,12 @@ export function TravelPlannerCard() {
       toast({ title: t('error'), description: "End date cannot be before the start date.", variant: "destructive" });
       return;
     }
+    if (appSettingsLoading) {
+      toast({ title: t('error'), description: "App settings still loading, please wait.", variant: "destructive"});
+      return;
+    }
 
-    // Check travel plan limit for the user's tier
-    const currentPlanLimit = user.isPremium ? USAGE_LIMITS.premiumTier.maxTravelPlans : USAGE_LIMITS.freeTier.maxTravelPlans;
+    const currentPlanLimit = user.isPremium ? appSettings.premiumTierLimits.maxTravelPlans : appSettings.freeTierLimits.maxTravelPlans;
     if (travelPlans.length >= currentPlanLimit) {
         toast({
             title: t('limitReachedTitle'),
@@ -207,7 +210,7 @@ export function TravelPlannerCard() {
     );
   }
 
-  const canAddPlan = isAuthenticated && user && (travelPlans.length < (user.isPremium ? USAGE_LIMITS.premiumTier.maxTravelPlans : USAGE_LIMITS.freeTier.maxTravelPlans));
+  const canAddPlan = isAuthenticated && user && !appSettingsLoading && (travelPlans.length < (user.isPremium ? appSettings.premiumTierLimits.maxTravelPlans : appSettings.freeTierLimits.maxTravelPlans));
 
 
   return (
@@ -309,10 +312,10 @@ export function TravelPlannerCard() {
               <Textarea id="trip-context" value={newTripContext} onChange={(e) => setNewTripContext(e.target.value)} placeholder={t('tripContextPlaceholder')} className="mt-1 min-h-[80px]" />
             </div>
 
-            <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan || !canAddPlan}>
+            <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan || !canAddPlan || appSettingsLoading}>
               {isAddingPlan ? t('addingTravelPlanButton') : <><PlusCircle className="mr-2" /> {t('addTravelPlanButton')}</>}
             </Button>
-            {!canAddPlan && isAuthenticated && (
+            {isAuthenticated && !appSettingsLoading && !canAddPlan && (
                  <p className="text-xs text-destructive text-center mt-1">{t('maxTravelPlansLimitReached')}</p>
             )}
           </div>

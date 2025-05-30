@@ -11,9 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle, BarChart3 } from "lucide-react"; // Added BarChart3
+import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle, BarChart3, Gem, Shield } from "lucide-react";
 import type { NotificationFrequency, AppSettings as AppSettingsType } from "@/types"; 
-import { USAGE_LIMITS } from "@/types"; // Import USAGE_LIMITS
 import { useTranslation } from "@/hooks/use-translation";
 
 export default function AdminAppSettingsPage() {
@@ -32,10 +31,22 @@ export default function AdminAppSettingsPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    setFormState(prev => ({
-      ...prev,
-      [name]: type === 'number' ? Number(value) : value,
-    }));
+    const [mainKey, nestedKey] = name.split('.'); // For nested limit fields like 'freeTierLimits.dailyImageGenerations'
+
+    if (nestedKey) {
+      setFormState(prev => ({
+        ...prev,
+        [mainKey]: {
+          ...(prev[mainKey as keyof AppSettingsType] as object), // Type assertion needed here
+          [nestedKey]: type === 'number' ? Number(value) : value,
+        }
+      }));
+    } else {
+      setFormState(prev => ({
+        ...prev,
+        [name]: type === 'number' ? Number(value) : value,
+      }));
+    }
   };
 
   const handleSelectChange = (name: keyof AppSettingsType, value: string) => {
@@ -46,10 +57,23 @@ export default function AdminAppSettingsPage() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      // Ensure all number fields are correctly typed before saving
       const settingsToSave: AppSettingsType = {
         ...formState,
         cacheDurationMs: Number(formState.cacheDurationMs),
         maxApiForecastDays: Number(formState.maxApiForecastDays),
+        freeTierLimits: {
+          dailyImageGenerations: Number(formState.freeTierLimits.dailyImageGenerations),
+          dailyOutfitSuggestions: Number(formState.freeTierLimits.dailyOutfitSuggestions),
+          dailyActivitySuggestions: Number(formState.freeTierLimits.dailyActivitySuggestions),
+          maxTravelPlans: Number(formState.freeTierLimits.maxTravelPlans),
+        },
+        premiumTierLimits: {
+          dailyImageGenerations: Number(formState.premiumTierLimits.dailyImageGenerations),
+          dailyOutfitSuggestions: Number(formState.premiumTierLimits.dailyOutfitSuggestions),
+          dailyActivitySuggestions: Number(formState.premiumTierLimits.dailyActivitySuggestions),
+          maxTravelPlans: Number(formState.premiumTierLimits.maxTravelPlans),
+        },
       };
       await updateSettingsInFirestore(settingsToSave);
       toast({ title: t('success'), description: t('appSettingsTitleFull') + " " + t('userStatusUpdated').toLowerCase() });
@@ -65,7 +89,7 @@ export default function AdminAppSettingsPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold flex items-center gap-2"><Settings /> {t('appSettingsTitleFull')}</h1>
-        {[...Array(4)].map((_, i) => ( // Increased skeleton count
+        {[...Array(5)].map((_, i) => ( 
           <Card key={i}>
             <CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader>
             <CardContent className="space-y-4">
@@ -169,26 +193,53 @@ export default function AdminAppSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2"><BarChart3 /> {t('usageLimitsCardTitle')}</CardTitle>
-          <CardDescription>{t('usageLimitsCardDesc')}</CardDescription>
+          <CardTitle className="text-lg flex items-center gap-2"><BarChart3 /> {t('usageLimitsConfigCardTitle')}</CardTitle>
+          <CardDescription>{t('usageLimitsConfigCardDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div>
-            <h4 className="font-semibold text-md mb-2">{t('freeTierLimits')}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <p><strong>{t('dailyImageGenerations')}:</strong> {USAGE_LIMITS.freeTier.dailyImageGenerations}</p>
-              <p><strong>{t('dailyOutfitSuggestions')}:</strong> {USAGE_LIMITS.freeTier.dailyOutfitSuggestions}</p>
-              <p><strong>{t('dailyActivitySuggestions')}:</strong> {USAGE_LIMITS.freeTier.dailyActivitySuggestions}</p>
-              <p><strong>{t('maxTravelPlans')}:</strong> {USAGE_LIMITS.freeTier.maxTravelPlans}</p>
+          {/* Free Tier Limits */}
+          <div className="space-y-4 p-4 border rounded-md">
+            <h4 className="font-semibold text-md flex items-center gap-2"><Shield className="h-5 w-5 text-primary"/> {t('freeTierLimits')}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="freeTierLimits.dailyImageGenerations">{t('dailyImageGenerationsLimitLabel')}</Label>
+                <Input id="freeTierLimits.dailyImageGenerations" name="freeTierLimits.dailyImageGenerations" type="number" value={formState.freeTierLimits.dailyImageGenerations} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="freeTierLimits.dailyOutfitSuggestions">{t('dailyOutfitSuggestionsLimitLabel')}</Label>
+                <Input id="freeTierLimits.dailyOutfitSuggestions" name="freeTierLimits.dailyOutfitSuggestions" type="number" value={formState.freeTierLimits.dailyOutfitSuggestions} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="freeTierLimits.dailyActivitySuggestions">{t('dailyActivitySuggestionsLimitLabel')}</Label>
+                <Input id="freeTierLimits.dailyActivitySuggestions" name="freeTierLimits.dailyActivitySuggestions" type="number" value={formState.freeTierLimits.dailyActivitySuggestions} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="freeTierLimits.maxTravelPlans">{t('maxTravelPlansLimitLabel')}</Label>
+                <Input id="freeTierLimits.maxTravelPlans" name="freeTierLimits.maxTravelPlans" type="number" value={formState.freeTierLimits.maxTravelPlans} onChange={handleChange} />
+              </div>
             </div>
           </div>
-          <div>
-            <h4 className="font-semibold text-md mb-2">{t('premiumTierLimits')}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <p><strong>{t('dailyImageGenerations')}:</strong> {USAGE_LIMITS.premiumTier.dailyImageGenerations}</p>
-              <p><strong>{t('dailyOutfitSuggestions')}:</strong> {USAGE_LIMITS.premiumTier.dailyOutfitSuggestions}</p>
-              <p><strong>{t('dailyActivitySuggestions')}:</strong> {USAGE_LIMITS.premiumTier.dailyActivitySuggestions}</p>
-              <p><strong>{t('maxTravelPlans')}:</strong> {USAGE_LIMITS.premiumTier.maxTravelPlans}</p>
+
+          {/* Premium Tier Limits */}
+          <div className="space-y-4 p-4 border rounded-md">
+            <h4 className="font-semibold text-md flex items-center gap-2"><Gem className="h-5 w-5 text-purple-500"/> {t('premiumTierLimits')}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="premiumTierLimits.dailyImageGenerations">{t('dailyImageGenerationsLimitLabel')}</Label>
+                <Input id="premiumTierLimits.dailyImageGenerations" name="premiumTierLimits.dailyImageGenerations" type="number" value={formState.premiumTierLimits.dailyImageGenerations} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="premiumTierLimits.dailyOutfitSuggestions">{t('dailyOutfitSuggestionsLimitLabel')}</Label>
+                <Input id="premiumTierLimits.dailyOutfitSuggestions" name="premiumTierLimits.dailyOutfitSuggestions" type="number" value={formState.premiumTierLimits.dailyOutfitSuggestions} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="premiumTierLimits.dailyActivitySuggestions">{t('dailyActivitySuggestionsLimitLabel')}</Label>
+                <Input id="premiumTierLimits.dailyActivitySuggestions" name="premiumTierLimits.dailyActivitySuggestions" type="number" value={formState.premiumTierLimits.dailyActivitySuggestions} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="premiumTierLimits.maxTravelPlans">{t('maxTravelPlansLimitLabel')}</Label>
+                <Input id="premiumTierLimits.maxTravelPlans" name="premiumTierLimits.maxTravelPlans" type="number" value={formState.premiumTierLimits.maxTravelPlans} onChange={handleChange} />
+              </div>
             </div>
           </div>
         </CardContent>
@@ -202,5 +253,3 @@ export default function AdminAppSettingsPage() {
     </form>
   );
 }
-
-    

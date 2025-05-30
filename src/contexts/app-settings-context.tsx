@@ -15,6 +15,18 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultFamilyProfile: "A single adult enjoying good weather.",
   defaultNotificationTime: "09:00",
   defaultNotificationFrequency: "daily",
+  freeTierLimits: {
+    dailyImageGenerations: 3,
+    dailyOutfitSuggestions: 10,
+    dailyActivitySuggestions: 10,
+    maxTravelPlans: 10,
+  },
+  premiumTierLimits: { // Example for future use
+    dailyImageGenerations: 50,
+    dailyOutfitSuggestions: 100,
+    dailyActivitySuggestions: 100,
+    maxTravelPlans: 100,
+  },
 };
 
 interface AppSettingsContextType {
@@ -40,7 +52,22 @@ export const AppSettingsProvider = ({ children }: { children: React.ReactNode })
       const docSnap = await getDoc(settingsDocRef);
       if (docSnap.exists()) {
         // Merge fetched settings with defaults to ensure all keys are present
-        setSettings(prev => ({ ...DEFAULT_APP_SETTINGS, ...prev, ...docSnap.data() as Partial<AppSettings> }));
+        // and also merge nested objects like freeTierLimits correctly
+        const firestoreData = docSnap.data() as Partial<AppSettings>;
+        const mergedSettings: AppSettings = {
+          ...DEFAULT_APP_SETTINGS, // Start with system defaults
+          ...firestoreData,        // Overlay with Firestore data
+          // Ensure nested limit objects are merged, not just overwritten if partially present
+          freeTierLimits: {
+            ...DEFAULT_APP_SETTINGS.freeTierLimits,
+            ...(firestoreData.freeTierLimits || {}),
+          },
+          premiumTierLimits: {
+            ...DEFAULT_APP_SETTINGS.premiumTierLimits,
+            ...(firestoreData.premiumTierLimits || {}),
+          },
+        };
+        setSettings(mergedSettings);
       } else {
         // No settings found in Firestore, use defaults and try to save them
         console.warn("No app settings found in Firestore. Using default values and attempting to save them.");

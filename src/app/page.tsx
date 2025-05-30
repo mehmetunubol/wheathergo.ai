@@ -11,8 +11,7 @@ import { SuggestionsTabs } from "@/components/suggestions-tabs";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage } from "@/types";
-import { USAGE_LIMITS } from "@/types";
+import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay, addHours } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
@@ -36,8 +35,6 @@ function getTimeOfDay(dateWithTime: Date): string {
   if (hour < 22) return "evening";
   return "night"; 
 }
-
-const DEFAULT_LOCATION_FALLBACK = "auto:ip";
 
 export default function HomePage() {
   const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings();
@@ -82,12 +79,22 @@ export default function HomePage() {
   }, []);
 
   React.useEffect(() => {
+    if (!appSettingsLoading && !isLoadingProfileFromEditor && familyProfile === "") {
+        // If familyProfile is still empty after appSettings have loaded and the profile editor has done its initial pass,
+        // set it to the default from appSettings. FamilyProfileEditor would have already tried to load user/localStorage specific profile.
+        setFamilyProfile(appSettings.defaultFamilyProfile);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appSettingsLoading, appSettings.defaultFamilyProfile, isLoadingProfileFromEditor]);
+
+
+  React.useEffect(() => {
     const loadPreferences = async () => {
       if (authIsLoading || appSettingsLoading) return;
 
       setIsLoadingPreferences(true);
       const userJustLoggedIn = isAuthenticated && user && user.uid !== prevUserUID.current;
-      let initialLocationResolved = appSettings.defaultLocation || DEFAULT_LOCATION_FALLBACK;
+      let initialLocationResolved = appSettings.defaultLocation || DEFAULT_APP_SETTINGS.defaultLocation;
 
       try {
         if (isAuthenticated && user) {
@@ -146,7 +153,6 @@ export default function HomePage() {
     if (!authIsLoading) {
         prevUserUID.current = user?.uid;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user?.uid, authIsLoading, appSettingsLoading, appSettings.defaultLocation, pathname]);
 
 
@@ -175,14 +181,16 @@ export default function HomePage() {
       usageType: 'dailyOutfitSuggestions' | 'dailyActivitySuggestions'
     ): Promise<boolean> => {
       const todayStr = format(new Date(), 'yyyy-MM-dd');
-      const limitKey = usageType === 'dailyOutfitSuggestions' ? 'outfitSuggestions' : 'activitySuggestions';
+      const limits = user?.isPremium ? appSettings.premiumTierLimits : appSettings.freeTierLimits;
+      const limitKey = usageType === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestions' : 'dailyActivitySuggestions';
+      const currentLimit = limits[limitKey];
       const localStorageKey = `weatherugo-${usageType}`;
 
       if (!isAuthenticated || !user) {
         const storedUsageRaw = localStorage.getItem(localStorageKey);
         const storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
-        if (storedUsage.date === todayStr && storedUsage.count >= USAGE_LIMITS.freeTier[limitKey === 'outfitSuggestions' ? 'dailyOutfitSuggestions' : 'dailyActivitySuggestions']) {
-          toast({ title: t('limitReachedTitle'), description: t(limitKey === 'outfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
+        if (storedUsage.date === todayStr && storedUsage.count >= currentLimit) {
+          toast({ title: t('limitReachedTitle'), description: t(limitKey === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
           return false;
         }
         return true;
@@ -192,10 +200,9 @@ export default function HomePage() {
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data() as User;
-            const limit = userData.isPremium ? USAGE_LIMITS.premiumTier[limitKey === 'outfitSuggestions' ? 'dailyOutfitSuggestions' : 'dailyActivitySuggestions'] : USAGE_LIMITS.freeTier[limitKey === 'outfitSuggestions' ? 'dailyOutfitSuggestions' : 'dailyActivitySuggestions'];
             const usage = userData[usageType] || { count: 0, date: '' };
-            if (usage.date === todayStr && usage.count >= limit) {
-              toast({ title: t('limitReachedTitle'), description: t(limitKey === 'outfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
+            if (usage.date === todayStr && usage.count >= currentLimit) {
+              toast({ title: t('limitReachedTitle'), description: t(limitKey === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
               return false;
             }
           }
@@ -371,7 +378,7 @@ export default function HomePage() {
               setOutfitSuggestions(null);
             } finally { setIsLoadingOutfit(false); }
           } else {
-            setOutfitSuggestions(null); // Explicitly set to null
+            setOutfitSuggestions(null); 
             setOutfitLimitReached(true);
             setIsLoadingOutfit(false);
           }
@@ -416,7 +423,7 @@ export default function HomePage() {
               setActivitySuggestions(null);
             } finally { setIsLoadingActivity(false); }
           } else {
-            setActivitySuggestions(null); // Explicitly set to null
+            setActivitySuggestions(null); 
             setActivityLimitReached(true);
             setIsLoadingActivity(false);
           }
@@ -433,7 +440,7 @@ export default function HomePage() {
       getWeatherAndSuggestions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, t]);
+  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, t, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.freeTierLimits, appSettings.premiumTierLimits, toast, user, isAuthenticated]);
 
 
   const getFilteredHourlyForecast = (): HourlyForecastData[] => {
@@ -447,36 +454,24 @@ export default function HomePage() {
         const timeString = item.time;
 
         try {
-          // Attempt to parse as full ISO string if it contains 'T' (common for next day forecasts)
-          if (timeString.includes('T') || timeString.includes('-') && timeString.includes(':')) {
+          if (timeString.includes('T') || (timeString.includes('-') && timeString.includes(':'))) {
             const itemDateFromISO = parseISO(timeString);
             if (isValid(itemDateFromISO)) {
                 itemHour = getHours(itemDateFromISO);
             }
-          } else { // Otherwise, assume it's a simpler time format like "3 PM" or "10:00"
-            const todayWithItemTime = parseISO(`${format(selectedDate, 'yyyy-MM-dd')}T${timeString.padStart(5, '0')}`); // Assume HH:mm
-            if (isValid(todayWithItemTime)) {
-                itemHour = getHours(todayWithItemTime);
-            } else {
-                // Fallback for "3 PM" or "10 AM" style time strings
-                const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i);
-                if (match) {
-                    itemHour = parseInt(match[1], 10);
-                    const period = match[2]?.toUpperCase();
-                    if (period === 'PM' && itemHour !== 12) {
-                        itemHour += 12;
-                    } else if (period === 'AM' && itemHour === 12) {
-                        itemHour = 0;
-                    }
-                } else {
-                    const plainHourMatch = timeString.match(/^(\d{1,2})(:\d{2})?/);
-                    if (plainHourMatch && plainHourMatch[1]) {
-                        itemHour = parseInt(plainHourMatch[1], 10);
-                    }
+          } else { 
+            const timeParts = timeString.match(/(\d{1,2})(:\d{2})?\s*(AM|PM)?/i);
+            if (timeParts) {
+                itemHour = parseInt(timeParts[1], 10);
+                const period = timeParts[3]?.toUpperCase();
+                if (period === 'PM' && itemHour !== 12) {
+                    itemHour += 12;
+                } else if (period === 'AM' && itemHour === 12) { // Midnight case
+                    itemHour = 0;
                 }
             }
           }
-        } catch (e) { /* ignore parsing errors, itemHour remains -1 */ }
+        } catch (e) { console.error("Error parsing hourly forecast time:", e); }
         
         if (itemHour !== -1) {
             return itemHour >= currentHourToDisplayFrom;
@@ -484,16 +479,6 @@ export default function HomePage() {
         return true; 
     });
   };
-
-  React.useEffect(() => {
-    if (!appSettingsLoading && familyProfile === "" && appSettings.defaultFamilyProfile && isLoadingProfileFromEditor) {
-        // Intentionally keep familyProfile from appSettings.defaultFamilyProfile here
-        // to ensure FamilyProfileEditor initializes correctly if it's the very first load
-        // and no user profile or local storage exists.
-        // FamilyProfileEditor itself will call onProfileSave to update if it finds a more specific profile.
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appSettingsLoading, appSettings.defaultFamilyProfile, isLoadingProfileFromEditor]);
 
 
   if (authIsLoading || isLoadingPreferences || appSettingsLoading) {
