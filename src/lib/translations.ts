@@ -34,7 +34,7 @@ export const translations: AllTranslations = {
     validationErrorEndDateBeforeStart: "End date cannot be before the start date.",
     errorAppSettingsLoading: "App settings are still loading, please wait.",
     errorCouldNotAddTravelPlan: "Could not add travel plan. Please try again.",
-    successTravelPlanDeleted: "The travel plan has been deleted.",
+    successTravelPlanDeletedParam: "Travel plan '{tripName}' has been deleted.",
     errorCouldNotDeleteTravelPlan: "Could not delete travel plan.",
 
     userStatusUpdatedParam: "User {userId} active status updated to: {status}.",
@@ -42,8 +42,8 @@ export const translations: AllTranslations = {
     userPremiumStatusUpdatedParam: "User {userId} premium status updated to: {status}.",
     userDeletedParam: "User {userId} Firestore record has been deleted.",
 
-    blogPostStatusUpdatedParam: "Blog post {postId} status updated to: {status}.",
-    blogPostDeletedParam: "Blog post {postId} has been deleted.",
+    blogPostStatusUpdatedParam: "Blog post '{postId}' status updated to: {status}.",
+    blogPostDeletedParam: "Blog post '{postId}' has been deleted.",
     errorAIGenerateGeneric: "Failed to generate content with AI. Please try again.",
 
     activated: "activated",
@@ -60,6 +60,14 @@ export const translations: AllTranslations = {
     confirmDeleteUserDesc: "This action will delete the user's Firestore record for '{userIdentifier}'. It will NOT delete their Firebase Authentication account. The user might be able to log in again, creating a new record.",
     confirmDeleteBlogPostTitle: "Delete Blog Post?",
     confirmDeleteBlogPostDesc: "Are you sure you want to delete the blog post titled '{postTitle}'? This action cannot be undone.",
+    loginToVisualizeTitle: "Visualize Your Outfit with AI!",
+    loginToVisualizeDescription: "Log in or sign up to use our AI-powered image generation and see your suggested outfit come to life.",
+    loginToVisualizeButton: "Log In to Visualize",
+    startOfTripLabel: "Start of Trip",
+    middleOfTripLabel: "Middle of Trip",
+    endOfTripLabel: "End of Trip",
+    sharePlanDetailsNotLoaded: "Plan details are not loaded.",
+    shareSuggestionsLoadingOrIncomplete: "Suggestions are loading or weather data is incomplete for some days.",
   },
   tr: {
     ...trTranslations,
@@ -83,7 +91,7 @@ export const translations: AllTranslations = {
     validationErrorEndDateBeforeStart: "Bitiş tarihi başlangıç tarihinden önce olamaz.",
     errorAppSettingsLoading: "Uygulama ayarları hala yükleniyor, lütfen bekleyin.",
     errorCouldNotAddTravelPlan: "Seyahat planı eklenemedi. Lütfen tekrar deneyin.",
-    successTravelPlanDeleted: "Seyahat planı silindi.",
+    successTravelPlanDeletedParam: "'{tripName}' adlı seyahat planı silindi.",
     errorCouldNotDeleteTravelPlan: "Seyahat planı silinemedi.",
 
     userStatusUpdatedParam: "{userId} kullanıcısının aktiflik durumu şuna güncellendi: {status}.",
@@ -91,8 +99,8 @@ export const translations: AllTranslations = {
     userPremiumStatusUpdatedParam: "{userId} kullanıcısının premium durumu şuna güncellendi: {status}.",
     userDeletedParam: "{userId} kullanıcısının Firestore kaydı silindi.",
 
-    blogPostStatusUpdatedParam: "{postId} blog yazısının durumu şuna güncellendi: {status}.",
-    blogPostDeletedParam: "{postId} blog yazısı silindi.",
+    blogPostStatusUpdatedParam: "'{postId}' başlıklı blog yazısının durumu şuna güncellendi: {status}.",
+    blogPostDeletedParam: "'{postId}' başlıklı blog yazısı silindi.",
     errorAIGenerateGeneric: "AI ile içerik oluşturulamadı. Lütfen tekrar deneyin.",
     
     activated: "etkinleştirildi",
@@ -106,9 +114,17 @@ export const translations: AllTranslations = {
     adminToggleOwnActiveError: "Yöneticiler kendi aktiflik durumlarını değiştiremezler.",
     adminDeleteOwnError: "Yöneticiler kendi hesap kayıtlarını silemezler.",
     confirmDeleteUserTitle: "Kullanıcı Kaydını Sil?",
-    confirmDeleteUserDesc: "Bu işlem '{userIdentifier}' kullanıcısının Firestore kaydını silecektir. Firebase Kimlik Doğrulama hesabını SİLMEZ. Kullanıcı tekrar giriş yaparak yeni bir kayıt oluşturabilir.",
+    confirmDeleteUserDesc: "'{userIdentifier}' kullanıcısının Firestore kaydını silmek istediğinizden emin misiniz? Bu işlem Firebase Kimlik Doğrulama hesabını SİLMEZ. Kullanıcı tekrar giriş yaparak yeni bir kayıt oluşturabilir.",
     confirmDeleteBlogPostTitle: "Blog Yazısını Sil?",
     confirmDeleteBlogPostDesc: "'{postTitle}' başlıklı blog yazısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    loginToVisualizeTitle: "Kıyafetinizi AI ile Görselleştirin!",
+    loginToVisualizeDescription: "Önerilen kıyafetinizin canlandığını görmek için AI destekli resim oluşturma özelliğimizi kullanmak üzere giriş yapın veya kaydolun.",
+    loginToVisualizeButton: "Görselleştirmek İçin Giriş Yapın",
+    startOfTripLabel: "Seyahat Başlangıcı",
+    middleOfTripLabel: "Seyahat Ortası",
+    endOfTripLabel: "Seyahat Sonu",
+    sharePlanDetailsNotLoaded: "Plan detayları yüklenmedi.",
+    shareSuggestionsLoadingOrIncomplete: "Öneriler yükleniyor veya bazı günler için hava durumu verileri eksik.",
   },
 };
 

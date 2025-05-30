@@ -14,17 +14,18 @@ import { format, parseISO, differenceInCalendarDays, addDays, startOfDay, isSame
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import type { TravelPlanItem, WeatherData, TripSegmentSuggestions, StoredTripSegmentData, Language } from "@/types";
+import type { TravelPlanItem, WeatherData, TripSegmentSuggestions, StoredTripSegmentData, Language, TranslationKey } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { getWeatherIcon } from "@/components/icons";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { HourlyForecastCard } from "@/components/hourly-forecast-card";
+// HourlyForecastCard import removed
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 import { useAppSettings } from "@/contexts/app-settings-context";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 
 const DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS = "An adult traveler.";
@@ -79,9 +80,9 @@ export default function TripDetailsPage() {
     
     const segmentsMap = new Map<string, TripSegmentSuggestions>();
 
-    const addOrUpdateSegment = (date: Date, id: 'start' | 'middle' | 'end', labelPrefixKey: string) => {
+    const addOrUpdateSegment = (date: Date, id: 'start' | 'middle' | 'end', labelPrefixKey: TranslationKey) => {
         const dateStr = format(date, 'yyyy-MM-dd');
-        const label = `${t(labelPrefixKey as any)} (${format(date, "MMM d, yyyy", { locale: dateLocale })})`;
+        const label = `${t(labelPrefixKey)} (${format(date, "MMM d, yyyy", { locale: dateLocale })})`;
         
         const existingSegment = segmentsMap.get(dateStr);
         const priorityOrder = { start: 1, middle: 2, end: 3 };
@@ -96,18 +97,18 @@ export default function TripDetailsPage() {
         }
     };
     
-    addOrUpdateSegment(parsedStartDate, 'start', 'Start of Trip');
+    addOrUpdateSegment(parsedStartDate, 'start', 'startOfTripLabel');
 
     if (duration >= 2) { 
       const middleOffset = Math.floor(duration / 2.0);
       const middleDateCand = startOfDay(addDays(parsedStartDate, middleOffset));
       if (!isSameDay(middleDateCand, parsedStartDate) && !isSameDay(middleDateCand, parsedEndDate)) {
-         addOrUpdateSegment(middleDateCand, 'middle', 'Middle of Trip');
+         addOrUpdateSegment(middleDateCand, 'middle', 'middleOfTripLabel');
       }
     }
     
     if (!isSameDay(parsedEndDate, parsedStartDate)) {
-      addOrUpdateSegment(parsedEndDate, 'end', 'End of Trip');
+      addOrUpdateSegment(parsedEndDate, 'end', 'endOfTripLabel');
     }
     
     return Array.from(segmentsMap.values())
@@ -325,8 +326,8 @@ export default function TripDetailsPage() {
   };
 
   const generateShareText = () => {
-    if (!plan) return "Plan details are not loaded.";
-    if (segments.some(s => s.isLoading || (!s.weatherData && !s.error && !s.weatherData?.isGuessed) )) return "Suggestions are loading or weather data is incomplete for some days.";
+    if (!plan) return t('sharePlanDetailsNotLoaded');
+    if (segments.some(s => s.isLoading || (!s.weatherData && !s.error && !s.weatherData?.isGuessed) )) return t('shareSuggestionsLoadingOrIncomplete');
 
     let text = `${t('weatherugoGuide')} - ${t('travelPlans')}: ${plan.tripName} ${t('toLocation')} ${plan.location}\n`;
     text += `${t('dates')}: ${format(parseISO(plan.startDate), "PPP", { locale: dateLocale })} - ${format(parseISO(plan.endDate), "PPP", { locale: dateLocale })}\n`;
@@ -519,7 +520,7 @@ export default function TripDetailsPage() {
                                                                     size="sm"
                                                                     type="button"
                                                                     className="ml-2 mt-1 p-0 h-auto appearance-none focus:outline-none focus:ring-1 focus:ring-amber-500 focus:ring-offset-1 inline-flex items-center text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300 cursor-help hover:bg-amber-200"
-                                                                    aria-label="AI Estimated Forecast Information"
+                                                                    aria-label={t('aiEstimateTooltip')}
                                                                 >
                                                                     <Info size={12} className="mr-1" /> AI
                                                                 </Button>
@@ -561,13 +562,35 @@ export default function TripDetailsPage() {
                                               </div>
                                           )}
                                       </div>
-                                       {showHourlyForecastSegment && (
-                                        <HourlyForecastCard
-                                          forecastData={segment.weatherData.forecast}
-                                          isLoading={segment.isLoading && !segment.weatherData.forecast}
-                                          date={segment.date}
-                                          isParentGuessed={segment.weatherData.isGuessed}
-                                        />
+                                       {showHourlyForecastSegment && segment.weatherData?.forecast && (
+                                        <div className="pt-2 mt-2 border-t">
+                                            <h4 className="text-sm font-semibold mb-1.5 flex items-center gap-1.5">
+                                                <Clock size={14} className="text-primary" /> {t('hourlyForecastForDate', { date: format(segment.date, "MMM d", { locale: dateLocale }) })}
+                                            </h4>
+                                            <ScrollArea className="w-full whitespace-nowrap">
+                                                <div className="flex space-x-2 pb-1">
+                                                {segment.weatherData.forecast.map((item, idx) => {
+                                                    const itemIsDay = typeof item.isDay === 'boolean' ? item.isDay : true;
+                                                    const ItemIcon = getWeatherIcon(item.conditionCode, item.condition, itemIsDay);
+                                                    let displayTime = item.time;
+                                                     try {
+                                                        const parsedItemTime = parseISO(item.time);
+                                                        if (isValid(parsedItemTime)) {
+                                                        displayTime = format(parsedItemTime, "h a", { locale: dateLocale });
+                                                        }
+                                                    } catch (e) { /* fallback */ }
+                                                    return (
+                                                    <div key={`hourly-trip-${segment.id}-${idx}`} className="flex flex-col items-center space-y-0.5 p-1.5 border rounded-md min-w-[60px] bg-background/30 shadow-sm text-center">
+                                                        <p className="text-xs text-muted-foreground">{displayTime}</p>
+                                                        <ItemIcon size={20} className="text-accent" data-ai-hint={`${item.condition} weather ${itemIsDay ? "day" : "night"}`} />
+                                                        <p className="text-xs font-semibold">{item.temperature}°C</p>
+                                                    </div>
+                                                    );
+                                                })}
+                                                </div>
+                                                <ScrollBar orientation="horizontal" />
+                                            </ScrollArea>
+                                        </div>
                                       )}
                                     </div>
                                 )}

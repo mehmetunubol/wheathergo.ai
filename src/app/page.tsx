@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -14,7 +13,7 @@ import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/ac
 import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay, addHours } from "date-fns";
-import { HourlyForecastCard } from "@/components/hourly-forecast-card";
+// HourlyForecastCard import removed
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plane, LogIn, Sparkles, AlertTriangle } from "lucide-react";
@@ -80,8 +79,6 @@ export default function HomePage() {
 
   React.useEffect(() => {
     if (!appSettingsLoading && !isLoadingProfileFromEditor && familyProfile === "") {
-        // If familyProfile is still empty after appSettings have loaded and the profile editor has done its initial pass,
-        // set it to the default from appSettings. FamilyProfileEditor would have already tried to load user/localStorage specific profile.
         setFamilyProfile(appSettings.defaultFamilyProfile);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,6 +291,10 @@ export default function HomePage() {
         setActivitySuggestions(null);
         try {
           const data = await fetchWeather(location, selectedDate, MAX_API_FORECAST_DAYS, language);
+          // Filter hourly forecast for CurrentWeatherCard display
+          if (data && data.forecast) {
+            data.forecast = getFilteredHourlyForecast(data, selectedDate);
+          }
           setWeatherData(data);
           currentFetchedWeatherData = data;
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
@@ -443,13 +444,13 @@ export default function HomePage() {
   }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, t, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.freeTierLimits, appSettings.premiumTierLimits, toast, user, isAuthenticated]);
 
 
-  const getFilteredHourlyForecast = (): HourlyForecastData[] => {
-    if (!weatherData?.forecast || weatherData.isGuessed) return [];
+  const getFilteredHourlyForecast = (currentWeatherData: WeatherData | null, dateForFilter: Date): HourlyForecastData[] => {
+    if (!currentWeatherData?.forecast || currentWeatherData.isGuessed) return [];
 
-    if (!fnsIsToday(selectedDate)) return weatherData.forecast;
+    if (!fnsIsToday(dateForFilter)) return currentWeatherData.forecast;
 
-    const currentHourToDisplayFrom = getHours(selectedDate);
-    return weatherData.forecast.filter(item => {
+    const currentHourToDisplayFrom = getHours(dateForFilter);
+    return currentWeatherData.forecast.filter(item => {
         let itemHour = -1;
         const timeString = item.time;
 
@@ -466,7 +467,7 @@ export default function HomePage() {
                 const period = timeParts[3]?.toUpperCase();
                 if (period === 'PM' && itemHour !== 12) {
                     itemHour += 12;
-                } else if (period === 'AM' && itemHour === 12) { // Midnight case
+                } else if (period === 'AM' && itemHour === 12) { 
                     itemHour = 0;
                 }
             }
@@ -496,10 +497,7 @@ export default function HomePage() {
     );
   }
 
-  const filteredHourlyForecast = getFilteredHourlyForecast();
-  const showHourlyForecast = !weatherData?.isGuessed && filteredHourlyForecast && filteredHourlyForecast.length > 0;
   const effectiveFamilyProfileForDisplay = familyProfile || appSettings.defaultFamilyProfile;
-
 
   return (
     <div className="space-y-6">
@@ -517,16 +515,10 @@ export default function HomePage() {
         />
       </div>
 
-      <CurrentWeatherCard weatherData={weatherData} isLoading={isLoadingWeather} />
-
-      {showHourlyForecast && (
-        <HourlyForecastCard
-          forecastData={filteredHourlyForecast}
-          isLoading={isLoadingWeather}
-          date={selectedDate}
-          isParentGuessed={weatherData?.isGuessed}
-        />
-      )}
+      <CurrentWeatherCard 
+        weatherData={weatherData} 
+        isLoading={isLoadingWeather} 
+      />
 
       {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
         <SuggestionsTabs
