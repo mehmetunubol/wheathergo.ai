@@ -26,7 +26,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 export function MainNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const isMobileForTagline = useIsMobile(); // For tagline visibility
+  const isMobileForTagline = useIsMobile(); 
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
@@ -60,7 +60,6 @@ export function MainNav() {
           </div>
         </Link>
 
-        {/* Spacer to push subsequent items to the right */}
         <div className="flex-grow" />
 
         {/* Desktop-only Icon Links */}
@@ -89,7 +88,6 @@ export function MainNav() {
           </TooltipProvider>
         </nav>
 
-        {/* Hamburger Menu Trigger (always visible) */}
         <div className="flex items-center">
           <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <SheetTrigger asChild>
@@ -104,9 +102,22 @@ export function MainNav() {
                 </SheetTitle>
               </SheetHeader>
 
+              {!isAuthenticated && (
+                <div className="p-4 border-b">
+                  <SheetClose asChild>
+                    <Link href="/login" passHref>
+                      <Button className="w-full" onClick={closeMenu}>
+                         <LogIn className="mr-2 h-4 w-4" />
+                        {t('loginButton')}
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                </div>
+              )}
+
               {isAuthenticated && user && (
                 <div className="p-4 border-b flex items-center gap-3">
-                  <UserNav /> {/* Avatar */}
+                  <UserNav />
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-sm font-medium truncate" title={user.displayName || t('user')}>{user.displayName || t('user')}</span>
                     {user.email && <span className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</span>}
@@ -150,25 +161,16 @@ export function MainNav() {
                 ))}
               </nav>
 
-              <SheetFooter className="p-4 border-t mt-auto">
-                {isAuthenticated ? (
+              {isAuthenticated && (
+                <SheetFooter className="p-4 border-t mt-auto">
                   <SheetClose asChild>
                     <Button variant="outline" className="w-full" onClick={() => { logout(); closeMenu(); }}>
                       <LogOut className="mr-2 h-4 w-4" />
                       {t('logout')}
                     </Button>
                   </SheetClose>
-                ) : (
-                  <SheetClose asChild>
-                    <Link href="/login" passHref>
-                      <Button className="w-full" onClick={closeMenu}>
-                         <LogIn className="mr-2 h-4 w-4" />
-                        {t('loginButton')}
-                      </Button>
-                    </Link>
-                  </SheetClose>
-                )}
-              </SheetFooter>
+                </SheetFooter>
+              )}
             </SheetContent>
           </Sheet>
         </div>
@@ -176,3 +178,4 @@ export function MainNav() {
     </header>
   );
 }
+    
