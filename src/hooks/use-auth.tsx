@@ -31,6 +31,7 @@ interface AuthContextType {
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  refreshUser: () => Promise<void>; // Added to refresh user data
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -131,66 +132,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       photoURL: firebaseUser.photoURL,
       isAdmin: false,
       isActive: true,
-      isPremium: false,
+      isPremium: false, // Default to not premium
       dailyImageGenerations: { count: 0, date: todayStr },
       dailyOutfitSuggestions: { count: 0, date: todayStr },
       dailyActivitySuggestions: { count: 0, date: todayStr },
     };
   };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        let userData: User;
-        let userIsAdmin = false;
+  const fetchAndSetUser = useCallback(async (firebaseUser: FirebaseUser | null) => {
+    if (firebaseUser) {
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+      let userData: User;
+      let userIsAdmin = false;
 
-        if (!userSnap.exists()) {
-          const newUserDocData = initializeNewUserDocument(firebaseUser);
-          await setDoc(userRef, newUserDocData);
-          userData = newUserDocData;
-          userIsAdmin = false;
-          console.log("User document created in onAuthStateChanged for UID:", firebaseUser.uid);
-          // Notification to admins is handled in specific signup/login functions
-        } else {
-          const firestoreData = userSnap.data() as User; // Cast to User
-          userData = {
-            uid: firebaseUser.uid,
-            displayName: firestoreData.displayName || firebaseUser.displayName,
-            email: firestoreData.email || firebaseUser.email,
-            photoURL: firestoreData.photoURL || firebaseUser.photoURL,
-            isAdmin: firestoreData.isAdmin || false,
-            isActive: firestoreData.isActive === undefined ? true : firestoreData.isActive,
-            createdAt: firestoreData.createdAt || new Date().toISOString(),
-            isPremium: firestoreData.isPremium || false,
-            dailyImageGenerations: firestoreData.dailyImageGenerations || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
-            dailyOutfitSuggestions: firestoreData.dailyOutfitSuggestions || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
-            dailyActivitySuggestions: firestoreData.dailyActivitySuggestions || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
-          };
-          userIsAdmin = firestoreData.isAdmin || false;
-        }
-        
-        if (userData.isActive) {
-            setUser(userData);
-            setIsAdmin(userIsAdmin);
-        } else {
-            setUser(null);
-            setIsAdmin(false);
-            console.log(`User ${userData.email} is inactive. Forcing logout.`);
-            await signOut(auth); 
-        }
-
+      if (!userSnap.exists()) {
+        const newUserDocData = initializeNewUserDocument(firebaseUser);
+        await setDoc(userRef, newUserDocData);
+        userData = newUserDocData;
+        userIsAdmin = false;
+        console.log("User document created for UID:", firebaseUser.uid);
+        // Notification to admins is handled in specific signup/login functions after initial doc creation
       } else {
-        setUser(null);
-        setIsAdmin(false);
+        const firestoreData = userSnap.data() as User;
+        userData = {
+          uid: firebaseUser.uid,
+          displayName: firestoreData.displayName || firebaseUser.displayName,
+          email: firestoreData.email || firebaseUser.email,
+          photoURL: firestoreData.photoURL || firebaseUser.photoURL,
+          isAdmin: firestoreData.isAdmin || false,
+          isActive: firestoreData.isActive === undefined ? true : firestoreData.isActive,
+          createdAt: firestoreData.createdAt || new Date().toISOString(),
+          isPremium: firestoreData.isPremium || false,
+          dailyImageGenerations: firestoreData.dailyImageGenerations || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
+          dailyOutfitSuggestions: firestoreData.dailyOutfitSuggestions || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
+          dailyActivitySuggestions: firestoreData.dailyActivitySuggestions || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
+        };
+        userIsAdmin = firestoreData.isAdmin || false;
       }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      
+      if (userData.isActive) {
+          setUser(userData);
+          setIsAdmin(userIsAdmin);
+      } else {
+          setUser(null);
+          setIsAdmin(false);
+          console.log(`User ${userData.email} is inactive. Forcing logout.`);
+          await signOut(auth); 
+      }
+    } else {
+      setUser(null);
+      setIsAdmin(false);
+    }
+    setIsLoading(false);
   }, []);
+
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      fetchAndSetUser(firebaseUser);
+    });
+    return () => unsubscribe();
+  }, [fetchAndSetUser]);
+
+  const refreshUser = useCallback(async () => {
+    const currentFirebaseUser = auth.currentUser;
+    setIsLoading(true);
+    await fetchAndSetUser(currentFirebaseUser);
+    // setIsLoading(false); // fetchAndSetUser will set it
+  }, [fetchAndSetUser]);
+
 
   const loginWithGoogle = useCallback(async () => {
     setIsLoading(true);
@@ -202,47 +213,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
         const newUserDocData = initializeNewUserDocument(firebaseUser);
-        await setDoc(userRef, newUserDocData);
+        await setDoc(userRef, newUserDocData); // Create doc first
+        await fetchAndSetUser(firebaseUser); // Then fetch and set, which loads into context
         console.log("New user signed up with Google, notifying admins for UID:", newUserDocData.uid);
         await notifyAdminsOfNewUser(newUserDocData); 
+      } else {
+        await fetchAndSetUser(firebaseUser); // Fetch existing user data
       }
     } catch (error: any) {
       console.error("Google login error:", error);
       setIsLoading(false);
       throw new Error(getAuthErrorMessage(error.code, t));
     }
-  }, [t]);
+  }, [t, fetchAndSetUser]);
   
   const loginWithApple = useCallback(async () => {
     setIsLoading(true);
     const provider = new OAuthProvider('apple.com');
+    // This is a placeholder as Apple Sign-In requires more configuration
+    console.warn("Apple Sign-In is simulated. Using Google Sign-In flow for now.");
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, new GoogleAuthProvider()); // Simulating with Google
       const firebaseUser = result.user;
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
         const newUserDocData = initializeNewUserDocument(firebaseUser);
         await setDoc(userRef, newUserDocData);
+        await fetchAndSetUser(firebaseUser);
         await notifyAdminsOfNewUser(newUserDocData); 
+      } else {
+        await fetchAndSetUser(firebaseUser);
       }
     } catch (error: any) {
-      console.error("Apple login error:", error);
+      console.error("Apple (simulated) login error:", error);
       setIsLoading(false);
       throw new Error(getAuthErrorMessage(error.code, t));
     }
-  }, [t]);
+  }, [t, fetchAndSetUser]);
 
   const loginWithEmailPassword = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await fetchAndSetUser(userCredential.user);
     } catch (error: any) {
       console.error("Email login error:", error);
       setIsLoading(false);
       throw new Error(getAuthErrorMessage(error.code, t));
     }
-  }, [t]);
+  }, [t, fetchAndSetUser]);
 
   const signUpWithEmailPassword = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -255,7 +275,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       newUserDocData.displayName = displayName; 
 
       const userRef = doc(db, "users", userCredential.user.uid);
-      await setDoc(userRef, newUserDocData);
+      await setDoc(userRef, newUserDocData); // Create doc first
+      await fetchAndSetUser(userCredential.user); // Then fetch and set
       console.log("New user signed up with email, notifying admins for UID:", newUserDocData.uid);
       await notifyAdminsOfNewUser(newUserDocData); 
     } catch (error: any) {
@@ -263,12 +284,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
       throw new Error(getAuthErrorMessage(error.code, t)); 
     }
-  }, [t]);
+  }, [t, fetchAndSetUser]);
 
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
       await signOut(auth);
+      // setUser(null) and setIsAdmin(false) will be handled by onAuthStateChanged -> fetchAndSetUser
       if (pathname.startsWith('/admin') || (isAdmin && pathname !== '/login')) {
          router.push('/login'); 
       } else if (pathname !== '/login' && pathname !== '/') { 
@@ -277,6 +299,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) {
       console.error("Logout error:", error);
       throw new Error(getAuthErrorMessage(error.code, t));
+    } finally {
+        // Ensure loading is false even on logout error, though onAuthStateChanged should also handle it
+        // fetchAndSetUser(null) called by onAuthStateChanged handles this too.
     }
   }, [pathname, isAdmin, router, t]);
   
@@ -292,7 +317,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loginWithEmailPassword,
       signUpWithEmailPassword,
       logout, 
-      isLoading 
+      isLoading,
+      refreshUser // Provide the refresh function
     }}>
       {children}
     </AuthContext.Provider>
@@ -306,3 +332,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    

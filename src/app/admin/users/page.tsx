@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, ShieldCheck, ShieldOff, UserCheck, UserX, ShieldAlert } from "lucide-react";
+import { Trash2, ShieldCheck, ShieldOff, UserCheck, UserX, ShieldAlert, Gem } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +35,7 @@ import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 
 export default function AdminUsersPage() {
-  const { user: adminUser, isAdmin: isAdminAuth } = useAuth();
+  const { user: adminUser, isAdmin: isAdminAuth, refreshUser } = useAuth();
   const [users, setUsers] = React.useState<User[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -118,6 +118,25 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleTogglePremium = async (userId: string, currentIsPremium: boolean) => {
+    try {
+      const userDocRef = doc(db, "users", userId);
+      await updateDoc(userDocRef, { isPremium: !currentIsPremium });
+      setUsers((prevUsers) =>
+        prevUsers.map((u) =>
+          u.uid === userId ? { ...u, isPremium: !currentIsPremium } : u
+        )
+      );
+      if (userId === adminUser?.uid) {
+        await refreshUser(); // Refresh admin's own auth context if their premium status changes
+      }
+      toast({ title: t('premiumStatusUpdated'), description: `User ${userId} ${t('premiumStatusUpdated').toLowerCase()} ${!currentIsPremium ? 'premium' : 'not premium'}.` });
+    } catch (err) {
+      console.error("Error updating premium status:", err);
+      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     if (userId === adminUser?.uid) {
       toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
@@ -137,7 +156,6 @@ export default function AdminUsersPage() {
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     try {
-      // Ensure dateLocale is defined before using it, fallback to undefined if not
       return format(parseISO(dateString), 'PPpp', { locale: dateLocale || undefined });
     } catch {
       return dateString; 
@@ -156,6 +174,7 @@ export default function AdminUsersPage() {
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
               </div>
+              <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-10" />
@@ -188,6 +207,7 @@ export default function AdminUsersPage() {
               <TableHead>{t('emailTableHeader')}</TableHead>
               <TableHead>{t('displayNameTableHeader')}</TableHead>
               <TableHead>{t('createdAtTableHeader')}</TableHead>
+              <TableHead className="text-center">{t('isPremiumTableHeader')}</TableHead>
               <TableHead className="text-center">{t('isAdminTableHeader')}</TableHead>
               <TableHead className="text-center">{t('isActiveTableHeader')}</TableHead>
               <TableHead className="text-right">{t('actionsTableHeader')}</TableHead>
@@ -196,7 +216,7 @@ export default function AdminUsersPage() {
           <TableBody>
             {users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   {t('noUsersFound')}
                 </TableCell>
               </TableRow>
@@ -207,6 +227,14 @@ export default function AdminUsersPage() {
                 <TableCell>{user.email || "N/A"}</TableCell>
                 <TableCell>{user.displayName || "N/A"}</TableCell>
                 <TableCell>{formatDate(user.createdAt)}</TableCell>
+                <TableCell className="text-center">
+                  <Switch
+                    checked={!!user.isPremium}
+                    onCheckedChange={() => handleTogglePremium(user.uid, !!user.isPremium)}
+                    aria-label={user.isPremium ? t('removePremiumAria') : t('grantPremiumAria')}
+                  />
+                  {user.isPremium ? <Gem className="inline-block ml-1 h-4 w-4 text-purple-600" /> : <Gem className="inline-block ml-1 h-4 w-4 text-muted-foreground" />}
+                </TableCell>
                 <TableCell className="text-center">
                   <Switch
                     checked={!!user.isAdmin}
@@ -256,3 +284,5 @@ export default function AdminUsersPage() {
     </div>
   );
 }
+
+    
