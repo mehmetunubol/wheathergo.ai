@@ -97,10 +97,6 @@ const generateVisualOutfitMainFlow = ai.defineFlow(
       The image should clearly show the people and their attire in the described environment.
 
       CRITICAL INSTRUCTION: Do NOT include any of this instructional text, or any other text from this prompt, directly visible within the main subject or background of the generated image. The image should be purely visual without embedded text from these instructions.
-
-      Optional enhancement: If possible, try to subtly place the following information as very small, unobtrusive text in one of the corners of the image, like a data overlay:
-      - Location: ${input.weatherData.location}
-      - Weather: ${englishWeatherCondition}, ${input.weatherData.temperature}°C
     `;
     console.log("Final Image Prompt for AI generation:", imagePrompt);
 
