@@ -28,6 +28,7 @@ export const translations: AllTranslations = {
     imageGenerationAIBusyError: "The AI image generator is currently busy or encountered an issue. Please try again in a few moments.",
     notificationsConfiguredPremium: "Email notifications are configured for your travel plans.",
     notificationsPremiumFeature: "Automated email notifications for travel plans are a premium feature. Upgrade to receive daily/weekly updates!",
+    notificationsConfiguredForTrip: "Notifications for '{tripName}' will be sent to {email} {frequency} at {time}.",
     // Newly added for missing translations
     validationErrorFillAllFields: "Please fill in all required fields.",
     validationErrorInvalidEmail: "Please enter a valid email address.",
@@ -85,6 +86,7 @@ export const translations: AllTranslations = {
     imageGenerationAIBusyError: "AI resim oluşturucu şu anda meşgul veya bir sorunla karşılaştı. Lütfen birkaç dakika içinde tekrar deneyin.",
     notificationsConfiguredPremium: "Seyahat planlarınız için e-posta bildirimleri yapılandırıldı.",
     notificationsPremiumFeature: "Seyahat planları için otomatik e-posta bildirimleri premium bir özelliktir. Seyahatleriniz için günlük/haftalık güncellemeler almak için yükseltin!",
+    notificationsConfiguredForTrip: "'{tripName}' için bildirimler {email} adresine {frequency} olarak saat {time} gönderilecektir.",
     // Newly added for missing translations
     validationErrorFillAllFields: "Lütfen tüm gerekli alanları doldurun.",
     validationErrorInvalidEmail: "Lütfen geçerli bir e-posta adresi girin.",

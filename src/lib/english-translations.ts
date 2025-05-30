@@ -219,6 +219,8 @@ export const enTranslations = {
   travelPlanNotFound: "Travel plan not found.",
   aiEst: "AI Est.",
   notificationsConfigured: "notifications will be configured.",
+  notificationsConfiguredForTrip: "Notifications for '{tripName}' will be sent to {email} {frequency} at {time}.",
+
 
   // Subscription Page
   subscriptionTitle: "Subscription & Billing",
@@ -438,6 +440,7 @@ export const enTranslations = {
   blogPostStatusUpdatedParam: "Blog post '{postId}' status updated to: {status}.",
   blogPostDeletedParam: "Blog post '{postId}' has been deleted.",
   errorAIGenerateGeneric: "Failed to generate content with AI. Please try again.",
+
   activated: "activated",
   deactivated: "deactivated",
   promotedToAdmin: "promoted to admin",
@@ -516,7 +519,6 @@ export const enTranslations = {
   visualizationSuccessDesc: "Your outfit visualization is ready.",
   imageGenerationErrorTitle: "Image Generation Failed",
   imageGenerationErrorDefault: "Sorry, we couldn't generate the image right now. Please try again later.",
-  imageGenerationAIBusyError: "The AI image generator is currently busy or encountered an issue. Please try again in a few moments.",
   imageGenerationApiKeyError: "Image generation failed: API key issue. Please contact support.",
   visualizationPrerequisitesError: "Weather and outfit suggestions must be loaded first.",
   loginToVisualizeTitle: "Visualize Your Outfit with AI!",

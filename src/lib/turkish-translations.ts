@@ -219,6 +219,8 @@ export const trTranslations = {
   travelPlanNotFound: "Seyahat planı bulunamadı.",
   aiEst: "AI Tahmini",
   notificationsConfigured: "bildirimleri yapılandırılacak.",
+  notificationsConfiguredForTrip: "'{tripName}' için bildirimler {email} adresine {frequency} olarak saat {time} gönderilecektir.",
+
 
   // Subscription Page
   subscriptionTitle: "Abonelik & Faturalama",
@@ -516,7 +518,6 @@ export const trTranslations = {
   visualizationSuccessDesc: "Kıyafet görselleştirmeniz hazır.",
   imageGenerationErrorTitle: "Görüntü Oluşturma Başarısız",
   imageGenerationErrorDefault: "Üzgünüz, şu anda görüntüyü oluşturamadık. Lütfen daha sonra tekrar deneyin.",
-  imageGenerationAIBusyError: "AI resim oluşturucu şu anda meşgul veya bir sorunla karşılaştı. Lütfen birkaç dakika içinde tekrar deneyin.",
   imageGenerationApiKeyError: "Görüntü oluşturma başarısız: API anahtarı sorunu. Lütfen destekle iletişime geçin.",
   visualizationPrerequisitesError: "Önce hava durumu ve kıyafet önerileri yüklenmelidir.",
   loginToVisualizeTitle: "Kıyafetinizi AI ile Görselleştirin!",
