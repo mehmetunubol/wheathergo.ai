@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -21,10 +20,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { HourlyForecastCard } from "@/components/hourly-forecast-card";
+// HourlyForecastCard import removed
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 import { useAppSettings } from "@/contexts/app-settings-context";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 
 const DEFAULT_FAMILY_PROFILE_FOR_SUGGESTIONS = "An adult traveler.";
@@ -561,13 +561,35 @@ export default function TripDetailsPage() {
                                               </div>
                                           )}
                                       </div>
-                                       {showHourlyForecastSegment && (
-                                        <HourlyForecastCard
-                                          forecastData={segment.weatherData.forecast}
-                                          isLoading={segment.isLoading && !segment.weatherData.forecast}
-                                          date={segment.date}
-                                          isParentGuessed={segment.weatherData.isGuessed}
-                                        />
+                                       {showHourlyForecastSegment && segment.weatherData?.forecast && (
+                                        <div className="pt-2 mt-2 border-t">
+                                            <h4 className="text-sm font-semibold mb-1.5 flex items-center gap-1.5">
+                                                <Clock size={14} className="text-primary" /> {t('hourlyForecastForDate', { date: format(segment.date, "MMM d", { locale: dateLocale }) })}
+                                            </h4>
+                                            <ScrollArea className="w-full whitespace-nowrap">
+                                                <div className="flex space-x-2 pb-1">
+                                                {segment.weatherData.forecast.map((item, idx) => {
+                                                    const itemIsDay = typeof item.isDay === 'boolean' ? item.isDay : true;
+                                                    const ItemIcon = getWeatherIcon(item.conditionCode, item.condition, itemIsDay);
+                                                    let displayTime = item.time;
+                                                     try {
+                                                        const parsedItemTime = parseISO(item.time);
+                                                        if (isValid(parsedItemTime)) {
+                                                        displayTime = format(parsedItemTime, "h a", { locale: dateLocale });
+                                                        }
+                                                    } catch (e) { /* fallback */ }
+                                                    return (
+                                                    <div key={`hourly-trip-${segment.id}-${idx}`} className="flex flex-col items-center space-y-0.5 p-1.5 border rounded-md min-w-[60px] bg-background/30 shadow-sm text-center">
+                                                        <p className="text-xs text-muted-foreground">{displayTime}</p>
+                                                        <ItemIcon size={20} className="text-accent" data-ai-hint={`${item.condition} weather ${itemIsDay ? "day" : "night"}`} />
+                                                        <p className="text-xs font-semibold">{item.temperature}°C</p>
+                                                    </div>
+                                                    );
+                                                })}
+                                                </div>
+                                                <ScrollBar orientation="horizontal" />
+                                            </ScrollArea>
+                                        </div>
                                       )}
                                     </div>
                                 )}
@@ -601,4 +623,3 @@ export default function TripDetailsPage() {
     </div>
   );
 }
-
