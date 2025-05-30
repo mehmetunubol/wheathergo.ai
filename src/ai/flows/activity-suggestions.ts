@@ -81,6 +81,7 @@ const activitySuggestionsFlow = ai.defineFlow(
     const promptTemplate = getPromptTemplate(input.language);
     const prompt = ai.definePrompt({
         name: 'activitySuggestionsDynamicPrompt',
+        model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
         input: {schema: ActivitySuggestionsInputSchema},
         output: {schema: ActivitySuggestionsOutputSchema},
         prompt: promptTemplate,
