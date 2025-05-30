@@ -21,6 +21,10 @@ export const translations: AllTranslations = {
     dailyOutfitSuggestionsLimitLabel: "Daily Outfit Suggestions",
     dailyActivitySuggestionsLimitLabel: "Daily Activity Suggestions",
     maxTravelPlansLimitLabel: "Max Travel Plans (Total)",
+    premiumComingSoonTitle: "Premium Upgrades Coming Soon!",
+    premiumComingSoonDesc: "Direct upgrades to our Premium Tier will be available here shortly. We're working on integrating a seamless payment system.",
+    premiumTrialRequest: "In the meantime, if you'd like to be considered for a trial of our Premium features, please contact an administrator.",
+    contactAdminButton: "Contact Admin",
   },
   tr: {
     ...trTranslations,
@@ -31,6 +35,10 @@ export const translations: AllTranslations = {
     dailyOutfitSuggestionsLimitLabel: "Günlük Kıyafet Önerisi Limiti",
     dailyActivitySuggestionsLimitLabel: "Günlük Aktivite Önerisi Limiti",
     maxTravelPlansLimitLabel: "Maksimum Seyahat Planı (Toplam)",
+    premiumComingSoonTitle: "Premium Yükseltmeler Çok Yakında!",
+    premiumComingSoonDesc: "Premium Seviyemize doğrudan yükseltmeler yakında burada olacak. Sorunsuz bir ödeme sistemi entegre etmek için çalışıyoruz.",
+    premiumTrialRequest: "Bu arada, Premium özelliklerimizi denemek için değerlendirilmek isterseniz, lütfen bir yöneticiyle iletişime geçin.",
+    contactAdminButton: "Yöneticiyle İletişime Geç",
   },
 };
 

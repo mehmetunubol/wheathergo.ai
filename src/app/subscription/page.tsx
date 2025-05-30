@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CreditCard, ArrowLeft, Gem, LogIn } from "lucide-react";
+import { CreditCard, ArrowLeft, Gem, LogIn, Mail } from "lucide-react"; // Added Mail
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
@@ -32,11 +32,11 @@ export default function SubscriptionPage() {
           if (docSnap.exists()) {
             setCurrentUserData(docSnap.data() as User);
           } else {
-             setCurrentUserData(user); // Fallback to auth hook user if doc not found (should be rare)
+             setCurrentUserData(user); 
           }
         } catch (error) {
           console.error("Error fetching user data for subscription page:", error);
-          setCurrentUserData(user); // Fallback
+          setCurrentUserData(user); 
         } finally {
           setIsLoadingUserData(false);
         }
@@ -47,35 +47,14 @@ export default function SubscriptionPage() {
     fetchUserData();
   }, [isAuthenticated, user, authIsLoading]);
 
-
-  const handleUpgradeToPremium = async () => {
-    if (!user) return;
-    setIsProcessing(true);
-    // TODO: Integrate PayTR payment processing here
-    // On successful payment from PayTR:
-    try {
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, { isPremium: true });
-      await refreshUser(); // Refresh auth context to get updated user data
-      setCurrentUserData(prev => prev ? {...prev, isPremium: true} : null);
-      toast({ title: t('success'), description: t('upgradeSuccess') });
-    } catch (error) {
-      console.error("Error upgrading to premium:", error);
-      toast({ title: t('error'), description: t('upgradeError'), variant: "destructive" });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleCancelSubscription = async () => {
     if (!user) return;
     setIsProcessing(true);
     // TODO: Integrate PayTR cancellation logic here
-    // On successful cancellation from PayTR:
     try {
       const userDocRef = doc(db, "users", user.uid);
       await updateDoc(userDocRef, { isPremium: false });
-      await refreshUser(); // Refresh auth context
+      await refreshUser(); 
       setCurrentUserData(prev => prev ? {...prev, isPremium: false} : null);
       toast({ title: t('success'), description: t('cancelSuccess') });
     } catch (error) {
@@ -159,11 +138,19 @@ export default function SubscriptionPage() {
                <p className="text-xs text-muted-foreground">{t('cancellationPlaceholder')}</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              <Button onClick={handleUpgradeToPremium} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white" disabled={isProcessing}>
-                <Gem className="mr-2" /> {isProcessing ? t('upgrading') : t('upgradeToPremium')}
-              </Button>
-              <p className="text-xs text-muted-foreground">{t('paytrPlaceholder')}</p>
+            <div className="space-y-3 p-4 border border-dashed rounded-md">
+              <p className="text-lg font-semibold text-primary">{t('premiumComingSoonTitle')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('premiumComingSoonDesc')}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {t('premiumTrialRequest')}
+              </p>
+              <a href="mailto:weatherugo@gmail.com?subject=Premium Trial Request" className="inline-block mt-2">
+                <Button variant="outline">
+                  <Mail className="mr-2 h-4 w-4" /> {t('contactAdminButton')}
+                </Button>
+              </a>
             </div>
           )}
 
@@ -178,5 +165,3 @@ export default function SubscriptionPage() {
     </div>
   );
 }
-
-    
