@@ -95,7 +95,7 @@ export function TravelPlannerCard() {
         setIsLoadingPlans(false);
       }, (error) => {
         console.error("Error fetching travel plans:", error);
-        toast({ title: t('error'), description: "Could not load travel plans.", variant: "destructive" });
+        toast({ title: t('error'), description: t('errorCouldNotLoadTravelPlans'), variant: "destructive" });
         setIsLoadingPlans(false);
       });
       return () => unsubscribe(); 
@@ -103,28 +103,29 @@ export function TravelPlannerCard() {
       setTravelPlans([]);
       setIsLoadingPlans(false);
     }
-  }, [isAuthenticated, user, authIsLoading, toast, t, appSettingsLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user, authIsLoading, appSettingsLoading]);
 
 
   const handleAddTravelPlan = async () => {
     if (!isAuthenticated || !user) {
-      toast({ title: t('loginToManageTravelPlans'), description: "Please log in to add travel plans.", variant: "destructive" });
+      toast({ title: t('loginToManageTravelPlans'), description: t('loginToManageTravelPlansDetails'), variant: "destructive" });
       return;
     }
     if (!newTripName.trim() || !newLocation.trim() || !newEmail.trim() || !newStartDate || !newEndDate) {
-      toast({ title: t('error'), description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorFillAllFields'), variant: "destructive" });
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      toast({ title: t('error'), description: "Please enter a valid email address.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorInvalidEmail'), variant: "destructive" });
       return;
     }
     if (isBefore(newEndDate, newStartDate)) {
-      toast({ title: t('error'), description: "End date cannot be before the start date.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorEndDateBeforeStart'), variant: "destructive" });
       return;
     }
     if (appSettingsLoading) {
-      toast({ title: t('error'), description: "App settings still loading, please wait.", variant: "destructive"});
+      toast({ title: t('error'), description: t('errorAppSettingsLoading'), variant: "destructive"});
       return;
     }
 
@@ -168,30 +169,30 @@ export function TravelPlannerCard() {
       setNewTripContext("");
       toast({
         title: t('travelPlans'),
-        description: `${newPlanData.tripName} ${t('notificationsConfigured') || 'notifications will be configured.'}`,
+        description: t('notificationsConfiguredForTrip', { tripName: newPlanData.tripName }),
       });
     } catch (error) {
       console.error("Error adding travel plan to Firestore:", error);
-      toast({ title: t('error'), description: "Could not add travel plan. Please try again.", variant: "destructive" });
+      toast({ title: t('error'), description: t('errorCouldNotAddTravelPlan'), variant: "destructive" });
     } finally {
       setIsAddingPlan(false);
     }
   };
 
-  const handleDeleteTravelPlan = async (id: string, event: React.MouseEvent) => {
+  const handleDeleteTravelPlan = async (id: string, tripName: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (!isAuthenticated || !user) {
-      toast({ title: t('loginToManageTravelPlans'), description: "Please log in to delete travel plans.", variant: "destructive" });
+      toast({ title: t('loginToManageTravelPlans'), description: t('loginToManageTravelPlansDetails'), variant: "destructive" });
       return;
     }
 
     try {
       const planDocRef = doc(db, "users", user.uid, "travelPlans", id);
       await deleteDoc(planDocRef);
-      toast({ title: t('travelPlans'), description: "The travel plan has been deleted." });
+      toast({ title: t('travelPlans'), description: t('successTravelPlanDeletedParam', { tripName: tripName }) });
     } catch (error) {
       console.error("Error deleting travel plan from Firestore:", error);
-      toast({ title: t('error'), description: "Could not delete travel plan.", variant: "destructive" });
+      toast({ title: t('error'), description: t('errorCouldNotDeleteTravelPlan'), variant: "destructive" });
     }
   };
 
@@ -367,7 +368,7 @@ export function TravelPlannerCard() {
                       </div>
                       <div className="flex items-center self-end sm:self-center space-x-2">
                         <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}} aria-label={t('viewSummary')} className="px-2 py-1 h-auto text-xs"><Eye className="mr-1.5 h-3 w-3" /> {t('viewSummary')}</Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteTravelPlan(plan.id, e)} aria-label={t('deleteTravelPlan')} className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteTravelPlan(plan.id, plan.tripName, e)} aria-label={t('deleteTravelPlan')} className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   </li>
@@ -397,3 +398,4 @@ export function TravelPlannerCard() {
   );
 }
 
+    

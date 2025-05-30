@@ -60,9 +60,9 @@ export default function AdminUsersPage() {
         fetchedUsers.push({ uid: doc.id, ...doc.data() } as User);
       });
       setUsers(fetchedUsers);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching users:", err);
-      const errorMessage = (err as Error).message || t('error');
+      const errorMessage = err.message || t('error');
       setError(t('errorFetchingUsers') + ": " + errorMessage);
       toast({
         title: t('errorFetchingUsers'),
@@ -80,7 +80,7 @@ export default function AdminUsersPage() {
 
   const handleToggleAdmin = async (userId: string, currentIsAdmin: boolean) => {
     if (userId === adminUser?.uid) {
-      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('adminToggleOwnAdminError'), variant: "destructive" });
       return;
     }
     try {
@@ -91,16 +91,16 @@ export default function AdminUsersPage() {
           u.uid === userId ? { ...u, isAdmin: !currentIsAdmin } : u
         )
       );
-      toast({ title: t('adminStatusUpdated'), description: `User ${userId} ${t('adminStatusUpdated').toLowerCase()} ${!currentIsAdmin}.` });
-    } catch (err) {
+      toast({ title: t('adminStatusUpdated'), description: t('userAdminStatusUpdatedParam', { userId, status: !currentIsAdmin ? t('promotedToAdmin') : t('demotedFromAdmin') }) });
+    } catch (err: any) {
       console.error("Error updating admin status:", err);
-      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('updateFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
 
   const handleToggleActive = async (userId: string, currentIsActive: boolean) => {
      if (userId === adminUser?.uid) {
-      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('adminToggleOwnActiveError'), variant: "destructive" });
       return;
     }
     try {
@@ -111,10 +111,10 @@ export default function AdminUsersPage() {
           u.uid === userId ? { ...u, isActive: !currentIsActive } : u
         )
       );
-      toast({ title: t('userStatusUpdated'), description: `User ${userId} ${t('userStatusUpdated').toLowerCase()} ${!currentIsActive}.` });
-    } catch (err) {
+      toast({ title: t('userStatusUpdated'), description: t('userStatusUpdatedParam', { userId, status: !currentIsActive ? t('activated') : t('deactivated') }) });
+    } catch (err: any) {
       console.error("Error updating active status:", err);
-      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('updateFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
 
@@ -128,28 +128,28 @@ export default function AdminUsersPage() {
         )
       );
       if (userId === adminUser?.uid) {
-        await refreshUser(); // Refresh admin's own auth context if their premium status changes
+        await refreshUser(); 
       }
-      toast({ title: t('premiumStatusUpdated'), description: `User ${userId} ${t('premiumStatusUpdated').toLowerCase()} ${!currentIsPremium ? 'premium' : 'not premium'}.` });
-    } catch (err) {
+      toast({ title: t('premiumStatusUpdated'), description: t('userPremiumStatusUpdatedParam', { userId, status: !currentIsPremium ? t('grantedPremium') : t('revokedPremium') }) });
+    } catch (err: any) {
       console.error("Error updating premium status:", err);
-      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('updateFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = async (userId: string, userIdentifier: string) => {
     if (userId === adminUser?.uid) {
-      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('adminDeleteOwnError'), variant: "destructive" });
       return;
     }
     try {
       const userDocRef = doc(db, "users", userId);
       await deleteDoc(userDocRef);
       setUsers((prevUsers) => prevUsers.filter((u) => u.uid !== userId));
-      toast({ title: t('userDeleted'), description: `User ${userId} Firestore record has been deleted.` });
-    } catch (err) {
+      toast({ title: t('userDeleted'), description: t('userDeletedParam', { userId }) });
+    } catch (err: any) {
       console.error("Error deleting user:", err);
-      toast({ title: t('deleteFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('deleteFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
   
@@ -262,14 +262,14 @@ export default function AdminUsersPage() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{t('deleteUserDialogTitle')}</AlertDialogTitle>
+                        <AlertDialogTitle>{t('confirmDeleteUserTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {t('deleteUserDialogDesc')}
+                          {t('confirmDeleteUserDesc', { userIdentifier: user.email || user.uid })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteUser(user.uid)}>
+                        <AlertDialogAction onClick={() => handleDeleteUser(user.uid, user.email || user.uid)}>
                           {t('deleteRecordButton')}
                         </AlertDialogAction>
                       </AlertDialogFooter>

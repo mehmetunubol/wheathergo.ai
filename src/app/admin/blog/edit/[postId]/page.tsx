@@ -85,9 +85,9 @@ export default function EditBlogPostPage() {
       } else {
         setError(t('blogPostNotFound'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching blog post:", err);
-      setError(t('errorFetchingBlogPost') + ": " + (err as Error).message);
+      setError(t('errorFetchingBlogPost') + ": " + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +125,7 @@ export default function EditBlogPostPage() {
       }
     } catch (err) {
       console.error("Error generating blog content with AI:", err);
-      toast({ title: t('error'), description: (err as Error).message || "Failed to generate content with AI.", variant: "destructive" });
+      toast({ title: t('error'), description: (err as Error).message || t('errorAIGenerateGeneric'), variant: "destructive" });
     } finally {
       setIsGeneratingAI(false);
     }
@@ -173,9 +173,9 @@ export default function EditBlogPostPage() {
       await updateDoc(postDocRef, updatedPostData);
       toast({ title: t('success'), description: t('blogPostUpdatedSuccess') });
       router.push("/admin/blog");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating blog post:", err);
-      toast({ title: t('error'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('error'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -295,3 +295,5 @@ export default function EditBlogPostPage() {
     </div>
   );
 }
+
+    
