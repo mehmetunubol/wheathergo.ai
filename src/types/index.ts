@@ -185,7 +185,7 @@ export interface BlogPost {
   tags?: string[];
 }
 
-// Input for the new generateVisualOutfitFlow
+// Input for the visual outfit generation flow
 export interface GenerateVisualOutfitInput {
   weatherData: WeatherData;
   familyProfile: string;
@@ -193,10 +193,26 @@ export interface GenerateVisualOutfitInput {
   language: Language;
 }
 
-// Output for the new generateVisualOutfitFlow
+// Output for the visual outfit generation flow
 export interface GenerateVisualOutfitOutput {
   generatedImageUrl: string | null; // Data URI
 }
+
+// Input for Text Translation flow (for image prompt generation)
+export interface TranslateTextsForImagePromptInput {
+  familyProfile: string;
+  weatherCondition: string;
+  clothingSuggestions: string[];
+  sourceLanguage: Language;
+}
+
+// Output for Text Translation flow
+export interface TranslateTextsForImagePromptOutput {
+  translatedFamilyProfile: string;
+  translatedWeatherCondition: string;
+  translatedClothingSuggestions: string[];
+}
+
 
 // Input for Blog Content Generation
 export interface GenerateBlogContentInput {
@@ -208,4 +224,12 @@ export interface GenerateBlogContentInput {
 // Output for Blog Content Generation
 export interface GenerateBlogContentOutput {
   generatedContent: string; // Markdown content
+}
+
+// User Blog Post Reaction
+export interface UserBlogPostReaction {
+  userId: string;
+  postId: string;
+  reactionType: 'like'; // Can be extended to 'dislike', 'love', etc.
+  createdAt: string; // ISO string
 }
