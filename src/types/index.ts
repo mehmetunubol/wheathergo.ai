@@ -51,6 +51,7 @@ export interface User {
   dailyImageGenerations?: DailyUsage;
   dailyOutfitSuggestions?: DailyUsage;
   dailyActivitySuggestions?: DailyUsage;
+  dailyTripDetailsSuggestions?: DailyUsage; // New usage limit
 }
 
 export interface FamilyProfile {
@@ -103,7 +104,7 @@ export interface TripSegmentSuggestions {
   activitySuggestions: ActivitySuggestionsOutput | null;
   isLoading: boolean;
   error: string | null;
-  source?: 'stored' | 'newly-fetched';
+  source?: 'stored' | 'newly-fetched' | 'limit-reached'; // Added 'limit-reached'
 }
 
 // Cache types for homepage
@@ -171,6 +172,7 @@ interface UsageLimitTier {
   dailyImageGenerations: number;
   dailyOutfitSuggestions: number;
   dailyActivitySuggestions: number;
+  dailyTripDetailsSuggestions: number; // New limit
   maxTravelPlans: number;
 }
 
@@ -257,3 +259,4 @@ export type GenerateSimplifiedImagePromptOutput = {
 
 // Type removed, usage limits are now part of AppSettings
 // export type UsageLimitType = 'imageGenerations' | 'outfitSuggestions' | 'activitySuggestions' | 'maxTravelPlans';
+export type TranslationKey = keyof typeof import('@/lib/translations').translations.en;

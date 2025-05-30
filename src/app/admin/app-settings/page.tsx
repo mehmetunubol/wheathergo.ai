@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle, BarChart3, Gem, Shield } from "lucide-react";
+import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle, BarChart3, Gem, Shield, Briefcase } from "lucide-react"; // Added Briefcase
 import type { NotificationFrequency, AppSettings as AppSettingsType } from "@/types"; 
 import { useTranslation } from "@/hooks/use-translation";
 
@@ -25,7 +25,20 @@ export default function AdminAppSettingsPage() {
 
   React.useEffect(() => {
     if (!isLoadingSettings && currentSettings) {
-      setFormState(currentSettings);
+      // Ensure all limit fields, including the new one, are present in formState, falling back to defaults
+      const mergedFreeTierLimits = {
+        ...DEFAULT_APP_SETTINGS.freeTierLimits,
+        ...(currentSettings.freeTierLimits || {}),
+      };
+      const mergedPremiumTierLimits = {
+        ...DEFAULT_APP_SETTINGS.premiumTierLimits,
+        ...(currentSettings.premiumTierLimits || {}),
+      };
+      setFormState({
+        ...currentSettings,
+        freeTierLimits: mergedFreeTierLimits,
+        premiumTierLimits: mergedPremiumTierLimits,
+      });
     }
   }, [currentSettings, isLoadingSettings]);
 
@@ -66,12 +79,14 @@ export default function AdminAppSettingsPage() {
           dailyImageGenerations: Number(formState.freeTierLimits.dailyImageGenerations),
           dailyOutfitSuggestions: Number(formState.freeTierLimits.dailyOutfitSuggestions),
           dailyActivitySuggestions: Number(formState.freeTierLimits.dailyActivitySuggestions),
+          dailyTripDetailsSuggestions: Number(formState.freeTierLimits.dailyTripDetailsSuggestions), // New limit
           maxTravelPlans: Number(formState.freeTierLimits.maxTravelPlans),
         },
         premiumTierLimits: {
           dailyImageGenerations: Number(formState.premiumTierLimits.dailyImageGenerations),
           dailyOutfitSuggestions: Number(formState.premiumTierLimits.dailyOutfitSuggestions),
           dailyActivitySuggestions: Number(formState.premiumTierLimits.dailyActivitySuggestions),
+          dailyTripDetailsSuggestions: Number(formState.premiumTierLimits.dailyTripDetailsSuggestions), // New limit
           maxTravelPlans: Number(formState.premiumTierLimits.maxTravelPlans),
         },
       };
@@ -214,6 +229,10 @@ export default function AdminAppSettingsPage() {
                 <Input id="freeTierLimits.dailyActivitySuggestions" name="freeTierLimits.dailyActivitySuggestions" type="number" value={formState.freeTierLimits.dailyActivitySuggestions} onChange={handleChange} />
               </div>
               <div>
+                <Label htmlFor="freeTierLimits.dailyTripDetailsSuggestions">{t('dailyTripDetailsSuggestionsLimitLabel')}</Label>
+                <Input id="freeTierLimits.dailyTripDetailsSuggestions" name="freeTierLimits.dailyTripDetailsSuggestions" type="number" value={formState.freeTierLimits.dailyTripDetailsSuggestions} onChange={handleChange} />
+              </div>
+              <div>
                 <Label htmlFor="freeTierLimits.maxTravelPlans">{t('maxTravelPlansLimitLabel')}</Label>
                 <Input id="freeTierLimits.maxTravelPlans" name="freeTierLimits.maxTravelPlans" type="number" value={formState.freeTierLimits.maxTravelPlans} onChange={handleChange} />
               </div>
@@ -235,6 +254,10 @@ export default function AdminAppSettingsPage() {
               <div>
                 <Label htmlFor="premiumTierLimits.dailyActivitySuggestions">{t('dailyActivitySuggestionsLimitLabel')}</Label>
                 <Input id="premiumTierLimits.dailyActivitySuggestions" name="premiumTierLimits.dailyActivitySuggestions" type="number" value={formState.premiumTierLimits.dailyActivitySuggestions} onChange={handleChange} />
+              </div>
+              <div>
+                <Label htmlFor="premiumTierLimits.dailyTripDetailsSuggestions">{t('dailyTripDetailsSuggestionsLimitLabel')}</Label>
+                <Input id="premiumTierLimits.dailyTripDetailsSuggestions" name="premiumTierLimits.dailyTripDetailsSuggestions" type="number" value={formState.premiumTierLimits.dailyTripDetailsSuggestions} onChange={handleChange} />
               </div>
               <div>
                 <Label htmlFor="premiumTierLimits.maxTravelPlans">{t('maxTravelPlansLimitLabel')}</Label>

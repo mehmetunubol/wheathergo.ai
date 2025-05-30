@@ -19,12 +19,14 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     dailyImageGenerations: 3,
     dailyOutfitSuggestions: 10,
     dailyActivitySuggestions: 10,
+    dailyTripDetailsSuggestions: 2, // New limit
     maxTravelPlans: 10,
   },
   premiumTierLimits: { // Example for future use
     dailyImageGenerations: 50,
     dailyOutfitSuggestions: 100,
     dailyActivitySuggestions: 100,
+    dailyTripDetailsSuggestions: 10, // New limit
     maxTravelPlans: 100,
   },
 };

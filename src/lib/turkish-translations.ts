@@ -415,6 +415,7 @@ export const trTranslations = {
   dailyImageGenerationsLimitLabel: "Günlük Görüntü Oluşturma",
   dailyOutfitSuggestionsLimitLabel: "Günlük Kıyafet Önerileri",
   dailyActivitySuggestionsLimitLabel: "Günlük Aktivite Önerileri",
+  dailyTripDetailsSuggestionsLimitLabel: "Günlük Seyahat Detayı Önerileri", // New
   maxTravelPlansLimitLabel: "Maks. Seyahat Planı (Toplam)",
 
   // README
@@ -436,6 +437,7 @@ export const trTranslations = {
   blogPostStatusUpdatedParam: "'{postId}' başlıklı blog yazısının durumu şuna güncellendi: {status}.",
   blogPostDeletedParam: "'{postId}' başlıklı blog yazısı silindi.",
   errorAIGenerateGeneric: "AI ile içerik oluşturulamadı. Lütfen tekrar deneyin.",
+  
   activated: "etkinleştirildi",
   deactivated: "devre dışı bırakıldı",
   promotedToAdmin: "yönetici yapıldı",
@@ -526,8 +528,7 @@ export const trTranslations = {
   dailyImageGenerationLimitReached: "Günlük resim oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   dailyOutfitSuggestionsLimitReached: "Günlük kıyafet önerisi limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   dailyActivitySuggestionsLimitReached: "Günlük aktivite önerisi limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
+  dailyTripDetailsSuggestionsLimitReached: "Günlük seyahat detayı önerisi oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.", // New
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
-
-    

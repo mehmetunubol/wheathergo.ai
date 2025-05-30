@@ -136,6 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       dailyImageGenerations: { count: 0, date: todayStr },
       dailyOutfitSuggestions: { count: 0, date: todayStr },
       dailyActivitySuggestions: { count: 0, date: todayStr },
+      dailyTripDetailsSuggestions: { count: 0, date: todayStr }, // New usage limit
     };
   };
 
@@ -155,6 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Notification to admins is handled in specific signup/login functions after initial doc creation
       } else {
         const firestoreData = userSnap.data() as User;
+        const todayStr = format(new Date(), 'yyyy-MM-dd'); // For defaulting usage if missing
         userData = {
           uid: firebaseUser.uid,
           displayName: firestoreData.displayName || firebaseUser.displayName,
@@ -164,9 +166,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           isActive: firestoreData.isActive === undefined ? true : firestoreData.isActive,
           createdAt: firestoreData.createdAt || new Date().toISOString(),
           isPremium: firestoreData.isPremium || false,
-          dailyImageGenerations: firestoreData.dailyImageGenerations || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
-          dailyOutfitSuggestions: firestoreData.dailyOutfitSuggestions || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
-          dailyActivitySuggestions: firestoreData.dailyActivitySuggestions || { count: 0, date: format(new Date(), 'yyyy-MM-dd') },
+          dailyImageGenerations: firestoreData.dailyImageGenerations || { count: 0, date: todayStr },
+          dailyOutfitSuggestions: firestoreData.dailyOutfitSuggestions || { count: 0, date: todayStr },
+          dailyActivitySuggestions: firestoreData.dailyActivitySuggestions || { count: 0, date: todayStr },
+          dailyTripDetailsSuggestions: firestoreData.dailyTripDetailsSuggestions || { count: 0, date: todayStr }, // New usage limit
         };
         userIsAdmin = firestoreData.isAdmin || false;
       }
@@ -332,5 +335,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-    

@@ -416,6 +416,7 @@ export const enTranslations = {
   dailyImageGenerationsLimitLabel: "Daily Image Generations",
   dailyOutfitSuggestionsLimitLabel: "Daily Outfit Suggestions",
   dailyActivitySuggestionsLimitLabel: "Daily Activity Suggestions",
+  dailyTripDetailsSuggestionsLimitLabel: "Daily Trip Detail Suggestions", // New
   maxTravelPlansLimitLabel: "Max Travel Plans (Total)",
 
   // README
@@ -527,8 +528,7 @@ export const enTranslations = {
   dailyImageGenerationLimitReached: "You have reached your daily limit for image generations. Please try again tomorrow or upgrade your plan.",
   dailyOutfitSuggestionsLimitReached: "You have reached your daily limit for outfit suggestions. Please try again tomorrow or upgrade your plan.",
   dailyActivitySuggestionsLimitReached: "You have reached your daily limit for activity suggestions. Please try again tomorrow or upgrade your plan.",
+  dailyTripDetailsSuggestionsLimitReached: "You have reached your daily limit for generating trip detail suggestions. Please try again tomorrow or upgrade your plan.", // New
   maxTravelPlansLimitReached: "You have reached the maximum number of travel plans allowed. Please remove an existing plan to add a new one or upgrade your plan.",
   suggestionsLimitReached: "Daily AI suggestions limit reached for today.",
 };
-
-    
