@@ -97,6 +97,7 @@ const guessWeatherFlow = ai.defineFlow(
     const promptTemplate = getPromptTemplate(input.language);
     const prompt = ai.definePrompt({
       name: 'guessWeatherDynamicPrompt',
+      model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
       input: { schema: GuessedWeatherFlowInputSchema }, // Use the flow-specific input schema
       output: { schema: GuessedWeatherOutputSchema },
       prompt: promptTemplate,
@@ -133,3 +134,4 @@ const guessWeatherFlow = ai.defineFlow(
     }
   }
 );
+

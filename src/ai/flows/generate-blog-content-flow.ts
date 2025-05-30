@@ -66,6 +66,7 @@ const generateBlogContentFlow = ai.defineFlow(
     const promptTemplate = getPromptTemplate(input.language);
     const prompt = ai.definePrompt({
       name: 'generateBlogContentDynamicPrompt',
+      model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
       input: {schema: GenerateBlogContentInputSchema},
       output: {schema: GenerateBlogContentOutputSchema},
       prompt: promptTemplate,

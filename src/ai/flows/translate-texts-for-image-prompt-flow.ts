@@ -76,6 +76,7 @@ The "translatedClothingSuggestions" should be an array of translated clothing it
 
     const prompt = ai.definePrompt({
       name: 'translateTextsForImagePrompt',
+      model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
       input: {schema: TranslateTextsForImagePromptInputSchema},
       output: {schema: TranslateTextsForImagePromptOutputSchema},
       prompt: promptText,
@@ -104,3 +105,4 @@ The "translatedClothingSuggestions" should be an array of translated clothing it
     }
   }
 );
+
