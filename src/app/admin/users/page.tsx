@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, ShieldCheck, ShieldOff, UserCheck, UserX, ShieldAlert } from "lucide-react";
+import { Trash2, ShieldCheck, ShieldOff, UserCheck, UserX, ShieldAlert, Gem } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +35,7 @@ import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 
 export default function AdminUsersPage() {
-  const { user: adminUser, isAdmin: isAdminAuth } = useAuth();
+  const { user: adminUser, isAdmin: isAdminAuth, refreshUser } = useAuth();
   const [users, setUsers] = React.useState<User[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -60,9 +60,9 @@ export default function AdminUsersPage() {
         fetchedUsers.push({ uid: doc.id, ...doc.data() } as User);
       });
       setUsers(fetchedUsers);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching users:", err);
-      const errorMessage = (err as Error).message || t('error');
+      const errorMessage = err.message || t('error');
       setError(t('errorFetchingUsers') + ": " + errorMessage);
       toast({
         title: t('errorFetchingUsers'),
@@ -80,7 +80,7 @@ export default function AdminUsersPage() {
 
   const handleToggleAdmin = async (userId: string, currentIsAdmin: boolean) => {
     if (userId === adminUser?.uid) {
-      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('adminToggleOwnAdminError'), variant: "destructive" });
       return;
     }
     try {
@@ -91,16 +91,16 @@ export default function AdminUsersPage() {
           u.uid === userId ? { ...u, isAdmin: !currentIsAdmin } : u
         )
       );
-      toast({ title: t('adminStatusUpdated'), description: `User ${userId} ${t('adminStatusUpdated').toLowerCase()} ${!currentIsAdmin}.` });
-    } catch (err) {
+      toast({ title: t('adminStatusUpdated'), description: t('userAdminStatusUpdatedParam', { userId, status: !currentIsAdmin ? t('promotedToAdmin') : t('demotedFromAdmin') }) });
+    } catch (err: any) {
       console.error("Error updating admin status:", err);
-      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('updateFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
 
   const handleToggleActive = async (userId: string, currentIsActive: boolean) => {
      if (userId === adminUser?.uid) {
-      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('adminToggleOwnActiveError'), variant: "destructive" });
       return;
     }
     try {
@@ -111,33 +111,51 @@ export default function AdminUsersPage() {
           u.uid === userId ? { ...u, isActive: !currentIsActive } : u
         )
       );
-      toast({ title: t('userStatusUpdated'), description: `User ${userId} ${t('userStatusUpdated').toLowerCase()} ${!currentIsActive}.` });
-    } catch (err) {
+      toast({ title: t('userStatusUpdated'), description: t('userStatusUpdatedParam', { userId, status: !currentIsActive ? t('activated') : t('deactivated') }) });
+    } catch (err: any) {
       console.error("Error updating active status:", err);
-      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('updateFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleTogglePremium = async (userId: string, currentIsPremium: boolean) => {
+    try {
+      const userDocRef = doc(db, "users", userId);
+      await updateDoc(userDocRef, { isPremium: !currentIsPremium });
+      setUsers((prevUsers) =>
+        prevUsers.map((u) =>
+          u.uid === userId ? { ...u, isPremium: !currentIsPremium } : u
+        )
+      );
+      if (userId === adminUser?.uid) {
+        await refreshUser(); 
+      }
+      toast({ title: t('premiumStatusUpdated'), description: t('userPremiumStatusUpdatedParam', { userId, status: !currentIsPremium ? t('grantedPremium') : t('revokedPremium') }) });
+    } catch (err: any) {
+      console.error("Error updating premium status:", err);
+      toast({ title: t('updateFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userIdentifier: string) => {
     if (userId === adminUser?.uid) {
-      toast({ title: t('actionDenied'), description: t('actionDenied'), variant: "destructive" });
+      toast({ title: t('actionDenied'), description: t('adminDeleteOwnError'), variant: "destructive" });
       return;
     }
     try {
       const userDocRef = doc(db, "users", userId);
       await deleteDoc(userDocRef);
       setUsers((prevUsers) => prevUsers.filter((u) => u.uid !== userId));
-      toast({ title: t('userDeleted'), description: `User ${userId} Firestore record has been deleted.` });
-    } catch (err) {
+      toast({ title: t('userDeleted'), description: t('userDeletedParam', { userId }) });
+    } catch (err: any) {
       console.error("Error deleting user:", err);
-      toast({ title: t('deleteFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('deleteFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
   
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     try {
-      // Ensure dateLocale is defined before using it, fallback to undefined if not
       return format(parseISO(dateString), 'PPpp', { locale: dateLocale || undefined });
     } catch {
       return dateString; 
@@ -156,6 +174,7 @@ export default function AdminUsersPage() {
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
               </div>
+              <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-10" />
@@ -188,6 +207,7 @@ export default function AdminUsersPage() {
               <TableHead>{t('emailTableHeader')}</TableHead>
               <TableHead>{t('displayNameTableHeader')}</TableHead>
               <TableHead>{t('createdAtTableHeader')}</TableHead>
+              <TableHead className="text-center">{t('isPremiumTableHeader')}</TableHead>
               <TableHead className="text-center">{t('isAdminTableHeader')}</TableHead>
               <TableHead className="text-center">{t('isActiveTableHeader')}</TableHead>
               <TableHead className="text-right">{t('actionsTableHeader')}</TableHead>
@@ -196,7 +216,7 @@ export default function AdminUsersPage() {
           <TableBody>
             {users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   {t('noUsersFound')}
                 </TableCell>
               </TableRow>
@@ -207,6 +227,14 @@ export default function AdminUsersPage() {
                 <TableCell>{user.email || "N/A"}</TableCell>
                 <TableCell>{user.displayName || "N/A"}</TableCell>
                 <TableCell>{formatDate(user.createdAt)}</TableCell>
+                <TableCell className="text-center">
+                  <Switch
+                    checked={!!user.isPremium}
+                    onCheckedChange={() => handleTogglePremium(user.uid, !!user.isPremium)}
+                    aria-label={user.isPremium ? t('removePremiumAria') : t('grantPremiumAria')}
+                  />
+                  {user.isPremium ? <Gem className="inline-block ml-1 h-4 w-4 text-purple-600" /> : <Gem className="inline-block ml-1 h-4 w-4 text-muted-foreground" />}
+                </TableCell>
                 <TableCell className="text-center">
                   <Switch
                     checked={!!user.isAdmin}
@@ -234,14 +262,14 @@ export default function AdminUsersPage() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{t('deleteUserDialogTitle')}</AlertDialogTitle>
+                        <AlertDialogTitle>{t('confirmDeleteUserTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {t('deleteUserDialogDesc')}
+                          {t('confirmDeleteUserDesc', { userIdentifier: user.email || user.uid })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteUser(user.uid)}>
+                        <AlertDialogAction onClick={() => handleDeleteUser(user.uid, user.email || user.uid)}>
                           {t('deleteRecordButton')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -256,3 +284,5 @@ export default function AdminUsersPage() {
     </div>
   );
 }
+
+    

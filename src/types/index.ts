@@ -34,6 +34,11 @@ export interface WeatherData {
   isGuessed?: boolean; // True if this data is AI-generated
 }
 
+export interface DailyUsage {
+  date: string; // YYYY-MM-DD
+  count: number;
+}
+
 export interface User {
   uid: string;
   displayName: string | null;
@@ -42,6 +47,10 @@ export interface User {
   isAdmin?: boolean;
   isActive?: boolean;
   createdAt?: string;
+  isPremium?: boolean;
+  dailyImageGenerations?: DailyUsage;
+  dailyOutfitSuggestions?: DailyUsage;
+  dailyActivitySuggestions?: DailyUsage;
 }
 
 export interface FamilyProfile {
@@ -112,7 +121,7 @@ export type CachedActivitySuggestions = CachedItem<ActivitySuggestionsOutput>;
 export interface GuessedWeatherInput {
   location: string;
   date: string; // YYYY-MM-DD
-  language?: Language; // Added language
+  language?: Language;
 }
 
 export interface GuessedWeatherOutput {
@@ -131,7 +140,8 @@ export interface ClothingSuggestionsInput {
   temperature: number;
   familyProfile: string;
   location: string;
-  language?: Language; // Added language
+  timeOfDay?: string;
+  language?: Language;
 }
 
 // AI Flow for activity suggestions
@@ -141,7 +151,7 @@ export interface ActivitySuggestionsInput {
   familyProfile: string;
   timeOfDay: string;
   locationPreferences?: string;
-  language?: Language; // Added language
+  language?: Language;
 }
 
 
@@ -157,6 +167,13 @@ export interface UserProfileData {
     updatedAt: string; // ISO string
 }
 
+interface UsageLimitTier {
+  dailyImageGenerations: number;
+  dailyOutfitSuggestions: number;
+  dailyActivitySuggestions: number;
+  maxTravelPlans: number;
+}
+
 // Application-wide settings configurable by admin
 export interface AppSettings {
   defaultLocation: string;
@@ -165,6 +182,8 @@ export interface AppSettings {
   defaultFamilyProfile: string;
   defaultNotificationTime: string; // e.g., "09:00"
   defaultNotificationFrequency: NotificationFrequency; // 'daily' | 'weekly'
+  freeTierLimits: UsageLimitTier;
+  premiumTierLimits: UsageLimitTier;
 }
 
 // Blog Post Type
@@ -172,7 +191,7 @@ export interface BlogPost {
   id?: string; // Firestore document ID
   title: string;
   slug: string; // URL-friendly identifier
-  content: string; // For now, plain text or simple HTML
+  content: string; // Markdown content
   authorId: string;
   authorName: string | null;
   createdAt: string; // ISO string
@@ -183,3 +202,58 @@ export interface BlogPost {
   imageUrl?: string; // URL for a cover image
   tags?: string[];
 }
+
+// Input for the visual outfit generation flow
+export interface GenerateVisualOutfitInput {
+  weatherData: WeatherData;
+  familyProfile: string;
+  clothingSuggestions: ClothingSuggestionsOutput;
+  language: Language;
+}
+
+// Output for the visual outfit generation flow
+export interface GenerateVisualOutfitOutput {
+  generatedImageUrl: string | null; // Data URI
+}
+
+// Input for Text Translation flow (for image prompt generation)
+export interface TranslateTextsForImagePromptInput {
+  familyProfile: string;
+  weatherCondition: string;
+  clothingSuggestions: string[];
+  sourceLanguage: Language;
+}
+
+// Output for Text Translation flow
+export interface TranslateTextsForImagePromptOutput {
+  translatedFamilyProfile: string;
+  translatedWeatherCondition: string;
+  translatedClothingSuggestions: string[];
+}
+
+
+// Input for Blog Content Generation
+export interface GenerateBlogContentInput {
+  title: string;
+  promptDetails?: string;
+  language?: Language;
+}
+
+// Output for Blog Content Generation
+export interface GenerateBlogContentOutput {
+  generatedContent: string; // Markdown content
+}
+
+// Input for Simplified Image Prompt Generation
+export interface GenerateSimplifiedImagePromptInput {
+  weatherData: WeatherData;
+  familyProfile: string;
+  clothingSuggestions: ClothingSuggestionsOutput;
+  language: Language;
+}
+export type GenerateSimplifiedImagePromptOutput = {
+  simplifiedImagePrompt: string;
+};
+
+// Type removed, usage limits are now part of AppSettings
+// export type UsageLimitType = 'imageGenerations' | 'outfitSuggestions' | 'activitySuggestions' | 'maxTravelPlans';

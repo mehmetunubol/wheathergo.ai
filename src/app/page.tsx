@@ -11,56 +11,59 @@ import { SuggestionsTabs } from "@/components/suggestions-tabs";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData } from "@/types";
+import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { format, isToday as fnsIsToday, getHours, isValid, parseISO } from "date-fns";
+import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay, addHours } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, LogIn, Sparkles } from "lucide-react";
+import { Plane, LogIn, Sparkles, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, runTransaction } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
+import { OutfitVisualizationCard } from "@/components/outfit-visualization-card";
 
 function getTimeOfDay(dateWithTime: Date): string {
   const hour = getHours(dateWithTime);
+  if (hour < 6) return "night"; 
   if (hour < 12) return "morning";
   if (hour < 18) return "afternoon";
-  return "evening";
+  if (hour < 22) return "evening";
+  return "night"; 
 }
 
-const DEFAULT_LOCATION_FALLBACK = "auto:ip"; 
-
 export default function HomePage() {
-  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings(); 
+  const { settings: appSettings, isLoadingSettings: appSettingsLoading } = useAppSettings();
   const { language, dateLocale } = useLanguage();
   const { t } = useTranslation();
   const pathname = usePathname();
 
-  const [location, setLocation] = React.useState<string>(""); 
-  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date()); 
-  
+  const [location, setLocation] = React.useState<string>("");
+  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+
   const [familyProfile, setFamilyProfile] = React.useState<string>("");
-  const [isLoadingProfileFromEditor, setIsLoadingProfileFromEditor] = React.useState(true); 
-  
+  const [isLoadingProfileFromEditor, setIsLoadingProfileFromEditor] = React.useState(true);
+
   const [weatherData, setWeatherData] = React.useState<WeatherData | null>(null);
   const [outfitSuggestions, setOutfitSuggestions] = React.useState<ClothingSuggestionsOutput | null>(null);
   const [activitySuggestions, setActivitySuggestions] = React.useState<ActivitySuggestionsOutput | null>(null);
+  
+  const [outfitLimitReached, setOutfitLimitReached] = React.useState(false);
+  const [activityLimitReached, setActivityLimitReached] = React.useState(false);
 
   const [isLoadingWeather, setIsLoadingWeather] = React.useState(true);
   const [isLoadingOutfit, setIsLoadingOutfit] = React.useState(false);
-  const [isLoadingActivity, setIsLoadingActivity] = React.useState(false); 
-  
-  const [isLoadingPreferences, setIsLoadingPreferences] = React.useState(true); 
+  const [isLoadingActivity, setIsLoadingActivity] = React.useState(false);
+
+  const [isLoadingPreferences, setIsLoadingPreferences] = React.useState(true);
 
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
   const prevUserUID = React.useRef<string | undefined>(undefined);
-
 
   const handleProfileUpdate = React.useCallback((newProfile: string) => {
     setFamilyProfile(newProfile);
@@ -71,9 +74,18 @@ export default function HomePage() {
     if (date) {
       setSelectedDate(date);
     } else {
-      setSelectedDate(new Date()); 
+      setSelectedDate(new Date());
     }
   }, []);
+
+  React.useEffect(() => {
+    if (!appSettingsLoading && !isLoadingProfileFromEditor && familyProfile === "") {
+        // If familyProfile is still empty after appSettings have loaded and the profile editor has done its initial pass,
+        // set it to the default from appSettings. FamilyProfileEditor would have already tried to load user/localStorage specific profile.
+        setFamilyProfile(appSettings.defaultFamilyProfile);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appSettingsLoading, appSettings.defaultFamilyProfile, isLoadingProfileFromEditor]);
 
 
   React.useEffect(() => {
@@ -82,7 +94,7 @@ export default function HomePage() {
 
       setIsLoadingPreferences(true);
       const userJustLoggedIn = isAuthenticated && user && user.uid !== prevUserUID.current;
-      let initialLocationResolved = appSettings.defaultLocation || DEFAULT_LOCATION_FALLBACK; 
+      let initialLocationResolved = appSettings.defaultLocation || DEFAULT_APP_SETTINGS.defaultLocation;
 
       try {
         if (isAuthenticated && user) {
@@ -93,7 +105,7 @@ export default function HomePage() {
             const data = docSnap.data();
             if (data.lastLocation) {
               initialLocationResolved = data.lastLocation;
-            } 
+            }
             
             if (userJustLoggedIn) {
               setSelectedDate(new Date()); 
@@ -102,25 +114,24 @@ export default function HomePage() {
               if (isValid(parsedDate)) {
                 setSelectedDate(parsedDate);
               } else {
-                setSelectedDate(new Date());
+                 setSelectedDate(new Date());
               }
             } else {
                setSelectedDate(new Date());
             }
           } else {
-            // No Firestore prefs, check localStorage for location if it was set before login
-            const storedLocation = localStorage.getItem("weatherugo-location");
-            if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
-              initialLocationResolved = storedLocation;
-            }
-            setSelectedDate(new Date()); 
+             const storedLocation = localStorage.getItem("weatherugo-location");
+             if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
+                initialLocationResolved = storedLocation;
+             }
+             setSelectedDate(new Date());
           }
-        } else { // Not authenticated
+        } else {
           const storedLocation = localStorage.getItem("weatherugo-location");
           if (storedLocation && storedLocation.toLowerCase() !== "auto:ip") {
             initialLocationResolved = storedLocation;
           }
-          setSelectedDate(new Date());
+           setSelectedDate(new Date());
         }
       } catch (error) {
         console.error("Error during preferences loading:", error);
@@ -134,23 +145,21 @@ export default function HomePage() {
         setIsLoadingPreferences(false);
       }
     };
-
-    if (!authIsLoading && !appSettingsLoading) { 
+    
+    if (!authIsLoading && !appSettingsLoading) {
       loadPreferences();
     }
-    
+
     if (!authIsLoading) {
         prevUserUID.current = user?.uid;
     }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user?.uid, authIsLoading, appSettingsLoading, appSettings.defaultLocation, pathname]);
 
 
   React.useEffect(() => {
-    if (location && location.toLowerCase() !== "auto:ip" && !isLoadingPreferences && !authIsLoading && !appSettingsLoading) {
+     if (location && location.toLowerCase() !== "auto:ip" && !isLoadingPreferences && !authIsLoading && !appSettingsLoading) {
       localStorage.setItem("weatherugo-location", location);
-      if (isAuthenticated && user) { 
+      if (isAuthenticated && user) {
         const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
         setDoc(prefsRef, { lastLocation: location }, { merge: true })
           .catch(error => console.error("Error saving location to Firestore:", error));
@@ -159,7 +168,7 @@ export default function HomePage() {
   }, [location, isAuthenticated, user, isLoadingPreferences, authIsLoading, appSettingsLoading]);
 
   React.useEffect(() => {
-    if (isAuthenticated && user && !isLoadingPreferences && !authIsLoading && !appSettingsLoading && selectedDate) { 
+    if (isAuthenticated && user && !isLoadingPreferences && !authIsLoading && !appSettingsLoading && selectedDate) {
       const prefsRef = doc(db, "users", user.uid, "preferences", "appState");
       setDoc(prefsRef, { lastSelectedDate: selectedDate.toISOString() }, { merge: true })
         .catch(error => console.error("Error saving selectedDate to Firestore:", error));
@@ -168,18 +177,93 @@ export default function HomePage() {
 
 
   React.useEffect(() => {
+    const checkAndUpdateUsage = async (
+      usageType: 'dailyOutfitSuggestions' | 'dailyActivitySuggestions'
+    ): Promise<boolean> => {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const limits = user?.isPremium ? appSettings.premiumTierLimits : appSettings.freeTierLimits;
+      const limitKey = usageType === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestions' : 'dailyActivitySuggestions';
+      const currentLimit = limits[limitKey];
+      const localStorageKey = `weatherugo-${usageType}`;
+
+      if (!isAuthenticated || !user) {
+        const storedUsageRaw = localStorage.getItem(localStorageKey);
+        const storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+        if (storedUsage.date === todayStr && storedUsage.count >= currentLimit) {
+          toast({ title: t('limitReachedTitle'), description: t(limitKey === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
+          return false;
+        }
+        return true;
+      } else {
+        const userDocRef = doc(db, "users", user.uid);
+        try {
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data() as User;
+            const usage = userData[usageType] || { count: 0, date: '' };
+            if (usage.date === todayStr && usage.count >= currentLimit) {
+              toast({ title: t('limitReachedTitle'), description: t(limitKey === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
+              return false;
+            }
+          }
+        } catch (error) {
+          console.error(`Error checking ${usageType} limit:`, error);
+          toast({ title: t('error'), description: "Could not verify usage limits.", variant: "destructive" });
+          return false;
+        }
+        return true;
+      }
+    };
+
+    const incrementUsageCount = async (
+      usageType: 'dailyOutfitSuggestions' | 'dailyActivitySuggestions'
+    ) => {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const localStorageKey = `weatherugo-${usageType}`;
+
+      if (!isAuthenticated || !user) {
+        const storedUsageRaw = localStorage.getItem(localStorageKey);
+        let storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+        if (storedUsage.date === todayStr) {
+          storedUsage.count += 1;
+        } else {
+          storedUsage = { date: todayStr, count: 1 };
+        }
+        localStorage.setItem(localStorageKey, JSON.stringify(storedUsage));
+      } else {
+        const userDocRef = doc(db, "users", user.uid);
+        try {
+          await runTransaction(db, async (transaction) => {
+            const userDocSnap = await transaction.get(userDocRef);
+            if (!userDocSnap.exists()) throw "User document does not exist!";
+            const userData = userDocSnap.data() as User;
+            const currentUsage = userData[usageType] || { count: 0, date: '' };
+            const newCount = currentUsage.date === todayStr ? currentUsage.count + 1 : 1;
+            transaction.update(userDocRef, { [usageType]: { count: newCount, date: todayStr } });
+          });
+        } catch (error) {
+          console.error(`Error updating ${usageType} count:`, error);
+        }
+      }
+    };
+
     async function getWeatherAndSuggestions() {
-      if (authIsLoading || isLoadingProfileFromEditor || isLoadingPreferences || appSettingsLoading || !location || !selectedDate) return; 
+      if (authIsLoading || isLoadingProfileFromEditor || isLoadingPreferences || appSettingsLoading || !location || !selectedDate) return;
 
       const CACHE_DURATION_MS = appSettings.cacheDurationMs;
       const MAX_API_FORECAST_DAYS = appSettings.maxApiForecastDays;
 
       const formattedDateForCacheKey = format(selectedDate, "yyyy-MM-dd");
-      const formattedDateTimeForWeatherCacheKey = format(selectedDate, "yyyy-MM-dd-HH"); 
+      const currentHourForCacheKey = getHours(selectedDate).toString().padStart(2, '0'); 
+      const cacheKeySuffix = `${formattedDateForCacheKey}-${currentHourForCacheKey}-${selectedDate.getTimezoneOffset()}-${language}`;
+
       const currentTime = new Date().getTime();
       let currentFetchedWeatherData: WeatherData | null = null;
 
-      const weatherCacheKey = `weatherugo-cache-weather-${location}-${formattedDateTimeForWeatherCacheKey}-${selectedDate.getTimezoneOffset()}-${language}`;
+      setOutfitLimitReached(false);
+      setActivityLimitReached(false);
+
+      const weatherCacheKey = `weatherugo-cache-weather-${location}-${cacheKeySuffix}`;
       const cachedWeatherString = localStorage.getItem(weatherCacheKey);
       let weatherFromCache = false;
 
@@ -195,7 +279,7 @@ export default function HomePage() {
               setLocation(cached.data.location);
             }
           } else {
-             localStorage.removeItem(weatherCacheKey); 
+             localStorage.removeItem(weatherCacheKey);
           }
         } catch (e) {
           console.error("Failed to parse cached weather data", e);
@@ -205,50 +289,50 @@ export default function HomePage() {
 
       if (!weatherFromCache) {
         setIsLoadingWeather(true);
-        setWeatherData(null); 
+        setWeatherData(null);
+        setOutfitSuggestions(null); 
+        setActivitySuggestions(null);
         try {
-          const data = await fetchWeather(location, selectedDate, MAX_API_FORECAST_DAYS, language); 
+          const data = await fetchWeather(location, selectedDate, MAX_API_FORECAST_DAYS, language);
           setWeatherData(data);
           currentFetchedWeatherData = data;
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
           if (location.toLowerCase() === "auto:ip" && data.location && data.location.toLowerCase() !== "auto:ip") {
-            setLocation(data.location); 
+            setLocation(data.location);
           }
-          if (fnsIsToday(selectedDate) && !data.isGuessed) { 
+          if (fnsIsToday(selectedDate) && !data.isGuessed) {
             const todayStr = format(new Date(), "yyyy-MM-dd");
             const lastKnownWeatherStr = localStorage.getItem("weatherugo-lastKnownWeather");
             if (lastKnownWeatherStr) {
                 try {
                     const lastKnown: LastKnownWeather = JSON.parse(lastKnownWeatherStr);
-                    if (lastKnown.location === data.location && lastKnown.date === todayStr) { 
+                    if (lastKnown.location === data.location && lastKnown.date === todayStr) {
                         if (Math.abs(data.temperature - lastKnown.temperature) > 5 || data.condition !== lastKnown.condition) {
                             toast({
-                                title: t('weather') + " " + t('success') + "!", 
+                                title: t('weather') + " " + t('success') + "!",
                                 description: `${t('weatherInLocation', { location: data.location })} ${t('weatherHasChanged')} ${data.temperature}°C ${t('and')} ${data.condition.toLowerCase()}.`,
                             });
                         }
                     }
                 } catch (e) { localStorage.removeItem("weatherugo-lastKnownWeather"); }
             }
-            localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({ 
-                location: data.location, 
-                temperature: data.temperature, 
+            localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({
+                location: data.location,
+                temperature: data.temperature,
                 condition: data.condition,
-                date: todayStr 
+                date: todayStr
             }));
           }
         } catch (error: any) {
           console.error(`Client-side fetch weather error for "${location}":`, error.message);
           let toastDescription = error.message || t('weatherApiDefaultError');
-           if (error.message && error.message.toLowerCase().includes("api key")) {
-             toastDescription = t('weatherApiApiKeyError');
-          } else if (error.message && error.message.toLowerCase().includes("no matching location found")) {
-            toastDescription = t('weatherApiNoLocationError', {location: location});
-          }
-          toast({ 
-            title: t('weatherApiErrorTitle'), 
-            description: toastDescription, 
-            variant: "destructive" 
+          if (error.message.includes("API key")) toastDescription = t('weatherApiApiKeyError');
+          else if (error.message.toLowerCase().includes("no matching location found")) toastDescription = t('weatherApiNoLocationError', { location: location });
+          
+          toast({
+            title: t('weatherApiErrorTitle'),
+            description: toastDescription,
+            variant: "destructive"
           });
           currentFetchedWeatherData = null;
           setWeatherData(null);
@@ -258,12 +342,12 @@ export default function HomePage() {
       }
 
       const effectiveFamilyProfile = familyProfile || appSettings.defaultFamilyProfile;
+      const currentTOD = getTimeOfDay(selectedDate); 
 
       if (currentFetchedWeatherData && effectiveFamilyProfile) {
-        const currentTOD = getTimeOfDay(selectedDate);
-        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${effectiveFamilyProfile}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}-${language}`;
-        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${formattedDateForCacheKey}-${effectiveFamilyProfile}-${currentTOD}-${currentFetchedWeatherData.isGuessed ? 'guessed' : 'real'}-${language}`;
-
+        const isGuessedSuffix = currentFetchedWeatherData.isGuessed ? 'guessed' : 'real';
+        // Outfit Suggestions
+        const outfitCacheKey = `weatherugo-cache-outfit-${currentFetchedWeatherData.location}-${cacheKeySuffix}-${effectiveFamilyProfile}-${isGuessedSuffix}`;
         const cachedOutfitString = localStorage.getItem(outfitCacheKey);
         let outfitFromCache = false;
         if (cachedOutfitString) {
@@ -273,32 +357,35 @@ export default function HomePage() {
               setOutfitSuggestions(cached.data);
               setIsLoadingOutfit(false);
               outfitFromCache = true;
-            } else {
-              localStorage.removeItem(outfitCacheKey);
-            }
-          } catch (e) {
-            console.error("Failed to parse cached outfit suggestions", e);
-            localStorage.removeItem(outfitCacheKey);
-          }
+            } else { localStorage.removeItem(outfitCacheKey); }
+          } catch (e) { console.error("Failed to parse cached outfit suggestions", e); localStorage.removeItem(outfitCacheKey); }
         }
 
         if (!outfitFromCache) {
           setIsLoadingOutfit(true);
           setOutfitSuggestions(null);
-          try {
-            const clothingInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, location: currentFetchedWeatherData.location, language: language };
-            const clothing = await suggestClothing(clothingInput);
-            setOutfitSuggestions(clothing);
-            localStorage.setItem(outfitCacheKey, JSON.stringify({ timestamp: currentTime, data: clothing }));
-          } catch (error: any) {
-            console.error("Failed to get outfit suggestions:", error);
-            toast({ title: t('outfitSuggestionErrorTitle'), description: error.message || t('outfitSuggestionErrorDefault'), variant: "destructive" });
+          const canFetchOutfit = await checkAndUpdateUsage('dailyOutfitSuggestions');
+          if (canFetchOutfit) {
+            try {
+              const clothingInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, location: currentFetchedWeatherData.location, timeOfDay: currentTOD, language: language };
+              const clothing = await suggestClothing(clothingInput);
+              setOutfitSuggestions(clothing);
+              localStorage.setItem(outfitCacheKey, JSON.stringify({ timestamp: currentTime, data: clothing }));
+              await incrementUsageCount('dailyOutfitSuggestions');
+            } catch (error: any) {
+              console.error("Failed to get outfit suggestions:", error);
+              toast({ title: t('outfitSuggestionErrorTitle'), description: error.message || t('outfitSuggestionErrorDefault'), variant: "destructive" });
+              setOutfitSuggestions(null);
+            } finally { setIsLoadingOutfit(false); }
+          } else {
             setOutfitSuggestions(null); 
-          } finally {
+            setOutfitLimitReached(true);
             setIsLoadingOutfit(false);
           }
         }
 
+        // Activity Suggestions
+        const activityCacheKey = `weatherugo-cache-activity-${currentFetchedWeatherData.location}-${cacheKeySuffix}-${effectiveFamilyProfile}-${currentTOD}-${isGuessedSuffix}`;
         const cachedActivityString = localStorage.getItem(activityCacheKey);
         let activityFromCache = false;
         if (cachedActivityString) {
@@ -308,43 +395,36 @@ export default function HomePage() {
               setActivitySuggestions(cached.data);
               setIsLoadingActivity(false);
               activityFromCache = true;
-            } else {
-              localStorage.removeItem(activityCacheKey);
-            }
-          } catch (e) {
-            console.error("Failed to parse cached activity suggestions", e);
-            localStorage.removeItem(activityCacheKey);
-          }
+            } else { localStorage.removeItem(activityCacheKey); }
+          } catch (e) { console.error("Failed to parse cached activity suggestions", e); localStorage.removeItem(activityCacheKey); }
         }
-        
+
         if (!activityFromCache) {
           setIsLoadingActivity(true);
           setActivitySuggestions(null);
-          try {
-            const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location, language: language };
-            const activities = await suggestActivities(activityInput);
-
-            const serviceBusyMsgEn = "AI suggestion service is currently busy. Please try again in a moment.";
-            const serviceBusyMsgTr = t('aiServiceBusy'); 
-
-            if (activities.indoorActivities.length === 1 && 
-                (activities.indoorActivities[0] === serviceBusyMsgEn || activities.indoorActivities[0] === serviceBusyMsgTr)) {
-                
-                toast({ 
-                    title: t('activitySuggestionErrorTitle'),
-                    description: activities.indoorActivities[0], 
-                    variant: "default" 
-                });
+          const canFetchActivity = await checkAndUpdateUsage('dailyActivitySuggestions');
+          if (canFetchActivity) {
+            try {
+              const activityInput = { weatherCondition: currentFetchedWeatherData.condition, temperature: currentFetchedWeatherData.temperature, familyProfile: effectiveFamilyProfile, timeOfDay: currentTOD, locationPreferences: currentFetchedWeatherData.location, language: language };
+              const activities = await suggestActivities(activityInput);
+              const serviceBusyMsgEn = "AI suggestion service is currently busy. Please try again in a moment.";
+              const serviceBusyMsgTr = t('aiServiceBusy');
+              if (activities.indoorActivities.length === 1 && (activities.indoorActivities[0] === serviceBusyMsgEn || activities.indoorActivities[0] === serviceBusyMsgTr)) {
+                toast({ title: t('activitySuggestionErrorTitle'), description: activities.indoorActivities[0], variant: "default" });
                 setActivitySuggestions({ indoorActivities: [], outdoorActivities: [] });
-            } else {
+              } else {
                 setActivitySuggestions(activities);
-            }
-            localStorage.setItem(activityCacheKey, JSON.stringify({ timestamp: currentTime, data: activities }));
-          } catch (error: any) {
-            console.error("Failed to get activity suggestions:", error);
-            toast({ title: t('activitySuggestionErrorTitle'), description: error.message || t('activitySuggestionErrorDefault'), variant: "destructive" });
+              }
+              localStorage.setItem(activityCacheKey, JSON.stringify({ timestamp: currentTime, data: activities }));
+              await incrementUsageCount('dailyActivitySuggestions');
+            } catch (error: any) {
+              console.error("Failed to get activity suggestions:", error);
+              toast({ title: t('activitySuggestionErrorTitle'), description: error.message || t('activitySuggestionErrorDefault'), variant: "destructive" });
+              setActivitySuggestions(null);
+            } finally { setIsLoadingActivity(false); }
+          } else {
             setActivitySuggestions(null); 
-          } finally {
+            setActivityLimitReached(true);
             setIsLoadingActivity(false);
           }
         }
@@ -356,63 +436,52 @@ export default function HomePage() {
       }
     }
 
-    if (!authIsLoading && !isLoadingProfileFromEditor && !isLoadingPreferences && !appSettingsLoading && location) { 
+    if (!authIsLoading && !isLoadingProfileFromEditor && !isLoadingPreferences && !appSettingsLoading && location) {
       getWeatherAndSuggestions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, t]); // Added t to deps for toast
-  
+  }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, t, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.freeTierLimits, appSettings.premiumTierLimits, toast, user, isAuthenticated]);
+
+
   const getFilteredHourlyForecast = (): HourlyForecastData[] => {
-    if (!weatherData?.forecast || weatherData.isGuessed) return []; 
-    
+    if (!weatherData?.forecast || weatherData.isGuessed) return [];
+
     if (!fnsIsToday(selectedDate)) return weatherData.forecast;
 
-    const currentHourToDisplayFrom = getHours(selectedDate); 
+    const currentHourToDisplayFrom = getHours(selectedDate);
     return weatherData.forecast.filter(item => {
         let itemHour = -1;
         const timeString = item.time;
 
-        // Try parsing ISO-like datetime string first (e.g., "2023-05-20T15:00")
         try {
-          const itemDateFromISO = parseISO(timeString);
-          if (isValid(itemDateFromISO)) {
-            itemHour = getHours(itemDateFromISO);
-          }
-        } catch (e) { /* ignore */ }
-
-        // If ISO parsing failed or didn't yield a valid hour, try "h a" format
-        if (itemHour === -1) {
-            const match = timeString.match(/(\d{1,2})\s*(AM|PM)/i); // Handles "3 PM" or "10 AM"
-            if (match) {
-                itemHour = parseInt(match[1], 10);
-                const period = match[2]?.toUpperCase();
+          if (timeString.includes('T') || (timeString.includes('-') && timeString.includes(':'))) {
+            const itemDateFromISO = parseISO(timeString);
+            if (isValid(itemDateFromISO)) {
+                itemHour = getHours(itemDateFromISO);
+            }
+          } else { 
+            const timeParts = timeString.match(/(\d{1,2})(:\d{2})?\s*(AM|PM)?/i);
+            if (timeParts) {
+                itemHour = parseInt(timeParts[1], 10);
+                const period = timeParts[3]?.toUpperCase();
                 if (period === 'PM' && itemHour !== 12) {
                     itemHour += 12;
-                } else if (period === 'AM' && itemHour === 12) { 
+                } else if (period === 'AM' && itemHour === 12) { // Midnight case
                     itemHour = 0;
                 }
             }
-        }
-        
-        // Fallback for simple "HH:mm" or just hour if all else fails
-        if (itemHour === -1) {
-            try {
-              // This regex tries to match HH:mm or HH at the beginning of the string
-              const plainHourMatch = timeString.match(/^(\d{1,2})(:\d{2})?/);
-              if (plainHourMatch && plainHourMatch[1]) {
-                itemHour = parseInt(plainHourMatch[1], 10);
-              }
-            } catch { /* ignore */ }
-        }
+          }
+        } catch (e) { console.error("Error parsing hourly forecast time:", e); }
         
         if (itemHour !== -1) {
             return itemHour >= currentHourToDisplayFrom;
         }
-        return true; // If time cannot be parsed, include it by default to be safe
+        return true; 
     });
   };
 
-  if (authIsLoading || isLoadingPreferences || appSettingsLoading) { 
+
+  if (authIsLoading || isLoadingPreferences || appSettingsLoading) {
     return (
       <div className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
@@ -421,7 +490,7 @@ export default function HomePage() {
         </div>
         <Skeleton className="h-[200px] w-full" />
         <Skeleton className="h-[150px] w-full" />
-        <Skeleton className="h-[180px]w-full" />
+        <Skeleton className="h-[180px] w-full" />
         <Skeleton className="h-[180px] w-full" />
       </div>
     );
@@ -429,26 +498,27 @@ export default function HomePage() {
 
   const filteredHourlyForecast = getFilteredHourlyForecast();
   const showHourlyForecast = !weatherData?.isGuessed && filteredHourlyForecast && filteredHourlyForecast.length > 0;
+  const effectiveFamilyProfileForDisplay = familyProfile || appSettings.defaultFamilyProfile;
 
 
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
         <LocationDateSelector
-          location={location} 
+          location={location}
           onLocationChange={setLocation}
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
-          maxApiForecastDays={appSettings.maxApiForecastDays} 
+          maxApiForecastDays={appSettings.maxApiForecastDays}
         />
         <FamilyProfileEditor
-          profile={familyProfile} 
-          onProfileSave={handleProfileUpdate} 
+          profile={familyProfile}
+          onProfileSave={handleProfileUpdate}
         />
       </div>
 
       <CurrentWeatherCard weatherData={weatherData} isLoading={isLoadingWeather} />
-      
+
       {showHourlyForecast && (
         <HourlyForecastCard
           forecastData={filteredHourlyForecast}
@@ -457,15 +527,28 @@ export default function HomePage() {
           isParentGuessed={weatherData?.isGuessed}
         />
       )}
-      
-      {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather ) && (
+
+      {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
         <SuggestionsTabs
           outfitSuggestions={outfitSuggestions}
           isOutfitLoading={isLoadingOutfit}
           activitySuggestions={activitySuggestions}
-          isActivityLoading={isLoadingActivity} 
+          isActivityLoading={isLoadingActivity}
+          outfitLimitReached={outfitLimitReached}
+          activityLimitReached={activityLimitReached}
         />
       )}
+
+      {outfitSuggestions && weatherData && !isLoadingWeather && !isLoadingOutfit && !outfitLimitReached && (
+        <OutfitVisualizationCard
+            weatherData={weatherData}
+            familyProfile={effectiveFamilyProfileForDisplay}
+            clothingSuggestions={outfitSuggestions}
+            language={language}
+            isLoadingParentData={isLoadingWeather || isLoadingOutfit}
+        />
+      )}
+
 
       <Card className="shadow-lg bg-primary/10 border-primary/30">
         <CardHeader className="text-center">
@@ -501,5 +584,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

@@ -13,6 +13,8 @@ interface SuggestionsTabsProps {
   isOutfitLoading: boolean;
   activitySuggestions: ActivitySuggestionsOutput | null;
   isActivityLoading: boolean;
+  outfitLimitReached?: boolean;
+  activityLimitReached?: boolean;
 }
 
 export function SuggestionsTabs({
@@ -20,6 +22,8 @@ export function SuggestionsTabs({
   isOutfitLoading,
   activitySuggestions,
   isActivityLoading,
+  outfitLimitReached,
+  activityLimitReached,
 }: SuggestionsTabsProps) {
   const { t } = useTranslation();
   return (
@@ -29,10 +33,18 @@ export function SuggestionsTabs({
         <TabsTrigger value="activities" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('activityIdeas')}</TabsTrigger>
       </TabsList>
       <TabsContent value="outfits" className="mt-4">
-        <OutfitSuggestionsCard suggestions={outfitSuggestions} isLoading={isOutfitLoading} />
+        <OutfitSuggestionsCard 
+          suggestions={outfitSuggestions} 
+          isLoading={isOutfitLoading} 
+          limitReached={outfitLimitReached} 
+        />
       </TabsContent>
       <TabsContent value="activities" className="mt-4">
-        <ActivitySuggestionsCard suggestions={activitySuggestions} isLoading={isActivityLoading} />
+        <ActivitySuggestionsCard 
+          suggestions={activitySuggestions} 
+          isLoading={isActivityLoading} 
+          limitReached={activityLimitReached}
+        />
       </TabsContent>
     </Tabs>
   );

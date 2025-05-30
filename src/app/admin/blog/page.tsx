@@ -60,7 +60,7 @@ export default function AdminBlogPostsPage() {
     return () => unsubscribe();
   }, [isAdmin, toast, t]);
 
-  const handleTogglePublish = async (postId: string, currentIsPublished: boolean) => {
+  const handleTogglePublish = async (postId: string, currentIsPublished: boolean, postTitle: string) => {
     try {
       const postDocRef = doc(db, "blogPosts", postId);
       await updateDoc(postDocRef, { 
@@ -68,21 +68,21 @@ export default function AdminBlogPostsPage() {
         publishedAt: !currentIsPublished ? new Date().toISOString() : null,
         updatedAt: new Date().toISOString()
       });
-      toast({ title: t('blogPostStatusUpdated'), description: `Blog post ${postId} ${t('blogPostStatusUpdated').toLowerCase()} ${!currentIsPublished ? t('publishedStatus') : t('unpublishedStatus')}.` });
-    } catch (err) {
+      toast({ title: t('blogPostStatusUpdated'), description: t('blogPostStatusUpdatedParam', { postId: postTitle, status: !currentIsPublished ? t('publishedStatus') : t('unpublishedStatus') }) });
+    } catch (err: any) {
       console.error("Error updating publish status:", err);
-      toast({ title: t('updateFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('updateFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
 
-  const handleDeletePost = async (postId: string) => {
+  const handleDeletePost = async (postId: string, postTitle: string) => {
     try {
       const postDocRef = doc(db, "blogPosts", postId);
       await deleteDoc(postDocRef);
-      toast({ title: t('blogPostDeleted'), description: `Blog post ${postId} has been deleted.` });
-    } catch (err) {
+      toast({ title: t('blogPostDeleted'), description: t('blogPostDeletedParam', { postId: postTitle }) });
+    } catch (err: any) {
       console.error("Error deleting blog post:", err);
-      toast({ title: t('deleteFailed'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('deleteFailed'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     }
   };
 
@@ -154,7 +154,7 @@ export default function AdminBlogPostsPage() {
                   <TableCell>
                     <Switch
                       checked={post.isPublished}
-                      onCheckedChange={() => handleTogglePublish(post.id!, post.isPublished)}
+                      onCheckedChange={() => handleTogglePublish(post.id!, post.isPublished, post.title)}
                       aria-label={post.isPublished ? t('unpublishBlogPost') : t('publishBlogPost')}
                     />
                     {post.isPublished ? <Eye className="inline-block ml-1 h-4 w-4 text-green-600" /> : <EyeOff className="inline-block ml-1 h-4 w-4 text-muted-foreground" />}
@@ -173,14 +173,14 @@ export default function AdminBlogPostsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>{t('deleteBlogPostDialogTitle')}</AlertDialogTitle>
+                          <AlertDialogTitle>{t('confirmDeleteBlogPostTitle')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {t('deleteBlogPostDialogDesc')}
+                            {t('confirmDeleteBlogPostDesc', { postTitle: post.title })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeletePost(post.id!)}>
+                          <AlertDialogAction onClick={() => handleDeletePost(post.id!, post.title)}>
                             {t('deleteButton')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -197,3 +197,4 @@ export default function AdminBlogPostsPage() {
   );
 }
 
+    

@@ -2,18 +2,37 @@
 "use client";
 
 import type { ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ListTree, Sparkles, Tent, Building } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ListTree, Sparkles, Tent, Building, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 
 interface ActivitySuggestionsCardProps {
   suggestions: ActivitySuggestionsOutput | null;
   isLoading: boolean;
+  limitReached?: boolean;
 }
 
-export function ActivitySuggestionsCard({ suggestions, isLoading }: ActivitySuggestionsCardProps) {
+export function ActivitySuggestionsCard({ suggestions, isLoading, limitReached }: ActivitySuggestionsCardProps) {
   const { t } = useTranslation();
+
+  if (limitReached) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ListTree className="text-primary" /> {t('activityIdeas')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+           <div className="p-4 border rounded-md bg-amber-50 border-amber-200 text-amber-700 flex items-center gap-2">
+            <AlertTriangle size={20} />
+            <p>{t('dailyActivitySuggestionsLimitReached')}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -24,11 +43,11 @@ export function ActivitySuggestionsCard({ suggestions, isLoading }: ActivitySugg
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Skeleton className="h-4 w-1/3" /> {/* Indoor */}
-          <Skeleton className="h-4 w-3/4" /> {/* Activity 1 */}
-          <Skeleton className="h-4 w-1/2" /> {/* Activity 2 */}
-          <Skeleton className="h-4 w-1/3 mt-2" /> {/* Outdoor */}
-          <Skeleton className="h-4 w-2/3" /> {/* Activity 1 */}
+          <Skeleton className="h-4 w-1/3" /> 
+          <Skeleton className="h-4 w-3/4" /> 
+          <Skeleton className="h-4 w-1/2" /> 
+          <Skeleton className="h-4 w-1/3 mt-2" /> 
+          <Skeleton className="h-4 w-2/3" /> 
         </CardContent>
       </Card>
     );

@@ -84,7 +84,7 @@ export default function CreateBlogPostPage() {
       }
     } catch (err) {
       console.error("Error generating blog content with AI:", err);
-      toast({ title: t('error'), description: (err as Error).message || "Failed to generate content with AI.", variant: "destructive" });
+      toast({ title: t('error'), description: (err as Error).message || t('errorAIGenerateGeneric'), variant: "destructive" });
     } finally {
       setIsGeneratingAI(false);
     }
@@ -122,9 +122,9 @@ export default function CreateBlogPostPage() {
       await addDoc(collection(db, "blogPosts"), newPost);
       toast({ title: t('success'), description: t('blogPostCreatedSuccess') });
       router.push("/admin/blog");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error creating blog post:", err);
-      toast({ title: t('error'), description: (err as Error).message, variant: "destructive" });
+      toast({ title: t('error'), description: t('errorFirebase', { message: err.message }), variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -216,3 +216,5 @@ export default function CreateBlogPostPage() {
     </div>
   );
 }
+
+    

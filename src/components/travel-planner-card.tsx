@@ -20,19 +20,19 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings } from "@/contexts/app-settings-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, getDocs, deleteDoc, doc, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, addDoc, query, getDocs, deleteDoc, doc, onSnapshot, orderBy, updateDoc, runTransaction } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 
-const generateTimeOptions = (t: (key: any) => string) => { // Added t argument
+const generateTimeOptions = (t: (key: any) => string) => { 
   const options = [];
   for (let i = 0; i < 24; i++) {
     const hourString = i.toString().padStart(2, "0");
     const value = `${hourString}:00`;
     let label;
-    if (i === 0) label = `12:00 AM (${t('midnight') || 'Midnight'})`; // Example: t('midnight')
-    else if (i === 12) label = `12:00 PM (${t('noon') || 'Noon'})`; // Example: t('noon')
+    if (i === 0) label = `12:00 AM (${t('midnight') || 'Midnight'})`; 
+    else if (i === 12) label = `12:00 PM (${t('noon') || 'Noon'})`; 
     else if (i < 12) label = `${i}:00 AM`;
     else label = `${i - 12}:00 PM`;
     options.push({ value, label });
@@ -46,9 +46,7 @@ export function TravelPlannerCard() {
   const { dateLocale, language } = useLanguage();
   const { t } = useTranslation();
   
-  // Memoize timeOptions based on language
   const timeOptions = React.useMemo(() => generateTimeOptions(t), [t]);
-
 
   const [travelPlans, setTravelPlans] = React.useState<TravelPlanItem[]>([]);
   
@@ -81,7 +79,7 @@ export function TravelPlannerCard() {
   }, [appSettingsLoading, appSettings.defaultNotificationTime, appSettings.defaultNotificationFrequency]);
 
   React.useEffect(() => {
-    if (authIsLoading) return; 
+    if (authIsLoading || appSettingsLoading) return; 
 
     if (isAuthenticated && user) {
       setIsLoadingPlans(true);
@@ -97,7 +95,7 @@ export function TravelPlannerCard() {
         setIsLoadingPlans(false);
       }, (error) => {
         console.error("Error fetching travel plans:", error);
-        toast({ title: t('error'), description: "Could not load travel plans.", variant: "destructive" });
+        toast({ title: t('error'), description: t('errorCouldNotLoadTravelPlans'), variant: "destructive" });
         setIsLoadingPlans(false);
       });
       return () => unsubscribe(); 
@@ -105,25 +103,40 @@ export function TravelPlannerCard() {
       setTravelPlans([]);
       setIsLoadingPlans(false);
     }
-  }, [isAuthenticated, user, authIsLoading, toast, t]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user, authIsLoading, appSettingsLoading]);
 
 
   const handleAddTravelPlan = async () => {
     if (!isAuthenticated || !user) {
-      toast({ title: t('loginToManageTravelPlans'), description: "Please log in to add travel plans.", variant: "destructive" });
+      toast({ title: t('loginToManageTravelPlans'), description: t('loginToManageTravelPlansDetails'), variant: "destructive" });
       return;
     }
     if (!newTripName.trim() || !newLocation.trim() || !newEmail.trim() || !newStartDate || !newEndDate) {
-      toast({ title: t('error'), description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorFillAllFields'), variant: "destructive" });
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      toast({ title: t('error'), description: "Please enter a valid email address.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorInvalidEmail'), variant: "destructive" });
       return;
     }
     if (isBefore(newEndDate, newStartDate)) {
-      toast({ title: t('error'), description: "End date cannot be before the start date.", variant: "destructive" });
+      toast({ title: t('error'), description: t('validationErrorEndDateBeforeStart'), variant: "destructive" });
       return;
+    }
+    if (appSettingsLoading) {
+      toast({ title: t('error'), description: t('errorAppSettingsLoading'), variant: "destructive"});
+      return;
+    }
+
+    const currentPlanLimit = user.isPremium ? appSettings.premiumTierLimits.maxTravelPlans : appSettings.freeTierLimits.maxTravelPlans;
+    if (travelPlans.length >= currentPlanLimit) {
+        toast({
+            title: t('limitReachedTitle'),
+            description: t('maxTravelPlansLimitReached'),
+            variant: "destructive",
+        });
+        return;
     }
 
     setIsAddingPlan(true);
@@ -156,30 +169,30 @@ export function TravelPlannerCard() {
       setNewTripContext("");
       toast({
         title: t('travelPlans'),
-        description: `${newPlanData.tripName} ${t('notificationsConfigured') || 'notifications will be configured.'}`,
+        description: t('notificationsConfiguredForTrip', { tripName: newPlanData.tripName }),
       });
     } catch (error) {
       console.error("Error adding travel plan to Firestore:", error);
-      toast({ title: t('error'), description: "Could not add travel plan. Please try again.", variant: "destructive" });
+      toast({ title: t('error'), description: t('errorCouldNotAddTravelPlan'), variant: "destructive" });
     } finally {
       setIsAddingPlan(false);
     }
   };
 
-  const handleDeleteTravelPlan = async (id: string, event: React.MouseEvent) => {
+  const handleDeleteTravelPlan = async (id: string, tripName: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (!isAuthenticated || !user) {
-      toast({ title: t('loginToManageTravelPlans'), description: "Please log in to delete travel plans.", variant: "destructive" });
+      toast({ title: t('loginToManageTravelPlans'), description: t('loginToManageTravelPlansDetails'), variant: "destructive" });
       return;
     }
 
     try {
       const planDocRef = doc(db, "users", user.uid, "travelPlans", id);
       await deleteDoc(planDocRef);
-      toast({ title: t('travelPlans'), description: "The travel plan has been deleted." });
+      toast({ title: t('travelPlans'), description: t('successTravelPlanDeletedParam', { tripName: tripName }) });
     } catch (error) {
       console.error("Error deleting travel plan from Firestore:", error);
-      toast({ title: t('error'), description: "Could not delete travel plan.", variant: "destructive" });
+      toast({ title: t('error'), description: t('errorCouldNotDeleteTravelPlan'), variant: "destructive" });
     }
   };
 
@@ -196,6 +209,9 @@ export function TravelPlannerCard() {
       </Card>
     );
   }
+
+  const canAddPlan = isAuthenticated && user && !appSettingsLoading && (travelPlans.length < (user.isPremium ? appSettings.premiumTierLimits.maxTravelPlans : appSettings.freeTierLimits.maxTravelPlans));
+
 
   return (
     <>
@@ -296,9 +312,12 @@ export function TravelPlannerCard() {
               <Textarea id="trip-context" value={newTripContext} onChange={(e) => setNewTripContext(e.target.value)} placeholder={t('tripContextPlaceholder')} className="mt-1 min-h-[80px]" />
             </div>
 
-            <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan || !isAuthenticated}>
+            <Button onClick={handleAddTravelPlan} className="w-full" disabled={isAddingPlan || !canAddPlan || appSettingsLoading}>
               {isAddingPlan ? t('addingTravelPlanButton') : <><PlusCircle className="mr-2" /> {t('addTravelPlanButton')}</>}
             </Button>
+            {isAuthenticated && !appSettingsLoading && !canAddPlan && (
+                 <p className="text-xs text-destructive text-center mt-1">{t('maxTravelPlansLimitReached')}</p>
+            )}
           </div>
           )}
 
@@ -343,13 +362,13 @@ export function TravelPlannerCard() {
                           <CalendarDays size={12} />
                           {isValid(startDate) ? format(startDate, "PPP", { locale: dateLocale }) : t('error')} - {isValid(endDate) ? format(endDate, "PPP", { locale: dateLocale }) : t('error')}
                         </p>
-                        <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Clock size={12} /> {t('atTime', {time: plan.notificationTimeLabel || plan.notificationTime})}</p> {/* Example for 'At {time}' */}
+                        <p className="text-muted-foreground text-xs flex items-center gap-1.5"><Clock size={12} /> {t('atTime', {time: plan.notificationTimeLabel || plan.notificationTime})}</p> 
                         <p className="text-muted-foreground text-xs flex items-center gap-1.5 capitalize"><Repeat size={12} /> {plan.notificationFrequency === 'daily' ? t('daily') : t('weekly')}</p>
-                        {plan.tripContext && (<p className="text-muted-foreground text-xs flex items-start gap-1.5 pt-1"><Info size={12} className="mt-0.5 shrink-0" /> <span className="italic truncate">{t('context')}: {plan.tripContext.length > 50 ? `${plan.tripContext.substring(0, 50)}...` : plan.tripContext}</span></p>)} {/* Example for 'Context: ...' */}
+                        {plan.tripContext && (<p className="text-muted-foreground text-xs flex items-start gap-1.5 pt-1"><Info size={12} className="mt-0.5 shrink-0" /> <span className="italic truncate">{t('context')}: {plan.tripContext.length > 50 ? `${plan.tripContext.substring(0, 50)}...` : plan.tripContext}</span></p>)} 
                       </div>
                       <div className="flex items-center self-end sm:self-center space-x-2">
                         <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewDetails(plan);}} aria-label={t('viewSummary')} className="px-2 py-1 h-auto text-xs"><Eye className="mr-1.5 h-3 w-3" /> {t('viewSummary')}</Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteTravelPlan(plan.id, e)} aria-label={t('deleteTravelPlan')} className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => handleDeleteTravelPlan(plan.id, plan.tripName, e)} aria-label={t('deleteTravelPlan')} className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   </li>
@@ -360,7 +379,10 @@ export function TravelPlannerCard() {
         </CardContent>
          <CardFooter>
           <p className="text-xs text-muted-foreground">
-            {t('notificationsSimulatedFooter')}
+            {isAuthenticated && user?.isPremium 
+              ? t('notificationsConfiguredPremium')
+              : t('notificationsPremiumFeature')
+            }
           </p>
         </CardFooter>
       </Card>
@@ -375,3 +397,5 @@ export function TravelPlannerCard() {
     </>
   );
 }
+
+    
