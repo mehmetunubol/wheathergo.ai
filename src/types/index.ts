@@ -34,6 +34,11 @@ export interface WeatherData {
   isGuessed?: boolean; // True if this data is AI-generated
 }
 
+export interface DailyUsage {
+  date: string; // YYYY-MM-DD
+  count: number;
+}
+
 export interface User {
   uid: string;
   displayName: string | null;
@@ -42,6 +47,10 @@ export interface User {
   isAdmin?: boolean;
   isActive?: boolean;
   createdAt?: string;
+  isPremium?: boolean;
+  dailyImageGenerations?: DailyUsage;
+  dailyOutfitSuggestions?: DailyUsage;
+  dailyActivitySuggestions?: DailyUsage;
 }
 
 export interface FamilyProfile {
@@ -150,6 +159,7 @@ export interface ActivitySuggestionsInput {
 export interface UserPreferences {
   lastLocation?: string;
   lastSelectedDate?: string;
+  defaultLocation?: string;
 }
 
 // Firestore document for main user profile
@@ -226,10 +236,20 @@ export interface GenerateBlogContentOutput {
   generatedContent: string; // Markdown content
 }
 
-// User Blog Post Reaction
-export interface UserBlogPostReaction {
-  userId: string;
-  postId: string;
-  reactionType: 'like'; // Can be extended to 'dislike', 'love', etc.
-  createdAt: string; // ISO string
-}
+// Usage Limits Configuration
+export const USAGE_LIMITS = {
+  freeTier: {
+    dailyImageGenerations: 3,
+    dailyOutfitSuggestions: 10,
+    dailyActivitySuggestions: 10,
+    maxTravelPlans: 10,
+  },
+  premiumTier: { // Example for future use
+    dailyImageGenerations: 50,
+    dailyOutfitSuggestions: 100,
+    dailyActivitySuggestions: 100,
+    maxTravelPlans: 100,
+  },
+};
+
+export type UsageLimitType = 'imageGenerations' | 'outfitSuggestions' | 'activitySuggestions';

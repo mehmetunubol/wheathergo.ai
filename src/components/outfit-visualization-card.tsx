@@ -2,21 +2,26 @@
 "use client";
 
 import * as React from "react";
-import type { WeatherData, ClothingSuggestionsOutput, Language } from "@/types";
-import { generateVisualOutfit, type GenerateVisualOutfitOutput } from "@/ai/flows/generate-visual-outfit-flow";
+import type { WeatherData, ClothingSuggestionsOutput, Language, User, DailyUsage } from "@/types";
+import { USAGE_LIMITS } from "@/types"; // Import limits
+import { generateVisualOutfit } from "@/ai/flows/generate-visual-outfit-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Image as ImageIcon, Sparkles, AlertTriangle, Wand2 } from "lucide-react";
+import { ImageIcon, Sparkles, AlertTriangle, Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { useAuth } from "@/hooks/use-auth";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
+import { format } from 'date-fns';
 
 interface OutfitVisualizationCardProps {
   weatherData: WeatherData | null;
   familyProfile: string;
   clothingSuggestions: ClothingSuggestionsOutput | null;
   language: Language;
-  isLoadingParentData: boolean; // To know if suggestions/weather are still loading
+  isLoadingParentData: boolean; 
 }
 
 export function OutfitVisualizationCard({
@@ -28,10 +33,82 @@ export function OutfitVisualizationCard({
 }: OutfitVisualizationCardProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
 
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
-  const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
+  const [isProcessingImage, setIsProcessingImage] = React.useState(false);
   const [generationError, setGenerationError] = React.useState<string | null>(null);
+  const [canGenerateImage, setCanGenerateImage] = React.useState(true); // Assume true initially
+
+  const checkImageGenerationLimit = React.useCallback(async () => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    if (!isAuthenticated || !user) {
+      // Non-authenticated user logic (localStorage)
+      const storedUsageRaw = localStorage.getItem('weatherugo-dailyImageGenerations');
+      const storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+      if (storedUsage.date === todayStr && storedUsage.count >= USAGE_LIMITS.freeTier.dailyImageGenerations) {
+        toast({ title: t('limitReachedTitle'), description: t('dailyImageGenerationLimitReached'), variant: "destructive" });
+        return false;
+      }
+      return true;
+    } else {
+      // Authenticated user logic (Firestore)
+      const userDocRef = doc(db, "users", user.uid);
+      try {
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data() as User;
+          const limit = userData.isPremium ? USAGE_LIMITS.premiumTier.dailyImageGenerations : USAGE_LIMITS.freeTier.dailyImageGenerations;
+          const usage = userData.dailyImageGenerations || { count: 0, date: '' };
+          if (usage.date === todayStr && usage.count >= limit) {
+            toast({ title: t('limitReachedTitle'), description: t('dailyImageGenerationLimitReached'), variant: "destructive" });
+            return false;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking image generation limit:", error);
+        toast({ title: t('error'), description: "Could not verify usage limits.", variant: "destructive" });
+        return false; // Prevent generation if limit check fails
+      }
+      return true;
+    }
+  }, [isAuthenticated, user, t, toast]);
+
+  const updateImageGenerationCount = async () => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    if (!isAuthenticated || !user) {
+      // Non-authenticated user logic (localStorage)
+      const storedUsageRaw = localStorage.getItem('weatherugo-dailyImageGenerations');
+      let storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+      if (storedUsage.date === todayStr) {
+        storedUsage.count += 1;
+      } else {
+        storedUsage = { date: todayStr, count: 1 };
+      }
+      localStorage.setItem('weatherugo-dailyImageGenerations', JSON.stringify(storedUsage));
+    } else {
+      // Authenticated user logic (Firestore)
+      const userDocRef = doc(db, "users", user.uid);
+      try {
+        await runTransaction(db, async (transaction) => {
+          const userDocSnap = await transaction.get(userDocRef);
+          if (!userDocSnap.exists()) {
+            throw new Error("User document does not exist!");
+          }
+          const userData = userDocSnap.data() as User;
+          const currentUsage = userData.dailyImageGenerations || { count: 0, date: '' };
+          const newCount = currentUsage.date === todayStr ? currentUsage.count + 1 : 1;
+          transaction.update(userDocRef, { 
+            dailyImageGenerations: { count: newCount, date: todayStr }
+          });
+        });
+      } catch (error) {
+        console.error("Error updating image generation count:", error);
+        // Optionally notify user, but primary action (image generation) already happened
+      }
+    }
+  };
+
 
   const handleGenerateImage = async () => {
     if (!weatherData || !clothingSuggestions || !familyProfile) {
@@ -43,7 +120,14 @@ export function OutfitVisualizationCard({
       return;
     }
 
-    setIsGeneratingImage(true);
+    const canProceed = await checkImageGenerationLimit();
+    if (!canProceed) {
+        setCanGenerateImage(false); // Update UI if needed, e.g. to disable button more permanently for the session
+        return;
+    }
+    setCanGenerateImage(true); // Reset if previously false
+
+    setIsProcessingImage(true);
     setGeneratedImageUrl(null);
     setGenerationError(null);
 
@@ -57,6 +141,7 @@ export function OutfitVisualizationCard({
 
       if (result && result.generatedImageUrl) {
         setGeneratedImageUrl(result.generatedImageUrl);
+        await updateImageGenerationCount();
         toast({
           title: t('visualizationSuccessTitle'),
           description: t('visualizationSuccessDesc'),
@@ -76,11 +161,11 @@ export function OutfitVisualizationCard({
         variant: "destructive",
       });
     } finally {
-      setIsGeneratingImage(false);
+      setIsProcessingImage(false);
     }
   };
 
-  const canGenerate = weatherData && clothingSuggestions && clothingSuggestions.suggestions.length > 0 && familyProfile && !isLoadingParentData;
+  const canTryToGenerate = weatherData && clothingSuggestions && clothingSuggestions.suggestions.length > 0 && familyProfile && !isLoadingParentData && canGenerateImage;
 
   return (
     <Card className="shadow-lg">
@@ -93,21 +178,21 @@ export function OutfitVisualizationCard({
       <CardContent className="space-y-4">
         <Button
           onClick={handleGenerateImage}
-          disabled={!canGenerate || isGeneratingImage}
+          disabled={!canTryToGenerate || isProcessingImage}
           className="w-full"
         >
           <ImageIcon className="mr-2 h-4 w-4" />
-          {isGeneratingImage ? t('generatingButton') : t('generateOutfitImageButton')}
+          {isProcessingImage ? t('generatingButton') : t('generateOutfitImageButton')}
         </Button>
 
-        {isGeneratingImage && (
+        {isProcessingImage && (
           <div className="text-center py-4">
             <Skeleton className="h-64 w-full rounded-md" />
             <p className="text-sm text-muted-foreground mt-2 animate-pulse">{t('generatingImageMessage')}</p>
           </div>
         )}
 
-        {generationError && !isGeneratingImage && (
+        {generationError && !isProcessingImage && (
           <div className="text-center py-4 text-destructive flex flex-col items-center gap-2">
             <AlertTriangle size={40} />
             <p className="font-semibold">{t('imageGenerationErrorTitle')}</p>
@@ -115,7 +200,7 @@ export function OutfitVisualizationCard({
           </div>
         )}
 
-        {generatedImageUrl && !isGeneratingImage && (
+        {generatedImageUrl && !isProcessingImage && (
           <div className="mt-4 border rounded-md overflow-hidden shadow-sm aspect-square max-w-full mx-auto">
             <img
               src={generatedImageUrl}
