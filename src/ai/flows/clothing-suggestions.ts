@@ -73,6 +73,7 @@ const suggestClothingFlow = ai.defineFlow(
     const promptTemplate = getPromptTemplate(input.language);
     const prompt = ai.definePrompt({
         name: 'clothingSuggestionsDynamicPrompt', // Dynamic name to avoid conflicts if cached
+        model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
         input: { schema: ClothingSuggestionsInputSchema },
         output: { schema: ClothingSuggestionsOutputSchema },
         prompt: promptTemplate,
@@ -91,3 +92,4 @@ const suggestClothingFlow = ai.defineFlow(
     }
   }
 );
+
