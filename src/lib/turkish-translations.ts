@@ -20,7 +20,7 @@ export const trTranslations = {
   // Navbar
   appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
   // MainPage
-  heroTitle: "Weatherugo", 
+  heroTitle: "Weatherugo",
   heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.",
   heroSignUpButton: "Kaydol",
   locationDateTime: "Konum & Tarih/Saat",
@@ -84,13 +84,33 @@ export const trTranslations = {
   authErrorOperationNotAllowed: "E-posta/şifre hesapları etkin değil.",
   // Settings Page
   appSettingsTitle: "Uygulama Ayarları",
-  // familyProfileTitle: "Aile Profili", // Re-used
+  familyProfileTitle: "Aile Profili", // Added this key
   familyProfileSettingsDescription: "Bu profil, AI tarafından kişiselleştirilmiş hava durumu ve aktivite önerileri sağlamak için kullanılır.",
   saveFamilyProfile: "Aile Profilini Kaydet",
   language: "Dil",
   languageSelection: "Uygulama Dilini Seçin",
   loginToManageSettings: "Uygulama ayarlarınızı yönetmek için lütfen giriş yapın.",
+  loginToSaveSettingsDesc: "Ayarları kaydetmek için lütfen giriş yapın.",
+  settingsLoadError: "Ayarlar yüklenemedi.",
   selectedStatus: "olarak seçildi",
+  passwordManagementTitle: "Şifre Yönetimi",
+  changePasswordDesc: "Mevcut şifrenizi değiştirin.",
+  setPasswordDesc: "E-posta/şifre ile girişi etkinleştirmek için hesabınıza bir şifre belirleyin.",
+  currentPasswordLabel: "Mevcut Şifre",
+  newPasswordLabel: "Yeni Şifre",
+  confirmNewPasswordLabel: "Yeni Şifreyi Onayla",
+  updatePasswordButton: "Şifreyi Güncelle",
+  setPasswordButton: "Şifre Belirle",
+  passwordErrorNotLoggedIn: "Giriş yapılmadı. Şifre güncellenemiyor.",
+  passwordErrorMismatch: "Yeni şifreler eşleşmiyor.",
+  passwordErrorTooShort: "Şifre en az 6 karakter uzunluğunda olmalıdır.",
+  passwordErrorCurrentRequired: "Şifrenizi değiştirmek için mevcut şifreniz gereklidir.",
+  passwordErrorWrongCurrent: "Mevcut şifre yanlış.",
+  passwordErrorRequiresRecentLogin: "Bu işlem hassastır ve yakın zamanda kimlik doğrulaması gerektirir. Lütfen çıkış yapıp tekrar giriş yapın ve ardından tekrar deneyin.",
+  passwordErrorGeneric: "Şifre güncellenemedi",
+  passwordChangeSuccess: "Şifre başarıyla değiştirildi.",
+  passwordSetSuccess: "Şifre başarıyla belirlendi. Artık e-postanız ve bu yeni şifrenizle de giriş yapabilirsiniz.",
+
   // Notifications (Travel Planner) Page
   travelPlannerTitle: "Seyahat Planlayıcı",
   travelPlannerDescription: "Seyahat planlarınızı yönetin ve seyahatleriniz sırasında hava durumu güncellemeleri ve öneriler için günlük e-posta bildirimleri ayarlayın.",
@@ -166,6 +186,9 @@ export const trTranslations = {
   endOfTripLabel: "Seyahat Sonu",
   sharePlanDetailsNotLoaded: "Plan detayları yüklenmedi.",
   shareSuggestionsLoadingOrIncomplete: "Öneriler yükleniyor veya bazı günler için hava durumu verileri eksik.",
+  suggestionsNotLoadedYet: "Öneriler henüz yüklenmedi. Detayları görmek için genişletin.",
+  clickToLoadSuggestions: "Önerileri yüklemek için tıklayın",
+  expandToLoadContent: "İçeriği yüklemek için bölümü genişletin.",
   // Weather API errors
   weatherApiErrorTitle: "Hava Durumu Veri Hatası",
   weatherApiDefaultError: "Hava durumu verileri alınamadı. Lütfen farklı bir konum deneyin veya daha sonra tekrar kontrol edin.",
@@ -180,7 +203,12 @@ export const trTranslations = {
   weatherDataUnavailableForDay: "Bu gün için hava durumu verisi mevcut değil. Öneriler yüklenemiyor.",
   aiServiceBusy: "AI öneri servisi şu anda meşgul. Lütfen birazdan tekrar deneyin.",
   // footer
-  footerText: "© {year} Weatherugo, Flow Teknoloji tarafından. Kişisel hava durumu & seyahat rehberiniz.",
+  footerCopyright: "© {year} Weatherugo, Flow Teknoloji tarafından. Tüm hakları saklıdır.",
+  privacyPolicyShort: "Gizlilik",
+  termsOfServiceShort: "Şartlar",
+  supportLinkText: "Destek",
+  instagramAltText: "Weatherugo Instagram",
+  linkedinAltText: "Weatherugo LinkedIn",
   // Current Weather Card
   humidity: "Nem",
   wind: "Rüzgar",
@@ -222,7 +250,6 @@ export const trTranslations = {
   loadingPlanDetailsError: "Plan detayları yüklenemedi. Lütfen tekrar deneyin veya geri dönün.",
   travelPlanNotFound: "Seyahat planı bulunamadı.",
   aiEst: "AI Tahmini",
-  // notificationsConfigured: "bildirimleri yapılandırılacak.", // Redundant
   // Subscription Page
   subscriptionTitle: "Abonelik & Faturalama",
   subscriptionDescription: "Weatherugo aboneliğinizi ve ödeme detaylarınızı yönetin.",
@@ -282,7 +309,7 @@ export const trTranslations = {
   privacyS4P1: "Verileriniz, hesabınız aktif olduğu sürece veya geçerli yasaların gerektirdiği şekilde güvenli bir şekilde saklanır ve muhafaza edilir. Şunları talep edebilirsiniz:",
   privacyS4L1: "Hesabınızı silmek",
   privacyS4L2: "Verilerinize erişmek veya düzeltmek",
-  privacyS4P2: "Bunu yapmak için lütfen weatherugo@gmail.com adresinden iletişime geçin.",
+  privacyS4P2: "Bunu yapmak için lütfen support@weatherugo.com adresinden iletişime geçin.",
   privacyS5Title: "5. Haklarınız",
   privacyS5P1: "Bulunduğunuz yere (örneğin, AB, Kaliforniya) bağlı olarak şu haklara sahip olabilirsiniz:",
   privacyS5L1: "Verilerinize erişmek, değiştirmek veya silmek",
@@ -294,7 +321,7 @@ export const trTranslations = {
   privacyS7Title: "7. Bu Politikadaki Değişiklikler",
   privacyS7P1: "Bu Gizlilik Politikasını güncelleyebiliriz. Önemli değişiklikleri uygulamada bir bildirim yayınlayarak kullanıcılara bildireceğiz.",
   privacyS8Title: "8. Bize Ulaşın",
-  privacyS8P1: "Sorularınız mı var? Bize şuradan ulaşın: weatherugo@gmail.com",
+  privacyS8P1: "Sorularınız mı var? Bize şuradan ulaşın: support@weatherugo.com",
 
   // Terms Page
   termsTitleFull: "Weatherugo Hizmet Şartları",
@@ -328,7 +355,7 @@ export const trTranslations = {
   termsS7P1: "Bu şartlar {jurisdiction} yasalarına tabidir. Anlaşmazlıkları o yargı bölgesindeki mahkemelerde çözmeyi kabul edersiniz.",
   termsS7P2Placeholder: "yetkili yargı bölgenizin",
   termsS8Title: "8. İletişim",
-  termsS8P1: "Bu şartlarla ilgili sorularınız için iletişim: weatherugo@gmail.com",
+  termsS8P1: "Bu şartlarla ilgili sorularınız için iletişim: support@weatherugo.com",
 
   // Admin Layout
   adminSiteName: "Weatherugo Yönetim",
@@ -418,8 +445,12 @@ export const trTranslations = {
   dailyImageGenerationsLimitLabel: "Günlük Görüntü Oluşturma",
   dailyOutfitSuggestionsLimitLabel: "Günlük Kıyafet Önerileri",
   dailyActivitySuggestionsLimitLabel: "Günlük Aktivite Önerileri",
-  dailyTripDetailsSuggestionsLimitLabel: "Günlük Seyahat Detayı Önerileri", // New
+  dailyTripDetailsSuggestionsLimitLabel: "Günlük Seyahat Detayı Önerileri",
   maxTravelPlansLimitLabel: "Maks. Seyahat Planı (Toplam)",
+  aiFlowModelConfigCardTitle: "AI Akış Modeli Yapılandırması",
+  aiFlowModelConfigCardDesc: "Her bir üretken akış için kullanılacak AI modelini seçin.",
+  selectModelPlaceholder: "Bir model seçin",
+  defaultModelLabel: "Varsayılan",
 
   // README
   readmeTitle: "Weatherugo Rehberi",
@@ -442,14 +473,14 @@ export const trTranslations = {
   blogPostStatusUpdatedParam: "'{postId}' başlıklı blog yazısının durumu şuna güncellendi: {status}.",
   blogPostDeletedParam: "'{postId}' başlıklı blog yazısı silindi.",
   errorAIGenerateGeneric: "AI ile içerik oluşturulamadı. Lütfen tekrar deneyin.",
-  
+
   activated: "etkinleştirildi",
   deactivated: "devre dışı bırakıldı",
   promotedToAdmin: "yönetici yapıldı",
   demotedFromAdmin: "yöneticilikten çıkarıldı",
   grantedPremium: "premium verildi",
   revokedPremium: "premium geri alındı",
-
+  
   // Blog
   blogTitle: "Blog",
   blogDescription: "Weatherugo ekibinden makaleleri, ipuçlarını ve güncellemeleri keşfedin.",
@@ -536,8 +567,8 @@ export const trTranslations = {
   dailyImageGenerationLimitReached: "Günlük resim oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   dailyOutfitSuggestionsLimitReached: "Günlük kıyafet önerisi limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   dailyActivitySuggestionsLimitReached: "Günlük aktivite önerisi limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
-  dailyTripDetailsSuggestionsLimitReached: "Günlük seyahat detayı önerisi oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.", // New
+  dailyTripDetailsSuggestionsLimitReached: "Günlük seyahat detayı önerisi oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
-
+    

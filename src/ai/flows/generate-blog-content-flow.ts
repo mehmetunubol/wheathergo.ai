@@ -10,7 +10,9 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import type { Language } from '@/types'; // Assuming Language might be useful for prompt tailoring
+import type { Language } from '@/types';
+import { getFlowAppSettings } from '@/lib/settings-service';
+import { FLOW_CONFIGS } from '@/ai/ai-config';
 
 const GenerateBlogContentInputSchema = z.object({
   title: z.string().describe('The title of the blog post for which content needs to be generated.'),
@@ -63,14 +65,19 @@ const generateBlogContentFlow = ai.defineFlow(
     outputSchema: GenerateBlogContentOutputSchema,
   },
   async (input) => {
+    const appSettings = await getFlowAppSettings();
+    const flowConfig = FLOW_CONFIGS.find(fc => fc.id === 'generateBlogContentFlow');
+    const modelId = appSettings.flowModelOverrides?.['generateBlogContentFlow'] || flowConfig?.defaultModel || 'googleai/gemini-1.5-flash-latest';
+
     const promptTemplate = getPromptTemplate(input.language);
-    const prompt = ai.definePrompt({
-      name: 'generateBlogContentDynamicPrompt',
-      model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
+    
+    const dynamicPrompt = ai.definePrompt({
+      name: `generateBlogContentDynamicPrompt_${input.language}`,
+      model: modelId as any,
       input: {schema: GenerateBlogContentInputSchema},
       output: {schema: GenerateBlogContentOutputSchema},
       prompt: promptTemplate,
-      config: { // Added safety settings to be less restrictive for creative content
+      config: { 
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -80,16 +87,15 @@ const generateBlogContentFlow = ai.defineFlow(
       }
     });
     try {
-      const {output} = await prompt(input);
+      const {output} = await dynamicPrompt(input);
       if (!output || !output.generatedContent) {
         console.error('AI blog content generation returned no output or empty content. Input:', input);
         return { generatedContent: input.language === 'tr' ? "İçerik üretilemedi." : "Could not generate content." };
       }
       return output;
     } catch (error) {
-      console.error('Error in generateBlogContentFlow:', error);
-      throw error; // Re-throw to be caught by the client
+      console.error('Error in generateBlogContentFlow with model', modelId, ':', error);
+      throw error; 
     }
   }
 );
-

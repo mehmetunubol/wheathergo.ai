@@ -11,9 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle, BarChart3, Gem, Shield, Briefcase } from "lucide-react"; // Added Briefcase
-import type { NotificationFrequency, AppSettings as AppSettingsType } from "@/types"; 
+import { Save, Settings, MapPin, Clock, Users, CalendarDays, SlidersHorizontal, AlertTriangle, BarChart3, Gem, Shield, Briefcase, Brain } from "lucide-react";
+import type { NotificationFrequency, AppSettings as AppSettingsType, FlowModelOverrides } from "@/types"; 
 import { useTranslation } from "@/hooks/use-translation";
+import { AVAILABLE_MODELS, FLOW_CONFIGS, type ModelId } from "@/ai/ai-config";
 
 export default function AdminAppSettingsPage() {
   const { settings: currentSettings, isLoadingSettings, errorSettings, updateSettingsInFirestore, refetchSettings } = useAppSettings();
@@ -25,7 +26,6 @@ export default function AdminAppSettingsPage() {
 
   React.useEffect(() => {
     if (!isLoadingSettings && currentSettings) {
-      // Ensure all limit fields, including the new one, are present in formState, falling back to defaults
       const mergedFreeTierLimits = {
         ...DEFAULT_APP_SETTINGS.freeTierLimits,
         ...(currentSettings.freeTierLimits || {}),
@@ -35,42 +35,55 @@ export default function AdminAppSettingsPage() {
         ...(currentSettings.premiumTierLimits || {}),
       };
       setFormState({
+        ...DEFAULT_APP_SETTINGS, // Start with defaults to ensure all keys are present
         ...currentSettings,
         freeTierLimits: mergedFreeTierLimits,
         premiumTierLimits: mergedPremiumTierLimits,
+        flowModelOverrides: currentSettings.flowModelOverrides || {}, // Ensure it's an object
       });
     }
   }, [currentSettings, isLoadingSettings]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    const [mainKey, nestedKey] = name.split('.'); // For nested limit fields like 'freeTierLimits.dailyImageGenerations'
+    const keys = name.split('.');
+    
+    setFormState(prev => {
+      const newState = { ...prev };
+      let currentLevel: any = newState;
 
-    if (nestedKey) {
-      setFormState(prev => ({
-        ...prev,
-        [mainKey]: {
-          ...(prev[mainKey as keyof AppSettingsType] as object), // Type assertion needed here
-          [nestedKey]: type === 'number' ? Number(value) : value,
+      keys.forEach((key, index) => {
+        if (index === keys.length - 1) {
+          currentLevel[key] = type === 'number' ? Number(value) : value;
+        } else {
+          if (!currentLevel[key] || typeof currentLevel[key] !== 'object') {
+            currentLevel[key] = {};
+          }
+          currentLevel = currentLevel[key];
         }
-      }));
-    } else {
-      setFormState(prev => ({
-        ...prev,
-        [name]: type === 'number' ? Number(value) : value,
-      }));
-    }
+      });
+      return newState;
+    });
   };
-
+  
   const handleSelectChange = (name: keyof AppSettingsType, value: string) => {
     setFormState(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFlowModelChange = (flowId: string, modelId: string) => {
+    setFormState(prev => ({
+      ...prev,
+      flowModelOverrides: {
+        ...(prev.flowModelOverrides || {}),
+        [flowId]: modelId as ModelId,
+      }
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      // Ensure all number fields are correctly typed before saving
       const settingsToSave: AppSettingsType = {
         ...formState,
         cacheDurationMs: Number(formState.cacheDurationMs),
@@ -79,16 +92,17 @@ export default function AdminAppSettingsPage() {
           dailyImageGenerations: Number(formState.freeTierLimits.dailyImageGenerations),
           dailyOutfitSuggestions: Number(formState.freeTierLimits.dailyOutfitSuggestions),
           dailyActivitySuggestions: Number(formState.freeTierLimits.dailyActivitySuggestions),
-          dailyTripDetailsSuggestions: Number(formState.freeTierLimits.dailyTripDetailsSuggestions), // New limit
+          dailyTripDetailsSuggestions: Number(formState.freeTierLimits.dailyTripDetailsSuggestions),
           maxTravelPlans: Number(formState.freeTierLimits.maxTravelPlans),
         },
         premiumTierLimits: {
           dailyImageGenerations: Number(formState.premiumTierLimits.dailyImageGenerations),
           dailyOutfitSuggestions: Number(formState.premiumTierLimits.dailyOutfitSuggestions),
           dailyActivitySuggestions: Number(formState.premiumTierLimits.dailyActivitySuggestions),
-          dailyTripDetailsSuggestions: Number(formState.premiumTierLimits.dailyTripDetailsSuggestions), // New limit
+          dailyTripDetailsSuggestions: Number(formState.premiumTierLimits.dailyTripDetailsSuggestions),
           maxTravelPlans: Number(formState.premiumTierLimits.maxTravelPlans),
         },
+        flowModelOverrides: formState.flowModelOverrides || {},
       };
       await updateSettingsInFirestore(settingsToSave);
       toast({ title: t('success'), description: t('appSettingsTitleFull') + " " + t('userStatusUpdated').toLowerCase() });
@@ -100,11 +114,11 @@ export default function AdminAppSettingsPage() {
     }
   };
 
-  if (isLoadingSettings && !Object.keys(currentSettings).length) { 
+  if (isLoadingSettings && !Object.keys(formState.flowModelOverrides || {}).length && !currentSettings.defaultLocation) { // Adjusted loading check
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold flex items-center gap-2"><Settings /> {t('appSettingsTitleFull')}</h1>
-        {[...Array(5)].map((_, i) => ( 
+        {[...Array(6)].map((_, i) => ( 
           <Card key={i}>
             <CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader>
             <CardContent className="space-y-4">
@@ -208,11 +222,40 @@ export default function AdminAppSettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2"><Brain /> AI Flow Model Configuration</CardTitle>
+          <CardDescription>Select the AI model to be used for each specific generative flow. Ensure the chosen model is compatible with the flow's requirements (e.g., text vs. image generation).</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {FLOW_CONFIGS.map(flowConfig => (
+            <div key={flowConfig.id} className="space-y-2 p-3 border rounded-md">
+              <Label htmlFor={`flowModelOverrides.${flowConfig.id}`} className="font-semibold">{flowConfig.displayName}</Label>
+              <Select
+                value={formState.flowModelOverrides?.[flowConfig.id] || flowConfig.defaultModel}
+                onValueChange={(modelId) => handleFlowModelChange(flowConfig.id, modelId)}
+              >
+                <SelectTrigger id={`flowModelOverrides.${flowConfig.id}`}>
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_MODELS.filter(model => flowConfig.compatibleModels.includes(model.id)).map(model => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name} {model.id === flowConfig.defaultModel && "(Default)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Default: {AVAILABLE_MODELS.find(m => m.id === flowConfig.defaultModel)?.name || flowConfig.defaultModel}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2"><BarChart3 /> {t('usageLimitsConfigCardTitle')}</CardTitle>
           <CardDescription>{t('usageLimitsConfigCardDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Free Tier Limits */}
           <div className="space-y-4 p-4 border rounded-md">
             <h4 className="font-semibold text-md flex items-center gap-2"><Shield className="h-5 w-5 text-primary"/> {t('freeTierLimits')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -239,7 +282,6 @@ export default function AdminAppSettingsPage() {
             </div>
           </div>
 
-          {/* Premium Tier Limits */}
           <div className="space-y-4 p-4 border rounded-md">
             <h4 className="font-semibold text-md flex items-center gap-2"><Gem className="h-5 w-5 text-purple-500"/> {t('premiumTierLimits')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

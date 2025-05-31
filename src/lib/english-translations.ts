@@ -84,13 +84,33 @@ export const enTranslations = {
   authErrorOperationNotAllowed: "Email/password accounts are not enabled.",
   // Settings Page
   appSettingsTitle: "Application Settings",
-  // familyProfileTitle: "Family Profile", // Re-used from MainPage's familyProfile
+  familyProfileTitle: "Family Profile", // Added this key
   familyProfileSettingsDescription: "This profile is used by the AI to provide personalized weather and activity suggestions.",
   saveFamilyProfile: "Save Family Profile",
   language: "Language",
   languageSelection: "Select Application Language",
   loginToManageSettings: "Please log in to manage your application settings.",
+  loginToSaveSettingsDesc: "Please log in to save settings.",
+  settingsLoadError: "Could not load settings.",
   selectedStatus: "selected",
+  passwordManagementTitle: "Password Management",
+  changePasswordDesc: "Change your existing password.",
+  setPasswordDesc: "Set a password for your account to enable email/password sign-in.",
+  currentPasswordLabel: "Current Password",
+  newPasswordLabel: "New Password",
+  confirmNewPasswordLabel: "Confirm New Password",
+  updatePasswordButton: "Update Password",
+  setPasswordButton: "Set Password",
+  passwordErrorNotLoggedIn: "You are not logged in. Cannot update password.",
+  passwordErrorMismatch: "New passwords do not match.",
+  passwordErrorTooShort: "Password must be at least 6 characters long.",
+  passwordErrorCurrentRequired: "Current password is required to change your password.",
+  passwordErrorWrongCurrent: "Incorrect current password.",
+  passwordErrorRequiresRecentLogin: "This operation is sensitive and requires recent authentication. Please sign out and sign back in before trying again.",
+  passwordErrorGeneric: "Could not update password",
+  passwordChangeSuccess: "Password changed successfully.",
+  passwordSetSuccess: "Password set successfully. You can now also sign in using your email and this password.",
+
   // Notifications (Travel Planner) Page
   travelPlannerTitle: "Travel Planner",
   travelPlannerDescription: "Manage your travel plans and set up daily email notifications for weather updates and suggestions during your trips.",
@@ -166,6 +186,9 @@ export const enTranslations = {
   endOfTripLabel: "End of Trip",
   sharePlanDetailsNotLoaded: "Plan details are not loaded.",
   shareSuggestionsLoadingOrIncomplete: "Suggestions are loading or weather data is incomplete for some days.",
+  suggestionsNotLoadedYet: "Suggestions not loaded yet. Expand to see details.",
+  clickToLoadSuggestions: "Click to load suggestions",
+  expandToLoadContent: "Expand section to load content.",
   // Weather API errors
   weatherApiErrorTitle: "Weather Data Error",
   weatherApiDefaultError: "Could not retrieve weather data. Please try a different location or check again later.",
@@ -180,7 +203,12 @@ export const enTranslations = {
   weatherDataUnavailableForDay: "Weather data unavailable for this day. Suggestions cannot be loaded.",
   aiServiceBusy: "AI suggestion service is currently busy. Please try again in a moment.",
   // footer
-  footerText: "© {year} Weatherugo by Flow Teknoloji. Your personal weather & travel companion.",
+  footerCopyright: "© {year} Weatherugo by Flow Teknoloji. All rights reserved.",
+  privacyPolicyShort: "Privacy",
+  termsOfServiceShort: "Terms",
+  supportLinkText: "Support",
+  instagramAltText: "Weatherugo Instagram",
+  linkedinAltText: "Weatherugo LinkedIn",
   // Current Weather Card
   humidity: "Humidity",
   wind: "Wind",
@@ -222,7 +250,6 @@ export const enTranslations = {
   loadingPlanDetailsError: "Could not load plan details. Please try again or go back.",
   travelPlanNotFound: "Travel plan not found.",
   aiEst: "AI Est.",
-  // notificationsConfigured: "notifications will be configured.", // Redundant due to notificationsConfiguredForTrip
   // Subscription Page
   subscriptionTitle: "Subscription & Billing",
   subscriptionDescription: "Manage your Weatherugo subscription and payment details.",
@@ -254,7 +281,6 @@ export const enTranslations = {
 
   // Privacy Page
   privacyTitleFull: "Privacy Policy for Weatherugo",
-  // effectiveDate: "Effective Date: {date}", // Re-using common key
   privacyPageIntro: "Welcome to Weatherugo (“we”, “our”, or “us”). Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use our mobile or web application.",
   privacyS1Title: "1. Information We Collect",
   privacyS1P1: "We collect the following information:",
@@ -283,7 +309,7 @@ export const enTranslations = {
   privacyS4P1: "Your data is securely stored and retained as long as your account is active or as required by applicable law. You may request to:",
   privacyS4L1: "Delete your account",
   privacyS4L2: "Access or correct your data",
-  privacyS4P2: "To do so, please contact: weatherugo@gmail.com.",
+  privacyS4P2: "To do so, please contact: support@weatherugo.com.",
   privacyS5Title: "5. Your Rights",
   privacyS5P1: "Depending on your location (e.g., EU, California), you may have rights to:",
   privacyS5L1: "Access, modify, or delete your data",
@@ -295,7 +321,7 @@ export const enTranslations = {
   privacyS7Title: "7. Changes to This Policy",
   privacyS7P1: "We may update this Privacy Policy. We'll notify users of significant changes by posting a notice in the app.",
   privacyS8Title: "8. Contact Us",
-  privacyS8P1: "Questions? Contact us at: weatherugo@gmail.com",
+  privacyS8P1: "Questions? Contact us at: support@weatherugo.com",
 
   // Terms Page
   termsTitleFull: "Terms of Service for Weatherugo",
@@ -329,7 +355,7 @@ export const enTranslations = {
   termsS7P1: "These terms are governed by the laws of {jurisdiction}. You agree to resolve disputes in the courts of that jurisdiction.",
   termsS7P2Placeholder: "your governing jurisdiction",
   termsS8Title: "8. Contact",
-  termsS8P1: "For questions about these terms, contact: weatherugo@gmail.com",
+  termsS8P1: "For questions about these terms, contact: support@weatherugo.com",
 
   // Admin Layout
   adminSiteName: "Weatherugo Admin",
@@ -419,8 +445,12 @@ export const enTranslations = {
   dailyImageGenerationsLimitLabel: "Daily Image Generations",
   dailyOutfitSuggestionsLimitLabel: "Daily Outfit Suggestions",
   dailyActivitySuggestionsLimitLabel: "Daily Activity Suggestions",
-  dailyTripDetailsSuggestionsLimitLabel: "Daily Trip Detail Suggestions", // New
+  dailyTripDetailsSuggestionsLimitLabel: "Daily Trip Detail Suggestions",
   maxTravelPlansLimitLabel: "Max Travel Plans (Total)",
+  aiFlowModelConfigCardTitle: "AI Flow Model Configuration",
+  aiFlowModelConfigCardDesc: "Select the AI model to be used for each specific generative flow.",
+  selectModelPlaceholder: "Select a model",
+  defaultModelLabel: "Default",
 
   // README
   readmeTitle: "Weatherugo Guide",
@@ -537,8 +567,8 @@ export const enTranslations = {
   dailyImageGenerationLimitReached: "You've reached your daily image generation limit. Please try again tomorrow or upgrade your plan.",
   dailyOutfitSuggestionsLimitReached: "You've reached your daily outfit suggestion limit. Please try again tomorrow or upgrade your plan.",
   dailyActivitySuggestionsLimitReached: "You've reached your daily activity suggestion limit. Please try again tomorrow or upgrade your plan.",
-  dailyTripDetailsSuggestionsLimitReached: "You've reached your daily trip detail suggestion limit. Please try again tomorrow or upgrade your plan.", // New
+  dailyTripDetailsSuggestionsLimitReached: "You've reached your daily trip detail suggestion limit. Please try again tomorrow or upgrade your plan.",
   maxTravelPlansLimitReached: "You've reached the maximum number of travel plans allowed. Please delete an existing plan or upgrade your plan to add a new one.",
   suggestionsLimitReached: "Daily AI suggestion limit reached for today.",
 };
-
+    

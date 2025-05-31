@@ -5,13 +5,14 @@ import * as React from "react";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import type { AppSettings } from "@/types";
+import type { AppSettings, FlowModelOverrides } from "@/types";
+import type { ModelId } from "@/ai/ai-config";
 
 // Hardcoded default settings, used until Firestore settings are loaded or if Firestore is unavailable.
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultLocation: "auto:ip",
   cacheDurationMs: 60 * 60 * 1000, // 1 hour
-  maxApiForecastDays: 2, // WeatherAPI provides current + 2 future days, so index 2 is the 3rd day.
+  maxApiForecastDays: 2, 
   defaultFamilyProfile: "A single adult enjoying good weather.",
   defaultNotificationTime: "09:00",
   defaultNotificationFrequency: "daily",
@@ -19,16 +20,17 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     dailyImageGenerations: 3,
     dailyOutfitSuggestions: 10,
     dailyActivitySuggestions: 10,
-    dailyTripDetailsSuggestions: 2, // New limit
+    dailyTripDetailsSuggestions: 2,
     maxTravelPlans: 10,
   },
-  premiumTierLimits: { // Example for future use
+  premiumTierLimits: { 
     dailyImageGenerations: 50,
     dailyOutfitSuggestions: 100,
     dailyActivitySuggestions: 100,
-    dailyTripDetailsSuggestions: 10, // New limit
+    dailyTripDetailsSuggestions: 10,
     maxTravelPlans: 100,
   },
+  flowModelOverrides: {}, // Default to empty object
 };
 
 interface AppSettingsContextType {
@@ -56,22 +58,18 @@ const clearExpiredCacheEntries = (cacheDurationMs: number) => {
         if (itemString) {
           try {
             const item = JSON.parse(itemString);
-            // Check if item has a timestamp and if it's expired
             if (item && typeof item.timestamp === 'number') {
               if (currentTime - item.timestamp >= cacheDurationMs) {
                 keysToRemove.push(key);
               }
             } else {
-              // Malformed or old cache item without timestamp, remove it
               keysToRemove.push(key);
             }
           } catch (parseError) {
-            // Corrupted JSON, remove it
             console.warn(`Corrupted cache item ${key}, removing. Error:`, parseError);
             keysToRemove.push(key);
           }
         } else {
-          // Key exists but itemString is null/empty, unlikely but good to handle
           keysToRemove.push(key);
         }
       }
@@ -113,6 +111,10 @@ export const AppSettingsProvider = ({ children }: { children: React.ReactNode })
             ...DEFAULT_APP_SETTINGS.premiumTierLimits,
             ...(firestoreData.premiumTierLimits || {}),
           },
+          flowModelOverrides: { // Ensure correct merging for flowModelOverrides
+            ...(DEFAULT_APP_SETTINGS.flowModelOverrides || {}),
+            ...(firestoreData.flowModelOverrides || {}),
+          },
         };
         setSettings(mergedSettings);
       } else {
@@ -130,17 +132,25 @@ export const AppSettingsProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const updateSettingsInFirestore = async (newSettings: Partial<AppSettings>) => {
-    setIsLoadingSettings(true);
+    setIsLoadingSettings(true); // Should be set to true to indicate saving
     try {
       const settingsDocRef = doc(db, "config", "appSettings");
-      await setDoc(settingsDocRef, newSettings, { merge: true });
+      // Ensure flowModelOverrides is at least an empty object if not provided in newSettings
+      const settingsToSave = {
+        ...newSettings,
+        flowModelOverrides: newSettings.flowModelOverrides || settings.flowModelOverrides || {},
+      };
+      await setDoc(settingsDocRef, settingsToSave, { merge: true });
+      // After successful save, refetch to ensure local state is consistent with Firestore
       await fetchSettings(); 
     } catch (err) {
       console.error("Error updating app settings in Firestore:", err);
       setErrorSettings("Failed to update application settings.");
-      setIsLoadingSettings(false);
-      throw err;
+      // Optionally, revert local state or handle error more gracefully
+      setIsLoadingSettings(false); // Reset loading state on error
+      throw err; // Re-throw to be caught by caller if needed
     }
+    // setIsLoadingSettings(false); // fetchSettings will set this correctly
   };
 
   useEffect(() => {
@@ -148,7 +158,6 @@ export const AppSettingsProvider = ({ children }: { children: React.ReactNode })
   }, [fetchSettings]);
 
   useEffect(() => {
-    // Run cache cleanup once settings are loaded
     if (!isLoadingSettings && settings.cacheDurationMs > 0) {
       clearExpiredCacheEntries(settings.cacheDurationMs);
     }

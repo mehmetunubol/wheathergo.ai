@@ -3,6 +3,7 @@ import type { LucideProps } from 'lucide-react';
 import type { ClothingSuggestionsOutput } from '@/ai/flows/clothing-suggestions';
 import type { ActivitySuggestionsOutput } from '@/ai/flows/activity-suggestions';
 import type { Locale } from 'date-fns';
+import type { ModelId } from '@/ai/ai-config'; // Import ModelId
 
 export type Language = 'en' | 'tr';
 
@@ -51,7 +52,7 @@ export interface User {
   dailyImageGenerations?: DailyUsage;
   dailyOutfitSuggestions?: DailyUsage;
   dailyActivitySuggestions?: DailyUsage;
-  dailyTripDetailsSuggestions?: DailyUsage; // New usage limit
+  dailyTripDetailsSuggestions?: DailyUsage;
 }
 
 export interface FamilyProfile {
@@ -104,7 +105,7 @@ export interface TripSegmentSuggestions {
   activitySuggestions: ActivitySuggestionsOutput | null;
   isLoading: boolean;
   error: string | null;
-  source?: 'stored' | 'newly-fetched' | 'limit-reached'; // Added 'limit-reached'
+  source?: 'stored' | 'newly-fetched' | 'limit-reached';
 }
 
 // Cache types for homepage
@@ -172,9 +173,13 @@ interface UsageLimitTier {
   dailyImageGenerations: number;
   dailyOutfitSuggestions: number;
   dailyActivitySuggestions: number;
-  dailyTripDetailsSuggestions: number; // New limit
+  dailyTripDetailsSuggestions: number;
   maxTravelPlans: number;
 }
+
+export type FlowModelOverrides = {
+  [flowName: string]: ModelId | string; // Value is ModelId, or string for broader compatibility if needed
+};
 
 // Application-wide settings configurable by admin
 export interface AppSettings {
@@ -186,6 +191,7 @@ export interface AppSettings {
   defaultNotificationFrequency: NotificationFrequency; // 'daily' | 'weekly'
   freeTierLimits: UsageLimitTier;
   premiumTierLimits: UsageLimitTier;
+  flowModelOverrides?: FlowModelOverrides; // Added
 }
 
 // Blog Post Type
@@ -257,6 +263,4 @@ export type GenerateSimplifiedImagePromptOutput = {
   simplifiedImagePrompt: string;
 };
 
-// Type removed, usage limits are now part of AppSettings
-// export type UsageLimitType = 'imageGenerations' | 'outfitSuggestions' | 'activitySuggestions' | 'maxTravelPlans';
 export type TranslationKey = keyof typeof import('@/lib/translations').translations.en;

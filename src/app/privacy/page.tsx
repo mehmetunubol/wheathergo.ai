@@ -9,7 +9,7 @@ import { useTranslation } from "@/hooks/use-translation";
 
 export default function PrivacyPolicyPage() {
   const { t } = useTranslation();
-  const contactEmail = "weatherugo@gmail.com";
+  const contactEmail = "support@weatherugo.com";
   const effectiveDate = "May 25, 2024"; // You can make this dynamic if needed
 
 
