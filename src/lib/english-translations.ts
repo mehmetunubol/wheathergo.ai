@@ -450,14 +450,6 @@ export const enTranslations = {
   demotedFromAdmin: "demoted from admin",
   grantedPremium: "granted premium",
   revokedPremium: "revoked premium",
-  errorFirebase: "A Firebase error occurred: {message}",
-  adminToggleOwnAdminError: "Administrators cannot change their own admin status.",
-  adminToggleOwnActiveError: "Administrators cannot change their own active status.",
-  adminDeleteOwnError: "Administrators cannot delete their own account record.",
-  confirmDeleteUserTitle: "Delete User Record?",
-  confirmDeleteUserDesc: "This action will delete the user's Firestore record for '{userIdentifier}'. It will NOT delete their Firebase Authentication account. The user might be able to log in again, creating a new record.",
-  confirmDeleteBlogPostTitle: "Delete Blog Post?",
-  confirmDeleteBlogPostDesc: "Are you sure you want to delete the blog post titled '{postTitle}'? This action cannot be undone.",
 
   // Blog
   blogTitle: "Blog",
@@ -520,8 +512,8 @@ export const enTranslations = {
   blogTitleContentRequired: "Title and Content are required for the blog post.",
   blogPromptDetailsLabel: "Prompt Details for AI (Optional)",
   blogPromptDetailsPlaceholder: "E.g., Focus on budget-friendly options, target audience is families with young children, use a humorous tone...",
-  blogPromoCardTitle: "Explore Our Blog",
-  blogPromoCardDescription: "Discover insightful articles, travel tips, and the latest updates from the Weatherugo team!",
+  latestFromOurBlog: "Latest From Our Blog",
+  noRecentBlogPosts: "No recent blog posts published. Check back soon or visit our blog for all articles.",
   goToBlogButton: "Read Our Blog",
 
   // Outfit Visualization Card
@@ -549,3 +541,4 @@ export const enTranslations = {
   maxTravelPlansLimitReached: "You've reached the maximum number of travel plans allowed. Please delete an existing plan or upgrade your plan to add a new one.",
   suggestionsLimitReached: "Daily AI suggestion limit reached for today.",
 };
+

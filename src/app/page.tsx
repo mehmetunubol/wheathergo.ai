@@ -12,17 +12,17 @@ import { SuggestionsTabs } from "@/components/suggestions-tabs";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings } from "@/types";
+import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings, BlogPost } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay, addHours } from "date-fns";
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, LogIn, Sparkles, AlertTriangle, Info, Newspaper } from "lucide-react";
+import { Plane, LogIn, Sparkles, AlertTriangle, Info, Newspaper, CalendarDays, User as UserIcon, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, runTransaction } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, runTransaction, collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
@@ -30,11 +30,11 @@ import { OutfitVisualizationCard } from "@/components/outfit-visualization-card"
 
 function getTimeOfDay(dateWithTime: Date): string {
   const hour = getHours(dateWithTime);
-  if (hour < 6) return "night"; 
+  if (hour < 6) return "night";
   if (hour < 12) return "morning";
   if (hour < 18) return "afternoon";
   if (hour < 22) return "evening";
-  return "night"; 
+  return "night";
 }
 
 export default function HomePage() {
@@ -61,6 +61,9 @@ export default function HomePage() {
   const [isLoadingActivity, setIsLoadingActivity] = React.useState(false);
 
   const [isLoadingPreferences, setIsLoadingPreferences] = React.useState(true);
+
+  const [latestPosts, setLatestPosts] = React.useState<BlogPost[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = React.useState(true);
 
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
@@ -460,6 +463,32 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, t, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.freeTierLimits, appSettings.premiumTierLimits, toast, user, isAuthenticated]);
 
+  React.useEffect(() => {
+    setIsLoadingPosts(true);
+    const postsCollectionRef = collection(db, "blogPosts");
+    const q = query(
+      postsCollectionRef,
+      where("isPublished", "==", true),
+      orderBy("publishedAt", "desc"),
+      limit(2) // Fetch latest 2 published posts
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const fetchedPosts: BlogPost[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedPosts.push({ id: doc.id, ...doc.data() } as BlogPost);
+      });
+      setLatestPosts(fetchedPosts);
+      setIsLoadingPosts(false);
+    }, (error) => {
+      console.error("Error fetching latest blog posts:", error);
+      toast({ title: t('error'), description: t('errorFetchingBlogPosts'), variant: "destructive" });
+      setIsLoadingPosts(false);
+    });
+    
+    return () => unsubscribe();
+  }, [t, toast]);
+
 
   const getFilteredHourlyForecast = (currentWeatherData: WeatherData | null, dateForFilter: Date): HourlyForecastData[] => {
     if (!currentWeatherData?.forecast || currentWeatherData.isGuessed) return [];
@@ -536,6 +565,15 @@ export default function HomePage() {
   const effectiveFamilyProfileForDisplay = familyProfile || appSettings.defaultFamilyProfile;
   const hourlyForecastToDisplay = getFilteredHourlyForecast(weatherData, selectedDate);
 
+  const formatDateString = (dateString?: string | null) => {
+    if (!dateString) return '';
+    try {
+      return format(parseISO(dateString), "MMMM d, yyyy", { locale: dateLocale });
+    } catch {
+      return dateString; 
+    }
+  };
+
   return (
     <div>
       {/* Modern Hero Section */}
@@ -554,6 +592,7 @@ export default function HomePage() {
                   size="default" 
                   className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out px-5 py-2 text-sm font-semibold"
                   asChild
+                  href="/login"
                 >
                   <Link href="/login">{t('heroSignUpButton')}</Link>
                 </Button>
@@ -672,27 +711,85 @@ export default function HomePage() {
             </div>
           </CardContent>
         </Card>
-
+        
+        {/* Latest Blog Posts Section */}
         <Card className="shadow-lg bg-secondary/20 border-secondary/40">
           <CardHeader className="text-center">
             <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
               <Newspaper className="text-primary h-6 w-6" />
-              {t('blogPromoCardTitle')}
+              {t('latestFromOurBlog')}
             </CardTitle>
-            <CardDescription className="!mt-2 text-foreground/90">
-              {t('blogPromoCardDescription')}
-            </CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
-            <Link href="/blog" passHref>
-              <Button variant="outline" className="w-full sm:w-auto">
-                {t('goToBlogButton')} <Sparkles className="ml-2 h-4 w-4 text-accent" />
-              </Button>
-            </Link>
+          <CardContent>
+            {isLoadingPosts && (
+              <div className="grid gap-6 md:grid-cols-2">
+                {[...Array(2)].map((_, i) => (
+                  <Card key={i} className="flex flex-col">
+                    <Skeleton className="h-40 w-full rounded-t-lg" />
+                    <CardHeader><Skeleton className="h-5 w-3/4" /><Skeleton className="h-3 w-1/2 mt-1" /></CardHeader>
+                    <CardContent className="flex-grow"><Skeleton className="h-10 w-full" /></CardContent>
+                    <CardFooter><Skeleton className="h-8 w-24" /></CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {!isLoadingPosts && latestPosts.length > 0 && (
+              <div className="grid gap-6 md:grid-cols-2">
+                {latestPosts.map((post) => (
+                  <Card key={post.id} className="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
+                    {post.imageUrl && (
+                      <Link href={`/blog/${post.slug}`} passHref className="block h-40 w-full overflow-hidden">
+                          <Image
+                            src={post.imageUrl}
+                            alt={post.title}
+                            width={400}
+                            height={200}
+                            className="w-full h-full object-cover"
+                            data-ai-hint={`blog post ${post.tags ? post.tags.join(' ') : 'general'}`}
+                          />
+                      </Link>
+                    )}
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg hover:text-primary transition-colors">
+                        <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                      </CardTitle>
+                       <CardDescription className="!mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 items-center">
+                        <span className="flex items-center gap-1"><UserIcon size={12} /> {post.authorName || 'Weatherugo Team'}</span>
+                        <span className="flex items-center gap-1"><CalendarDays size={12} /> {formatDateString(post.publishedAt)}</span>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow text-sm text-muted-foreground">
+                      <p className="line-clamp-3">
+                        {post.excerpt || post.content.substring(0, 120) + (post.content.length > 120 ? "..." : "")}
+                      </p>
+                    </CardContent>
+                    <CardFooter>
+                      <Link href={`/blog/${post.slug}`} passHref>
+                        <Button variant="link" className="px-0 text-primary">
+                          {t('readMore')} <ArrowRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {!isLoadingPosts && latestPosts.length === 0 && (
+              <div className="text-center py-6">
+                <p className="text-muted-foreground">{t('noRecentBlogPosts')}</p>
+              </div>
+            )}
+            <div className="text-center mt-6">
+              <Link href="/blog" passHref>
+                <Button variant="outline">
+                  {t('goToBlogButton')} <Sparkles className="ml-2 h-4 w-4 text-accent" />
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
-
       </div>
     </div>
   );
 }
+

@@ -449,14 +449,7 @@ export const trTranslations = {
   demotedFromAdmin: "yöneticilikten çıkarıldı",
   grantedPremium: "premium verildi",
   revokedPremium: "premium geri alındı",
-  errorFirebase: "Bir Firebase hatası oluştu: {message}",
-  adminToggleOwnAdminError: "Yöneticiler kendi yönetici durumlarını değiştiremezler.",
-  adminToggleOwnActiveError: "Yöneticiler kendi aktiflik durumlarını değiştiremezler.",
-  adminDeleteOwnError: "Yöneticiler kendi hesap kayıtlarını silemezler.",
-  confirmDeleteUserTitle: "Kullanıcı Kaydını Sil?",
-  confirmDeleteUserDesc: "'{userIdentifier}' kullanıcısının Firestore kaydını silmek istediğinizden emin misiniz? Bu işlem Firebase Kimlik Doğrulama hesabını SİLMEZ. Kullanıcı tekrar giriş yaparak yeni bir kayıt oluşturabilir.",
-  confirmDeleteBlogPostTitle: "Blog Yazısını Sil?",
-  confirmDeleteBlogPostDesc: "'{postTitle}' başlıklı blog yazısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+
   // Blog
   blogTitle: "Blog",
   blogDescription: "Weatherugo ekibinden makaleleri, ipuçlarını ve güncellemeleri keşfedin.",
@@ -518,8 +511,8 @@ export const trTranslations = {
   blogTitleContentRequired: "Blog yazısı için Başlık ve İçerik gereklidir.",
   blogPromptDetailsLabel: "AI İçin Detaylar (İsteğe Bağlı)",
   blogPromptDetailsPlaceholder: "Örn: Bütçe dostu seçeneklere odaklanın, hedef kitle küçük çocuklu aileler, mizahi bir dil kullanın...",
-  blogPromoCardTitle: "Blogumuzu Keşfedin",
-  blogPromoCardDescription: "Weatherugo ekibinden bilgilendirici makaleleri, seyahat ipuçlarını ve en son güncellemeleri keşfedin!",
+  latestFromOurBlog: "Blogumuzdan Son Yazılar",
+  noRecentBlogPosts: "Henüz yeni blog yazısı yayınlanmadı. Yakında tekrar kontrol edin veya tüm yazılar için blogumuzu ziyaret edin.",
   goToBlogButton: "Blogumuzu Okuyun",
 
   // Outfit Visualization Card
@@ -547,3 +540,4 @@ export const trTranslations = {
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
+
