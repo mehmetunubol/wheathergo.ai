@@ -562,7 +562,7 @@ export default function HomePage() {
             <div className="flex justify-center md:justify-end">
               <div className="w-full max-w-[280px] sm:max-w-xs md:max-w-xs lg:max-w-sm rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 transition-transform duration-300 ease-out">
                 <Image
-                  src="https://placehold.co/400x320.png"
+                  src="https://i.ibb.co/JRtf4S5W/image.png"
                   alt="Weatherugo app illustration showing travel and clothing items"
                   width={400}
                   height={320}
