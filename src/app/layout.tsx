@@ -50,7 +50,7 @@ export default function RootLayout({
           <AuthProvider>
             <AppSettingsProvider>
               <MainNav />
-              <main className="flex-grow container mx-auto max-w-2xl p-4">
+              <main className="flex-grow"> {/* Removed container, mx-auto, max-w-2xl, p-4 */}
                 {children}
               </main>
               <FooterContent />

@@ -51,7 +51,7 @@ export default function BlogListPage() {
   };
 
   return (
-    <div className="space-y-8 py-8">
+    <div className="container mx-auto max-w-4xl p-4 space-y-8 py-8">
       <header className="text-center">
         <h1 className="text-4xl font-bold tracking-tight flex items-center justify-center gap-3">
           <Newspaper className="h-10 w-10 text-primary" /> Weatherugo {t('blogTitle')}

@@ -497,19 +497,23 @@ export default function HomePage() {
 
   if (authIsLoading || isLoadingPreferences || appSettingsLoading) {
     return (
-      <div className="space-y-6">
-        <div className="p-6 mb-6 bg-primary/10 rounded-lg shadow">
-          <Skeleton className="h-8 w-3/4 mx-auto mb-2" />
-          <Skeleton className="h-4 w-full mx-auto" />
+      <div>
+        <div className="bg-primary/10 py-12 px-4 sm:px-6 lg:px-8 shadow">
+          <div className="container mx-auto max-w-3xl text-center">
+            <Skeleton className="h-10 w-3/4 mx-auto mb-4" />
+            <Skeleton className="h-6 w-full mx-auto" />
+          </div>
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          <Skeleton className="h-[230px] w-full" />
-          <Skeleton className="h-[230px] w-full" />
+        <div className="container mx-auto max-w-2xl p-4 space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Skeleton className="h-[230px] w-full" />
+            <Skeleton className="h-[230px] w-full" />
+          </div>
+          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[150px] w-full" />
+          <Skeleton className="h-[180px] w-full" />
+          <Skeleton className="h-[180px] w-full" />
         </div>
-        <Skeleton className="h-[200px] w-full" />
-        <Skeleton className="h-[150px] w-full" />
-        <Skeleton className="h-[180px] w-full" />
-        <Skeleton className="h-[180px] w-full" />
       </div>
     );
   }
@@ -518,108 +522,111 @@ export default function HomePage() {
   const hourlyForecastToDisplay = getFilteredHourlyForecast(weatherData, selectedDate);
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Hero Section */}
-      <div className="p-6 mb-6 bg-primary/20 dark:bg-primary/30 rounded-lg shadow-md text-center">
-        <h1 className="text-3xl font-bold text-primary-foreground tracking-tight">{t('heroTitle')}</h1>
-        <p className="mt-2 text-lg text-primary-foreground/90 max-w-xl mx-auto">{t('heroDescription')}</p>
+      <div className="bg-primary/10 py-10 px-4 sm:px-6 lg:px-8 shadow-md">
+        <div className="container mx-auto max-w-3xl text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground tracking-tight">{t('heroTitle')}</h1>
+            <p className="mt-3 text-lg text-primary-foreground/90 max-w-xl mx-auto">{t('heroDescription')}</p>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <LocationDateSelector
-          location={location}
-          onLocationChange={setLocation}
-          selectedDate={selectedDate}
-          onDateChange={handleDateChange}
-          maxApiForecastDays={appSettings.maxApiForecastDays}
-        />
-        <FamilyProfileEditor
-          profile={familyProfile}
-          onProfileSave={handleProfileUpdate}
-        />
-      </div>
+      <div className="container mx-auto max-w-2xl p-4 space-y-6 mt-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          <LocationDateSelector
+            location={location}
+            onLocationChange={setLocation}
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            maxApiForecastDays={appSettings.maxApiForecastDays}
+          />
+          <FamilyProfileEditor
+            profile={familyProfile}
+            onProfileSave={handleProfileUpdate}
+          />
+        </div>
 
-      <CurrentWeatherCard 
-        weatherData={weatherData} 
-        isLoading={isLoadingWeather} 
-      />
-
-      {weatherData && hourlyForecastToDisplay.length > 0 && !weatherData.isGuessed && (
-         <HourlyForecastCard 
-          forecastData={hourlyForecastToDisplay} 
+        <CurrentWeatherCard 
+          weatherData={weatherData} 
           isLoading={isLoadingWeather} 
-          date={selectedDate}
-          isParentGuessed={weatherData.isGuessed}
         />
-      )}
-      {weatherData && weatherData.isGuessed && (
-        <Card className="shadow-md rounded-lg">
-          <CardHeader>
-             <CardTitle className="text-lg flex items-center gap-2">
-              <Info className="text-amber-600" /> {t('hourlyForecastForDate', { date: format(selectedDate, "MMM d, yyyy", { locale: dateLocale })})}
+
+        {weatherData && hourlyForecastToDisplay.length > 0 && !weatherData.isGuessed && (
+           <HourlyForecastCard 
+            forecastData={hourlyForecastToDisplay} 
+            isLoading={isLoadingWeather} 
+            date={selectedDate}
+            isParentGuessed={weatherData.isGuessed}
+          />
+        )}
+        {weatherData && weatherData.isGuessed && (
+          <Card className="shadow-md rounded-lg">
+            <CardHeader>
+               <CardTitle className="text-lg flex items-center gap-2">
+                <Info className="text-amber-600" /> {t('hourlyForecastForDate', { date: format(selectedDate, "MMM d, yyyy", { locale: dateLocale })})}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{t('hourlyForecastNotAvailable')}</p>
+            </CardContent>
+          </Card>
+        )}
+
+
+        {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
+          <SuggestionsTabs
+            outfitSuggestions={outfitSuggestions}
+            isOutfitLoading={isLoadingOutfit}
+            activitySuggestions={activitySuggestions}
+            isActivityLoading={isLoadingActivity}
+            outfitLimitReached={outfitLimitReached}
+            activityLimitReached={activityLimitReached}
+          />
+        )}
+
+        {outfitSuggestions && weatherData && !isLoadingWeather && !isLoadingOutfit && !outfitLimitReached && (
+          <OutfitVisualizationCard
+              weatherData={weatherData}
+              familyProfile={effectiveFamilyProfileForDisplay}
+              clothingSuggestions={outfitSuggestions}
+              language={language}
+              isLoadingParentData={isLoadingWeather || isLoadingOutfit}
+          />
+        )}
+
+
+        <Card className="shadow-lg bg-primary/10 border-primary/30">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
+              <Sparkles className="text-accent h-6 w-6" />
+              {t('readyForAdventure')}
+              <Sparkles className="text-accent h-6 w-6" />
             </CardTitle>
+            <CardDescription className="!mt-2 text-foreground/90">
+              {t('travelPlannerPrompt')}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">{t('hourlyForecastNotAvailable')}</p>
-          </CardContent>
-        </Card>
-      )}
-
-
-      {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
-        <SuggestionsTabs
-          outfitSuggestions={outfitSuggestions}
-          isOutfitLoading={isLoadingOutfit}
-          activitySuggestions={activitySuggestions}
-          isActivityLoading={isLoadingActivity}
-          outfitLimitReached={outfitLimitReached}
-          activityLimitReached={activityLimitReached}
-        />
-      )}
-
-      {outfitSuggestions && weatherData && !isLoadingWeather && !isLoadingOutfit && !outfitLimitReached && (
-        <OutfitVisualizationCard
-            weatherData={weatherData}
-            familyProfile={effectiveFamilyProfileForDisplay}
-            clothingSuggestions={outfitSuggestions}
-            language={language}
-            isLoadingParentData={isLoadingWeather || isLoadingOutfit}
-        />
-      )}
-
-
-      <Card className="shadow-lg bg-primary/10 border-primary/30">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
-            <Sparkles className="text-accent h-6 w-6" />
-            {t('readyForAdventure')}
-            <Sparkles className="text-accent h-6 w-6" />
-          </CardTitle>
-          <CardDescription className="!mt-2 text-foreground/90">
-            {t('travelPlannerPrompt')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {t('travelPlannerSubPrompt', { authPrompt: !isAuthenticated ? t('travelPlannerAuthPrompt') : ''})}
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
-            <Link href="/travelplanner" passHref>
-              <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Plane className="mr-2 h-5 w-5" /> {t('exploreTravelPlans')}
-              </Button>
-            </Link>
-            {!isAuthenticated && (
-              <Link href="/login" passHref>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <LogIn className="mr-2 h-5 w-5" /> {t('signUpLogin')}
+          <CardContent className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {t('travelPlannerSubPrompt', { authPrompt: !isAuthenticated ? t('travelPlannerAuthPrompt') : ''})}
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
+              <Link href="/travelplanner" passHref>
+                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Plane className="mr-2 h-5 w-5" /> {t('exploreTravelPlans')}
                 </Button>
               </Link>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              {!isAuthenticated && (
+                <Link href="/login" passHref>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <LogIn className="mr-2 h-5 w-5" /> {t('signUpLogin')}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
-

@@ -102,7 +102,7 @@ export default function SettingsPage() {
 
   if (authIsLoading || isLoadingSettings) {
     return (
-      <div className="space-y-6 py-6">
+      <div className="container mx-auto max-w-2xl p-4 space-y-6 py-6">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-1/3" />
         </div>
@@ -127,7 +127,7 @@ export default function SettingsPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="container mx-auto max-w-2xl p-4 flex flex-col items-center justify-center py-12 text-center">
         <SettingsIcon size={48} className="text-muted-foreground mb-4" />
         <h1 className="text-2xl font-semibold mb-2">{t('settings')}</h1>
         <p className="text-muted-foreground mb-4">{t('loginToManageSettings') || "Please log in to manage your application settings."}</p>
@@ -139,7 +139,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-8 py-6">
+    <div className="container mx-auto max-w-2xl p-4 space-y-8 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <SettingsIcon className="h-6 w-6 text-primary" /> {t('appSettingsTitle')}
@@ -192,5 +192,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
