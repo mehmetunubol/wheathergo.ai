@@ -500,23 +500,23 @@ export default function HomePage() {
     return (
       <div>
         {/* Modern Hero Section Placeholder while loading */}
-        <div className="bg-primary text-primary-foreground py-16 sm:py-24">
+        <div className="bg-primary text-primary-foreground py-8 sm:py-12 md:py-16">
           <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div>
-                <Skeleton className="h-12 w-3/4 mb-4" />
-                <Skeleton className="h-6 w-full mb-2" />
-                <Skeleton className="h-6 w-5/6 mb-8" />
-                <Skeleton className="h-12 w-40" />
+                <Skeleton className="h-10 w-3/4 mb-3" /> 
+                <Skeleton className="h-5 w-full mb-2" /> 
+                <Skeleton className="h-5 w-5/6 mb-6" /> 
+                <Skeleton className="h-10 w-36" /> 
               </div>
               <div className="flex justify-center md:justify-end">
-                <Skeleton className="h-64 w-full max-w-md rounded-lg" />
+                <Skeleton className="h-52 w-full max-w-md rounded-lg" /> 
               </div>
             </div>
           </div>
         </div>
         {/* Main content skeleton */}
-        <div className="container mx-auto max-w-2xl p-4 space-y-6">
+        <div className="container mx-auto max-w-2xl p-4 space-y-6 mt-6">
           <div className="grid md:grid-cols-2 gap-6">
             <Skeleton className="h-[230px] w-full" />
             <Skeleton className="h-[230px] w-full" />
@@ -536,20 +536,20 @@ export default function HomePage() {
   return (
     <div>
       {/* Modern Hero Section */}
-      <div className="bg-primary text-primary-foreground py-12 sm:py-20 md:py-28">
+      <div className="bg-primary text-primary-foreground py-8 sm:py-12 md:py-16"> {/* Reduced padding */}
         <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8 items-center"> {/* Reduced gap-y */}
             <div className="text-center md:text-left">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight"> {/* Reduced font size */}
                 Weatherugo
               </h1>
-              <p className="mt-4 text-lg sm:text-xl text-primary-foreground/90 max-w-2xl mx-auto md:mx-0">
+              <p className="mt-3 text-md sm:text-lg text-primary-foreground/90 max-w-2xl mx-auto md:mx-0"> {/* Reduced font size & margin */}
                 {t('heroDescription')}
               </p>
-              <div className="mt-10 flex flex-col sm:flex-row sm:justify-center md:justify-start gap-4">
+              <div className="mt-8 flex flex-col sm:flex-row sm:justify-center md:justify-start gap-3"> {/* Reduced margin & gap */}
                 <Button
                   size="lg"
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-xl transform hover:scale-105 transition-transform duration-150 ease-in-out px-8 py-3 text-base font-semibold"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-xl transform hover:scale-105 transition-transform duration-150 ease-in-out px-6 py-2.5 text-sm font-semibold" /* Reduced padding & font size */
                   asChild
                 >
                   <Link href="#">{t('downloadAppButton')}</Link>
@@ -557,12 +557,12 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex justify-center md:justify-end">
-              <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 transition-transform duration-300 ease-out">
+              <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-md rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 transition-transform duration-300 ease-out"> {/* Reduced max-w-lg to md */}
                 <Image
-                  src="https://placehold.co/600x500.png"
+                  src="https://placehold.co/500x400.png" /* Reduced placeholder height */
                   alt="App illustration or lifestyle image placeholder"
-                  width={600}
-                  height={500}
+                  width={500}
+                  height={400}
                   className="object-cover w-full h-full"
                   data-ai-hint="app interface mobile lifestyle"
                   priority
@@ -673,3 +673,4 @@ export default function HomePage() {
     </div>
   );
 }
+
