@@ -22,7 +22,7 @@ import type { Language } from "@/types";
 import { DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 
 export default function SettingsPage() {
-  const { user, isAuthenticated, isLoading: authIsLoading, refreshUser } = useAuth(); // Added refreshUser
+  const { user, isAuthenticated, isLoading: authIsLoading, refreshUser } = useAuth(); 
   const { toast } = useToast();
   const { t } = useTranslation();
   const { language, setLanguage } = useLanguage();
@@ -52,6 +52,7 @@ export default function SettingsPage() {
     const loadSettings = async () => {
       if (!isAuthenticated || !user) {
         setFamilyProfile(translatedDefaultProfileText);
+        setPasswordProviderExists(false);
         setIsLoadingSettings(false);
         return;
       }
@@ -157,13 +158,13 @@ export default function SettingsPage() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      console.error("Password update error:", error);
-      if (error.code === 'auth/wrong-password') {
+      console.error("Password update error:", error.code, error.message);
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         setPasswordError(t('passwordErrorWrongCurrent'));
       } else if (error.code === 'auth/requires-recent-login') {
         setPasswordError(t('passwordErrorRequiresRecentLogin'));
       } else {
-        setPasswordError(t('passwordErrorGeneric') + `: ${error.message}`);
+        setPasswordError(t('passwordErrorGeneric'));
       }
     } finally {
       setIsUpdatingPassword(false);
