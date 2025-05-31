@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -13,10 +14,10 @@ import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/ac
 import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay, addHours } from "date-fns";
-// HourlyForecastCard import removed
+import { HourlyForecastCard } from "@/components/hourly-forecast-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, LogIn, Sparkles, AlertTriangle } from "lucide-react";
+import { Plane, LogIn, Sparkles, AlertTriangle, Info } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 import { db } from "@/lib/firebase";
@@ -184,8 +185,16 @@ export default function HomePage() {
       const localStorageKey = `weatherugo-${usageType}`;
 
       if (!isAuthenticated || !user) {
+        let storedUsage: DailyUsage = { date: '', count: 0 };
         const storedUsageRaw = localStorage.getItem(localStorageKey);
-        const storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+        if (storedUsageRaw) {
+          try {
+            storedUsage = JSON.parse(storedUsageRaw);
+          } catch (e) {
+            console.warn("Corrupted usage data in localStorage", e);
+            localStorage.removeItem(localStorageKey);
+          }
+        }
         if (storedUsage.date === todayStr && storedUsage.count >= currentLimit) {
           toast({ title: t('limitReachedTitle'), description: t(limitKey === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
           return false;
@@ -219,8 +228,16 @@ export default function HomePage() {
       const localStorageKey = `weatherugo-${usageType}`;
 
       if (!isAuthenticated || !user) {
+        let storedUsage: DailyUsage = { date: '', count: 0 };
         const storedUsageRaw = localStorage.getItem(localStorageKey);
-        let storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+        if (storedUsageRaw) {
+          try {
+            storedUsage = JSON.parse(storedUsageRaw);
+          } catch (e) {
+            console.warn("Corrupted usage data in localStorage for increment", e);
+            localStorage.removeItem(localStorageKey);
+          }
+        }
         if (storedUsage.date === todayStr) {
           storedUsage.count += 1;
         } else {
@@ -279,7 +296,7 @@ export default function HomePage() {
              localStorage.removeItem(weatherCacheKey);
           }
         } catch (e) {
-          console.error("Failed to parse cached weather data", e);
+          console.warn("Failed to parse cached weather data, removing item.", e);
           localStorage.removeItem(weatherCacheKey);
         }
       }
@@ -291,10 +308,6 @@ export default function HomePage() {
         setActivitySuggestions(null);
         try {
           const data = await fetchWeather(location, selectedDate, MAX_API_FORECAST_DAYS, language);
-          // Filter hourly forecast for CurrentWeatherCard display
-          if (data && data.forecast) {
-            data.forecast = getFilteredHourlyForecast(data, selectedDate);
-          }
           setWeatherData(data);
           currentFetchedWeatherData = data;
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
@@ -359,7 +372,7 @@ export default function HomePage() {
               setIsLoadingOutfit(false);
               outfitFromCache = true;
             } else { localStorage.removeItem(outfitCacheKey); }
-          } catch (e) { console.error("Failed to parse cached outfit suggestions", e); localStorage.removeItem(outfitCacheKey); }
+          } catch (e) { console.warn("Failed to parse cached outfit suggestions, removing item.", e); localStorage.removeItem(outfitCacheKey); }
         }
 
         if (!outfitFromCache) {
@@ -397,7 +410,7 @@ export default function HomePage() {
               setIsLoadingActivity(false);
               activityFromCache = true;
             } else { localStorage.removeItem(activityCacheKey); }
-          } catch (e) { console.error("Failed to parse cached activity suggestions", e); localStorage.removeItem(activityCacheKey); }
+          } catch (e) { console.warn("Failed to parse cached activity suggestions, removing item.", e); localStorage.removeItem(activityCacheKey); }
         }
 
         if (!activityFromCache) {
@@ -447,10 +460,10 @@ export default function HomePage() {
   const getFilteredHourlyForecast = (currentWeatherData: WeatherData | null, dateForFilter: Date): HourlyForecastData[] => {
     if (!currentWeatherData?.forecast || currentWeatherData.isGuessed) return [];
 
-    if (!fnsIsToday(dateForFilter)) return currentWeatherData.forecast;
+    if (!fnsIsToday(dateForFilter)) return currentWeatherData.forecast ?? [];
 
     const currentHourToDisplayFrom = getHours(dateForFilter);
-    return currentWeatherData.forecast.filter(item => {
+    return (currentWeatherData.forecast ?? []).filter(item => {
         let itemHour = -1;
         const timeString = item.time;
 
@@ -485,6 +498,10 @@ export default function HomePage() {
   if (authIsLoading || isLoadingPreferences || appSettingsLoading) {
     return (
       <div className="space-y-6">
+        <div className="p-6 mb-6 bg-primary/10 rounded-lg shadow">
+          <Skeleton className="h-8 w-3/4 mx-auto mb-2" />
+          <Skeleton className="h-4 w-full mx-auto" />
+        </div>
         <div className="grid md:grid-cols-2 gap-6">
           <Skeleton className="h-[230px] w-full" />
           <Skeleton className="h-[230px] w-full" />
@@ -498,9 +515,16 @@ export default function HomePage() {
   }
 
   const effectiveFamilyProfileForDisplay = familyProfile || appSettings.defaultFamilyProfile;
+  const hourlyForecastToDisplay = getFilteredHourlyForecast(weatherData, selectedDate);
 
   return (
     <div className="space-y-6">
+      {/* Hero Section */}
+      <div className="p-6 mb-6 bg-primary/20 dark:bg-primary/30 rounded-lg shadow-md text-center">
+        <h1 className="text-3xl font-bold text-primary-foreground tracking-tight">{t('heroTitle')}</h1>
+        <p className="mt-2 text-lg text-primary-foreground/90 max-w-xl mx-auto">{t('heroDescription')}</p>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
         <LocationDateSelector
           location={location}
@@ -519,6 +543,28 @@ export default function HomePage() {
         weatherData={weatherData} 
         isLoading={isLoadingWeather} 
       />
+
+      {weatherData && hourlyForecastToDisplay.length > 0 && !weatherData.isGuessed && (
+         <HourlyForecastCard 
+          forecastData={hourlyForecastToDisplay} 
+          isLoading={isLoadingWeather} 
+          date={selectedDate}
+          isParentGuessed={weatherData.isGuessed}
+        />
+      )}
+      {weatherData && weatherData.isGuessed && (
+        <Card className="shadow-md rounded-lg">
+          <CardHeader>
+             <CardTitle className="text-lg flex items-center gap-2">
+              <Info className="text-amber-600" /> {t('hourlyForecastForDate', { date: format(selectedDate, "MMM d, yyyy", { locale: dateLocale })})}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{t('hourlyForecastNotAvailable')}</p>
+          </CardContent>
+        </Card>
+      )}
+
 
       {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
         <SuggestionsTabs
@@ -576,3 +622,4 @@ export default function HomePage() {
     </div>
   );
 }
+

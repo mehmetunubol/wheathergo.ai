@@ -20,6 +20,8 @@ export const enTranslations = {
   // Navbar
   appTagline: "Your personal weather & travel companion.",
   // MainPage
+  heroTitle: "Welcome to Weatherugo!",
+  heroDescription: "Your personal guide for weather-based clothing, activity suggestions, and travel planning. Get tailored advice based on your location, date, and family profile.",
   locationDateTime: "Location & Date/Time",
   locationLabel: "Location",
   locationPlaceholder: "E.g., New York, London or Current Location",
@@ -125,6 +127,7 @@ export const enTranslations = {
   deleteTravelPlan: "Delete travel plan",
   notificationsConfiguredPremium: "Email notifications are configured for your travel plans.",
   notificationsPremiumFeature: "Automated email notifications for travel plans are a premium feature. Upgrade to receive daily/weekly updates!",
+  notificationsConfiguredForTrip: "Notifications for '{tripName}' will be sent to {email} {frequency} at {time}.",
   // Trip Details Dialog
   tripSummaryTitle: "{tripName} - Summary",
   viewFullPlanButton: "View Full Plan",
@@ -218,10 +221,7 @@ export const enTranslations = {
   loadingPlanDetailsError: "Could not load plan details. Please try again or go back.",
   travelPlanNotFound: "Travel plan not found.",
   aiEst: "AI Est.",
-  notificationsConfigured: "notifications will be configured.",
-  notificationsConfiguredForTrip: "Notifications for '{tripName}' will be sent to {email} {frequency} at {time}.",
-
-
+  // notificationsConfigured: "notifications will be configured.", // Redundant due to notificationsConfiguredForTrip
   // Subscription Page
   subscriptionTitle: "Subscription & Billing",
   subscriptionDescription: "Manage your Weatherugo subscription and payment details.",
@@ -433,14 +433,16 @@ export const enTranslations = {
   errorCouldNotAddTravelPlan: "Could not add travel plan. Please try again.",
   successTravelPlanDeletedParam: "Travel plan '{tripName}' has been deleted.",
   errorCouldNotDeleteTravelPlan: "Could not delete travel plan.",
+
   userStatusUpdatedParam: "User {userId} active status updated to: {status}.",
   userAdminStatusUpdatedParam: "User {userId} admin status updated to: {status}.",
   userPremiumStatusUpdatedParam: "User {userId} premium status updated to: {status}.",
   userDeletedParam: "User {userId} Firestore record has been deleted.",
+
   blogPostStatusUpdatedParam: "Blog post '{postId}' status updated to: {status}.",
   blogPostDeletedParam: "Blog post '{postId}' has been deleted.",
   errorAIGenerateGeneric: "Failed to generate content with AI. Please try again.",
-
+  
   activated: "activated",
   deactivated: "deactivated",
   promotedToAdmin: "promoted to admin",
@@ -534,3 +536,4 @@ export const enTranslations = {
   maxTravelPlansLimitReached: "You have reached the maximum number of travel plans allowed. Please remove an existing plan to add a new one or upgrade your plan.",
   suggestionsLimitReached: "Daily AI suggestions limit reached for today.",
 };
+

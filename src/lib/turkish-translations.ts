@@ -20,6 +20,8 @@ export const trTranslations = {
   // Navbar
   appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
   // MainPage
+  heroTitle: "Weatherugo'ya Hoş Geldiniz!",
+  heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.",
   locationDateTime: "Konum & Tarih/Saat",
   locationLabel: "Konum",
   locationPlaceholder: "Örn: New York, Londra veya Mevcut Konum",
@@ -125,6 +127,7 @@ export const trTranslations = {
   deleteTravelPlan: "Seyahat planını sil",
   notificationsConfiguredPremium: "Seyahat planlarınız için e-posta bildirimleri yapılandırıldı.",
   notificationsPremiumFeature: "Seyahat planları için otomatik e-posta bildirimleri premium bir özelliktir. Seyahatleriniz için günlük/haftalık güncellemeler almak için yükseltin!",
+  notificationsConfiguredForTrip: "'{tripName}' için bildirimler {email} adresine {frequency} olarak saat {time} gönderilecektir.",
   // Trip Details Dialog
   tripSummaryTitle: "{tripName} - Özet",
   viewFullPlanButton: "Tüm Planı Görüntüle",
@@ -218,10 +221,7 @@ export const trTranslations = {
   loadingPlanDetailsError: "Plan detayları yüklenemedi. Lütfen tekrar deneyin veya geri dönün.",
   travelPlanNotFound: "Seyahat planı bulunamadı.",
   aiEst: "AI Tahmini",
-  notificationsConfigured: "bildirimleri yapılandırılacak.",
-  notificationsConfiguredForTrip: "'{tripName}' için bildirimler {email} adresine {frequency} olarak saat {time} gönderilecektir.",
-
-
+  // notificationsConfigured: "bildirimleri yapılandırılacak.", // Redundant
   // Subscription Page
   subscriptionTitle: "Abonelik & Faturalama",
   subscriptionDescription: "Weatherugo aboneliğinizi ve ödeme detaylarınızı yönetin.",
@@ -432,10 +432,12 @@ export const trTranslations = {
   errorCouldNotAddTravelPlan: "Seyahat planı eklenemedi. Lütfen tekrar deneyin.",
   successTravelPlanDeletedParam: "'{tripName}' adlı seyahat planı silindi.",
   errorCouldNotDeleteTravelPlan: "Seyahat planı silinemedi.",
+
   userStatusUpdatedParam: "{userId} kullanıcısının aktiflik durumu şuna güncellendi: {status}.",
   userAdminStatusUpdatedParam: "{userId} kullanıcısının yönetici durumu şuna güncellendi: {status}.",
   userPremiumStatusUpdatedParam: "{userId} kullanıcısının premium durumu şuna güncellendi: {status}.",
   userDeletedParam: "{userId} kullanıcısının Firestore kaydı silindi.",
+
   blogPostStatusUpdatedParam: "'{postId}' başlıklı blog yazısının durumu şuna güncellendi: {status}.",
   blogPostDeletedParam: "'{postId}' başlıklı blog yazısı silindi.",
   errorAIGenerateGeneric: "AI ile içerik oluşturulamadı. Lütfen tekrar deneyin.",
@@ -533,3 +535,4 @@ export const trTranslations = {
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
+

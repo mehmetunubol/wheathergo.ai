@@ -14,6 +14,8 @@ type AllTranslations = {
 export const translations: AllTranslations = {
   en: {
     ...enTranslations,
+    heroTitle: "Welcome to Weatherugo!",
+    heroDescription: "Your personal guide for weather-based clothing, activity suggestions, and travel planning. Get tailored advice based on your location, date, and family profile.",
     // Admin App Settings - Usage Limits Configuration
     usageLimitsConfigCardTitle: "Usage Limits Configuration",
     usageLimitsConfigCardDesc: "Set the usage limits for different user tiers. These are applied daily or as total counts where applicable.",
@@ -72,6 +74,8 @@ export const translations: AllTranslations = {
   },
   tr: {
     ...trTranslations,
+    heroTitle: "Weatherugo'ya Hoş Geldiniz!",
+    heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.",
     // Admin App Settings - Usage Limits Configuration
     usageLimitsConfigCardTitle: "Kullanım Limitleri Yapılandırması",
     usageLimitsConfigCardDesc: "Farklı kullanıcı seviyeleri için kullanım limitlerini ayarlayın. Bunlar günlük veya uygun olduğu yerlerde toplam sayı olarak uygulanır.",
@@ -134,3 +138,4 @@ export const translations: AllTranslations = {
 export type TranslationKey = keyof typeof translations.en; // Use 'en' as the canonical source for keys
 
     
+
