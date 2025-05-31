@@ -166,6 +166,9 @@ export const enTranslations = {
   endOfTripLabel: "End of Trip",
   sharePlanDetailsNotLoaded: "Plan details are not loaded.",
   shareSuggestionsLoadingOrIncomplete: "Suggestions are loading or weather data is incomplete for some days.",
+  suggestionsNotLoadedYet: "Suggestions not loaded yet. Expand to see details.",
+  clickToLoadSuggestions: "Click to load suggestions",
+  expandToLoadContent: "Expand section to load content.",
   // Weather API errors
   weatherApiErrorTitle: "Weather Data Error",
   weatherApiDefaultError: "Could not retrieve weather data. Please try a different location or check again later.",
@@ -541,4 +544,5 @@ export const enTranslations = {
   maxTravelPlansLimitReached: "You've reached the maximum number of travel plans allowed. Please delete an existing plan or upgrade your plan to add a new one.",
   suggestionsLimitReached: "Daily AI suggestion limit reached for today.",
 };
+
 

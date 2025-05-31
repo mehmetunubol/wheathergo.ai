@@ -166,6 +166,9 @@ export const trTranslations = {
   endOfTripLabel: "Seyahat Sonu",
   sharePlanDetailsNotLoaded: "Plan detayları yüklenmedi.",
   shareSuggestionsLoadingOrIncomplete: "Öneriler yükleniyor veya bazı günler için hava durumu verileri eksik.",
+  suggestionsNotLoadedYet: "Öneriler henüz yüklenmedi. Detayları görmek için genişletin.",
+  clickToLoadSuggestions: "Önerileri yüklemek için tıklayın",
+  expandToLoadContent: "İçeriği yüklemek için bölümü genişletin.",
   // Weather API errors
   weatherApiErrorTitle: "Hava Durumu Veri Hatası",
   weatherApiDefaultError: "Hava durumu verileri alınamadı. Lütfen farklı bir konum deneyin veya daha sonra tekrar kontrol edin.",
@@ -540,4 +543,5 @@ export const trTranslations = {
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
+
 
