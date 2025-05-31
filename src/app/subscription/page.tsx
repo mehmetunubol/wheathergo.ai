@@ -21,6 +21,7 @@ export default function SubscriptionPage() {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [currentUserData, setCurrentUserData] = React.useState<User | null>(null);
   const [isLoadingUserData, setIsLoadingUserData] = React.useState(true);
+  const contactEmail = "support@weatherugo.com";
 
   React.useEffect(() => {
     const fetchUserData = async () => {
@@ -146,7 +147,7 @@ export default function SubscriptionPage() {
               <p className="text-sm text-muted-foreground mt-2">
                 {t('premiumTrialRequest')}
               </p>
-              <a href="mailto:weatherugo@gmail.com?subject=Premium Trial Request" className="inline-block mt-2">
+              <a href={`mailto:${contactEmail}?subject=Premium Trial Request`} className="inline-block mt-2">
                 <Button variant="outline">
                   <Mail className="mr-2 h-4 w-4" /> {t('contactAdminButton')}
                 </Button>
@@ -165,3 +166,5 @@ export default function SubscriptionPage() {
     </div>
   );
 }
+
+    
