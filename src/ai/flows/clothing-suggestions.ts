@@ -11,7 +11,9 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import type { Language } from '@/types'; // Import Language type
+import type { Language } from '@/types';
+import { getFlowAppSettings } from '@/lib/settings-service';
+import { FLOW_CONFIGS } from '@/ai/ai-config';
 
 const ClothingSuggestionsInputSchema = z.object({
   weatherCondition: z.string().describe('The current weather condition (e.g., sunny, rainy, cloudy, snowy).'),
@@ -35,7 +37,6 @@ export async function suggestClothing(input: ClothingSuggestionsInput): Promise<
 const getPromptTemplate = (language: Language = 'en') => {
   const respondInLang = language === 'tr' ? "Lütfen Türkçe yanıt ver." : "Please respond in English.";
   
-  // Basic prompt translation for demonstration. A more robust solution would use i18n libraries or separate prompt files.
   const basePrompt = language === 'tr' ?
   `Sen hava koşullarına, sıcaklığa, aile profiline ve konuma göre giysi önerileri sunan kişisel bir stilist AI'sın.
 
@@ -70,26 +71,30 @@ const suggestClothingFlow = ai.defineFlow(
     outputSchema: ClothingSuggestionsOutputSchema,
   },
   async (input) => {
+    const appSettings = await getFlowAppSettings();
+    const flowConfig = FLOW_CONFIGS.find(fc => fc.id === 'suggestClothingFlow');
+    const modelId = appSettings.flowModelOverrides?.['suggestClothingFlow'] || flowConfig?.defaultModel || 'googleai/gemini-1.5-flash-latest';
+
     const promptTemplate = getPromptTemplate(input.language);
-    const prompt = ai.definePrompt({
-        name: 'clothingSuggestionsDynamicPrompt', // Dynamic name to avoid conflicts if cached
-        model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
+    
+    const dynamicPrompt = ai.definePrompt({
+        name: `clothingSuggestionsDynamicPrompt_${input.language}`, 
+        model: modelId as any, 
         input: { schema: ClothingSuggestionsInputSchema },
         output: { schema: ClothingSuggestionsOutputSchema },
         prompt: promptTemplate,
     });
 
     try {
-      const {output} = await prompt(input);
+      const {output} = await dynamicPrompt(input);
       if (!output) {
         console.error('Clothing suggestions prompt returned no output, but did not throw. Input:', input);
         return { suggestions: [], reasoning: input.language === 'tr' ? "Şu anda öneri oluşturulamadı." : "Could not generate suggestions at this time." };
       }
       return output;
     } catch (error: any) {
-      console.error('Error in suggestClothingFlow:', error);
+      console.error('Error in suggestClothingFlow with model', modelId, ':', error);
       const errorMessage = error.message || String(error);
-      // Check for specific "rate limit", "quota", "model overloaded", or "service unavailable" messages
       if (errorMessage.includes('429') || 
           errorMessage.toLowerCase().includes('quota') ||
           errorMessage.toLowerCase().includes('rate limit') ||
@@ -103,8 +108,7 @@ const suggestClothingFlow = ai.defineFlow(
           reasoning: ""
         };
       }
-      throw error; // Re-throw other types of errors
+      throw error; 
     }
   }
 );
-

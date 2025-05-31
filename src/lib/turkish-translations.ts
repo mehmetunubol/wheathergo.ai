@@ -84,7 +84,6 @@ export const trTranslations = {
   authErrorOperationNotAllowed: "E-posta/şifre hesapları etkin değil.",
   // Settings Page
   appSettingsTitle: "Uygulama Ayarları",
-  // familyProfileTitle: "Aile Profili", // Re-used
   familyProfileSettingsDescription: "Bu profil, AI tarafından kişiselleştirilmiş hava durumu ve aktivite önerileri sağlamak için kullanılır.",
   saveFamilyProfile: "Aile Profilini Kaydet",
   language: "Dil",
@@ -225,7 +224,6 @@ export const trTranslations = {
   loadingPlanDetailsError: "Plan detayları yüklenemedi. Lütfen tekrar deneyin veya geri dönün.",
   travelPlanNotFound: "Seyahat planı bulunamadı.",
   aiEst: "AI Tahmini",
-  // notificationsConfigured: "bildirimleri yapılandırılacak.", // Redundant
   // Subscription Page
   subscriptionTitle: "Abonelik & Faturalama",
   subscriptionDescription: "Weatherugo aboneliğinizi ve ödeme detaylarınızı yönetin.",
@@ -421,8 +419,12 @@ export const trTranslations = {
   dailyImageGenerationsLimitLabel: "Günlük Görüntü Oluşturma",
   dailyOutfitSuggestionsLimitLabel: "Günlük Kıyafet Önerileri",
   dailyActivitySuggestionsLimitLabel: "Günlük Aktivite Önerileri",
-  dailyTripDetailsSuggestionsLimitLabel: "Günlük Seyahat Detayı Önerileri", // New
+  dailyTripDetailsSuggestionsLimitLabel: "Günlük Seyahat Detayı Önerileri",
   maxTravelPlansLimitLabel: "Maks. Seyahat Planı (Toplam)",
+  aiFlowModelConfigCardTitle: "AI Akış Modeli Yapılandırması",
+  aiFlowModelConfigCardDesc: "Her bir üretken akış için kullanılacak AI modelini seçin.",
+  selectModelPlaceholder: "Bir model seçin",
+  defaultModelLabel: "Varsayılan",
 
   // README
   readmeTitle: "Weatherugo Rehberi",
@@ -539,9 +541,7 @@ export const trTranslations = {
   dailyImageGenerationLimitReached: "Günlük resim oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   dailyOutfitSuggestionsLimitReached: "Günlük kıyafet önerisi limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   dailyActivitySuggestionsLimitReached: "Günlük aktivite önerisi limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
-  dailyTripDetailsSuggestionsLimitReached: "Günlük seyahat detayı önerisi oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.", // New
+  dailyTripDetailsSuggestionsLimitReached: "Günlük seyahat detayı önerisi oluşturma limitinize ulaştınız. Lütfen yarın tekrar deneyin veya planınızı yükseltin.",
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
-
-

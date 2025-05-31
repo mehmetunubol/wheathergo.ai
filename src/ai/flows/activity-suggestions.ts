@@ -12,6 +12,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { Language } from '@/types';
+import { getFlowAppSettings } from '@/lib/settings-service';
+import { FLOW_CONFIGS } from '@/ai/ai-config';
 
 const ActivitySuggestionsInputSchema = z.object({
   weatherCondition: z.string().describe('The current weather condition (e.g., sunny, rainy, cloudy).'),
@@ -78,25 +80,29 @@ const activitySuggestionsFlow = ai.defineFlow(
     outputSchema: ActivitySuggestionsOutputSchema,
   },
   async (input) => {
+    const appSettings = await getFlowAppSettings();
+    const flowConfig = FLOW_CONFIGS.find(fc => fc.id === 'activitySuggestionsFlow');
+    const modelId = appSettings.flowModelOverrides?.['activitySuggestionsFlow'] || flowConfig?.defaultModel || 'googleai/gemini-1.5-flash-latest';
+
     const promptTemplate = getPromptTemplate(input.language);
-    const prompt = ai.definePrompt({
-        name: 'activitySuggestionsDynamicPrompt',
-        model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
+    
+    const dynamicPrompt = ai.definePrompt({
+        name: `activitySuggestionsDynamicPrompt_${input.language}`,
+        model: modelId as any,
         input: {schema: ActivitySuggestionsInputSchema},
         output: {schema: ActivitySuggestionsOutputSchema},
         prompt: promptTemplate,
     });
     try {
-      const {output} = await prompt(input);
+      const {output} = await dynamicPrompt(input);
       if (!output) {
         console.error('Activity suggestions prompt returned no output, but did not throw. Input:', input);
         return { indoorActivities: [], outdoorActivities: [] };
       }
       return output;
     } catch (error: any) {
-      console.error('Error in activitySuggestionsFlow:', error);
+      console.error('Error in activitySuggestionsFlow with model', modelId, ':', error);
       const errorMessage = error.message || String(error);
-      // Check for specific "model overloaded" or "service unavailable" messages
       if (errorMessage.includes('503') || 
           errorMessage.toLowerCase().includes('model is overloaded') || 
           errorMessage.toLowerCase().includes('service is currently unavailable')) {
@@ -108,8 +114,7 @@ const activitySuggestionsFlow = ai.defineFlow(
           outdoorActivities: [] 
         };
       }
-      throw error; // Re-throw other types of errors
+      throw error;
     }
   }
 );
-

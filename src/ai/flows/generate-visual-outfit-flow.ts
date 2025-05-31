@@ -13,8 +13,9 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { WeatherData, ClothingSuggestionsOutput, Language } from '@/types';
 import { translateTextsForImagePrompt, type TranslateTextsForImagePromptInput } from './translate-texts-for-image-prompt-flow';
+import { getFlowAppSettings } from '@/lib/settings-service';
+import { FLOW_CONFIGS } from '@/ai/ai-config';
 
-// Define Zod schemas for WeatherData and ClothingSuggestionsOutput to be used within the flow input
 const WeatherDataSchema = z.object({
   temperature: z.number(),
   condition: z.string(),
@@ -22,10 +23,10 @@ const WeatherDataSchema = z.object({
   humidity: z.number(),
   windSpeed: z.number(),
   location: z.string(),
-  date: z.string(), // ISO string
+  date: z.string(), 
   description: z.string(),
   isDay: z.boolean().optional().default(true),
-  forecast: z.array(z.any()).optional(), // Simplified for this context
+  forecast: z.array(z.any()).optional(),
   isGuessed: z.boolean().optional().default(false),
 });
 
@@ -47,7 +48,6 @@ const GenerateVisualOutfitOutputSchema = z.object({
 });
 export type GenerateVisualOutfitOutput = z.infer<typeof GenerateVisualOutfitOutputSchema>;
 
-// This is the main function called by the UI
 export async function generateVisualOutfit(input: GenerateVisualOutfitInput): Promise<GenerateVisualOutfitOutput> {
   return generateVisualOutfitMainFlow(input);
 }
@@ -63,7 +63,6 @@ const generateVisualOutfitMainFlow = ai.defineFlow(
     let englishWeatherCondition = input.weatherData.condition;
     let englishClothingSuggestions = input.clothingSuggestions.suggestions;
 
-    // Step 1: Translate texts to English if necessary
     if (input.language !== 'en') {
       try {
         const translationInput: TranslateTextsForImagePromptInput = {
@@ -79,12 +78,9 @@ const generateVisualOutfitMainFlow = ai.defineFlow(
         console.log("Translated texts for image prompt:", translationResult);
       } catch (translationError) {
         console.error("Translation step failed for image prompt generation:", translationError);
-        // Proceed with original texts, or could throw an error here
-        // For now, we log and proceed with potentially non-English text for robustness
       }
     }
 
-    // Step 2: Construct the image generation prompt using (mostly) English texts
     const dayNightContext = input.weatherData.isDay === false ? "nighttime scene" : "daytime scene";
     const imageStyle = "Charming fashion illustration, stylized, clear focus on clothing items.";
 
@@ -95,15 +91,18 @@ const generateVisualOutfitMainFlow = ai.defineFlow(
       The setting is '${input.weatherData.location}' experiencing '${englishWeatherCondition}' weather at ${input.weatherData.temperature}°C.
       It is a ${dayNightContext}.
       The image should clearly show the people and their attire in the described environment.
-
-      CRITICAL INSTRUCTION: Do NOT include any of this instructional text, or any other text from this prompt, directly visible within the main subject or background of the generated image. The image should be purely visual without embedded text from these instructions.
+      Add a tiny, discreet signature "weatherugo.com" in one of the bottom corners.
+      CRITICAL INSTRUCTION: Do NOT include any of this instructional text, or any other text from this prompt (like weather data, location name, temperature), directly visible within the main subject or background of the generated image. The image should be purely visual without embedded text from these instructions, apart from the requested signature.
     `;
     console.log("Final Image Prompt for AI generation:", imagePrompt);
 
-    // Step 3: Generate the image
+    const appSettings = await getFlowAppSettings();
+    const flowConfig = FLOW_CONFIGS.find(fc => fc.id === 'generateVisualOutfitMainFlow');
+    const modelId = appSettings.flowModelOverrides?.['generateVisualOutfitMainFlow'] || flowConfig?.defaultModel || 'googleai/gemini-2.0-flash-exp';
+
     try {
       const { media, finishReason, ...rest } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp',
+        model: modelId as any,
         prompt: imagePrompt,
         config: {
           responseModalities: ['TEXT', 'IMAGE'],
@@ -127,7 +126,7 @@ const generateVisualOutfitMainFlow = ai.defineFlow(
         throw new Error(`AI image generation failed to produce an image URL. Reason: ${reasonText}.`);
       }
     } catch (error: any) {
-      console.error('Error in image generation step:', error);
+      console.error('Error in image generation step with model', modelId, ':', error);
       let finalErrorMessage = 'Failed to generate outfit visualization image.';
       if (error && typeof error.message === 'string') {
         if (error.message.toLowerCase().includes('api key not valid')) {

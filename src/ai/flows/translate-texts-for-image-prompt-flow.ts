@@ -12,6 +12,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { Language } from '@/types';
+import { getFlowAppSettings } from '@/lib/settings-service';
+import { FLOW_CONFIGS } from '@/ai/ai-config';
 
 const TranslateTextsForImagePromptInputSchema = z.object({
   familyProfile: z.string().describe('The family profile text, possibly in the source language.'),
@@ -29,7 +31,6 @@ const TranslateTextsForImagePromptOutputSchema = z.object({
 export type TranslateTextsForImagePromptOutput = z.infer<typeof TranslateTextsForImagePromptOutputSchema>;
 
 export async function translateTextsForImagePrompt(input: TranslateTextsForImagePromptInput): Promise<TranslateTextsForImagePromptOutput> {
-  // If source language is already English, no need to translate
   if (input.sourceLanguage === 'en') {
     return {
       translatedFamilyProfile: input.familyProfile,
@@ -52,6 +53,10 @@ const translateTextsFlow = ai.defineFlow(
     outputSchema: TranslateTextsForImagePromptOutputSchema,
   },
   async (input) => {
+    const appSettings = await getFlowAppSettings();
+    const flowConfig = FLOW_CONFIGS.find(fc => fc.id === 'translateTextsFlow');
+    const modelId = appSettings.flowModelOverrides?.['translateTextsFlow'] || flowConfig?.defaultModel || 'googleai/gemini-1.5-flash-latest';
+
     const sourceLangName = getLanguageName(input.sourceLanguage);
     const promptText = `You are an expert translator specializing in converting descriptive text into concise English suitable for image generation prompts.
 Translate the following texts from ${sourceLangName} to English.
@@ -74,19 +79,18 @@ The "translatedFamilyProfile" should be a concise visual description of the peop
 The "translatedWeatherCondition" should be a short phrase.
 The "translatedClothingSuggestions" should be an array of translated clothing item names.`;
 
-    const prompt = ai.definePrompt({
-      name: 'translateTextsForImagePrompt',
-      model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
+    const dynamicPrompt = ai.definePrompt({
+      name: `translateTextsForImagePromptDynamic_${input.sourceLanguage}`,
+      model: modelId as any,
       input: {schema: TranslateTextsForImagePromptInputSchema},
       output: {schema: TranslateTextsForImagePromptOutputSchema},
       prompt: promptText,
     });
 
     try {
-      const {output} = await prompt(input);
+      const {output} = await dynamicPrompt(input);
       if (!output) {
         console.error('Translation flow returned no output. Input:', input);
-        // Fallback to original if translation fails, or handle error more specifically
         return {
           translatedFamilyProfile: input.familyProfile,
           translatedWeatherCondition: input.weatherCondition,
@@ -95,8 +99,7 @@ The "translatedClothingSuggestions" should be an array of translated clothing it
       }
       return output;
     } catch (error) {
-      console.error('Error in translateTextsFlow:', error);
-      // Fallback to original texts if translation fails
+      console.error('Error in translateTextsFlow with model', modelId, ':', error);
       return {
         translatedFamilyProfile: `Original (translation failed): ${input.familyProfile}`,
         translatedWeatherCondition: `Original (translation failed): ${input.weatherCondition}`,
@@ -105,4 +108,3 @@ The "translatedClothingSuggestions" should be an array of translated clothing it
     }
   }
 );
-

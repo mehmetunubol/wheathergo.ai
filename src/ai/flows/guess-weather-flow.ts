@@ -10,10 +10,10 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { GuessedWeatherInput as GuessedWeatherInputType , GuessedWeatherOutput } from '@/types'; // Renamed original import
 import type { Language } from '@/types';
+import { getFlowAppSettings } from '@/lib/settings-service';
+import { FLOW_CONFIGS } from '@/ai/ai-config';
 
-// Extend the schema for the flow itself
 const GuessedWeatherFlowInputSchema = z.object({
   location: z.string().describe('The target location for the weather guess (e.g., "Paris, France", "Tokyo").'),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('The target date for the weather guess, in YYYY-MM-DD format.'),
@@ -31,6 +31,7 @@ const GuessedWeatherOutputSchema = z.object({
   description: z.string().describe('A slightly more detailed textual description of the estimated weather conditions for the day. Keep it concise (1-2 sentences). Example: "Expect a mostly sunny day with a gentle breeze. Temperatures will be pleasant."'),
   locationName: z.string().optional().describe('The resolved or recognized name of the location for which the forecast is made, if different from input or if input was generic.'),
 });
+export type GuessedWeatherOutput = z.infer<typeof GuessedWeatherOutputSchema>; // Exporting the Zod inferred type
 
 export async function guessWeather(input: GuessedWeatherInput): Promise<GuessedWeatherOutput> {
   return guessWeatherFlow(input);
@@ -90,21 +91,26 @@ const getPromptTemplate = (language: Language = 'en') => {
 const guessWeatherFlow = ai.defineFlow(
   {
     name: 'guessWeatherFlow',
-    inputSchema: GuessedWeatherFlowInputSchema, // Use the flow-specific input schema
+    inputSchema: GuessedWeatherFlowInputSchema,
     outputSchema: GuessedWeatherOutputSchema,
   },
   async (input) => {
+    const appSettings = await getFlowAppSettings();
+    const flowConfig = FLOW_CONFIGS.find(fc => fc.id === 'guessWeatherFlow');
+    const modelId = appSettings.flowModelOverrides?.['guessWeatherFlow'] || flowConfig?.defaultModel || 'googleai/gemini-1.5-flash-latest';
+    
     const promptTemplate = getPromptTemplate(input.language);
-    const prompt = ai.definePrompt({
-      name: 'guessWeatherDynamicPrompt',
-      model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
-      input: { schema: GuessedWeatherFlowInputSchema }, // Use the flow-specific input schema
+    
+    const dynamicPrompt = ai.definePrompt({
+      name: `guessWeatherDynamicPrompt_${input.language}`,
+      model: modelId as any, 
+      input: { schema: GuessedWeatherFlowInputSchema }, 
       output: { schema: GuessedWeatherOutputSchema },
       prompt: promptTemplate,
     });
 
     try {
-      const { output } = await prompt(input); // Pass the full input including language
+      const { output } = await dynamicPrompt(input);
       if (!output) {
         console.error('AI guess weather prompt returned no output. Input:', input);
         const desc = input.language === 'tr' ? "AI tahmini kullanılamıyor. Lütfen tarihe yakın tekrar kontrol edin." : "AI forecast unavailable. Assuming pleasant weather. Please check closer to the date.";
@@ -120,7 +126,7 @@ const guessWeatherFlow = ai.defineFlow(
       }
       return output;
     } catch (error) {
-      console.error('Error in guessWeatherFlow:', error);
+      console.error('Error in guessWeatherFlow with model', modelId, ':', error);
       const desc = input.language === 'tr' ? "AI kaynaklı tahmin şu anda kullanılamıyor. Genellikle hoş bir hava varsayılıyor. Daha doğru bir tahmin için lütfen tarihe yakın tekrar kontrol edin." : "AI-generated forecast currently unavailable. Assuming generally pleasant weather. Please check closer to the date for a more accurate forecast.";
       return {
         temperature: 20,
@@ -134,4 +140,3 @@ const guessWeatherFlow = ai.defineFlow(
     }
   }
 );
-

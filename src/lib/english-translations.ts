@@ -84,7 +84,6 @@ export const enTranslations = {
   authErrorOperationNotAllowed: "Email/password accounts are not enabled.",
   // Settings Page
   appSettingsTitle: "Application Settings",
-  // familyProfileTitle: "Family Profile", // Re-used from MainPage's familyProfile
   familyProfileSettingsDescription: "This profile is used by the AI to provide personalized weather and activity suggestions.",
   saveFamilyProfile: "Save Family Profile",
   language: "Language",
@@ -225,7 +224,6 @@ export const enTranslations = {
   loadingPlanDetailsError: "Could not load plan details. Please try again or go back.",
   travelPlanNotFound: "Travel plan not found.",
   aiEst: "AI Est.",
-  // notificationsConfigured: "notifications will be configured.", // Redundant due to notificationsConfiguredForTrip
   // Subscription Page
   subscriptionTitle: "Subscription & Billing",
   subscriptionDescription: "Manage your Weatherugo subscription and payment details.",
@@ -257,7 +255,6 @@ export const enTranslations = {
 
   // Privacy Page
   privacyTitleFull: "Privacy Policy for Weatherugo",
-  // effectiveDate: "Effective Date: {date}", // Re-using common key
   privacyPageIntro: "Welcome to Weatherugo (“we”, “our”, or “us”). Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use our mobile or web application.",
   privacyS1Title: "1. Information We Collect",
   privacyS1P1: "We collect the following information:",
@@ -422,8 +419,12 @@ export const enTranslations = {
   dailyImageGenerationsLimitLabel: "Daily Image Generations",
   dailyOutfitSuggestionsLimitLabel: "Daily Outfit Suggestions",
   dailyActivitySuggestionsLimitLabel: "Daily Activity Suggestions",
-  dailyTripDetailsSuggestionsLimitLabel: "Daily Trip Detail Suggestions", // New
+  dailyTripDetailsSuggestionsLimitLabel: "Daily Trip Detail Suggestions",
   maxTravelPlansLimitLabel: "Max Travel Plans (Total)",
+  aiFlowModelConfigCardTitle: "AI Flow Model Configuration",
+  aiFlowModelConfigCardDesc: "Select the AI model to be used for each specific generative flow.",
+  selectModelPlaceholder: "Select a model",
+  defaultModelLabel: "Default",
 
   // README
   readmeTitle: "Weatherugo Guide",
@@ -540,9 +541,7 @@ export const enTranslations = {
   dailyImageGenerationLimitReached: "You've reached your daily image generation limit. Please try again tomorrow or upgrade your plan.",
   dailyOutfitSuggestionsLimitReached: "You've reached your daily outfit suggestion limit. Please try again tomorrow or upgrade your plan.",
   dailyActivitySuggestionsLimitReached: "You've reached your daily activity suggestion limit. Please try again tomorrow or upgrade your plan.",
-  dailyTripDetailsSuggestionsLimitReached: "You've reached your daily trip detail suggestion limit. Please try again tomorrow or upgrade your plan.", // New
+  dailyTripDetailsSuggestionsLimitReached: "You've reached your daily trip detail suggestion limit. Please try again tomorrow or upgrade your plan.",
   maxTravelPlansLimitReached: "You've reached the maximum number of travel plans allowed. Please delete an existing plan or upgrade your plan to add a new one.",
   suggestionsLimitReached: "Daily AI suggestion limit reached for today.",
 };
-
-
