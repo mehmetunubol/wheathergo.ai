@@ -15,7 +15,7 @@ import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/ac
 import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings, BlogPost } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay, addHours } from "date-fns";
-import { HourlyForecastCard } from "@/components/hourly-forecast-card";
+// import { HourlyForecastCard } from "@/components/hourly-forecast-card"; // Removed
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plane, LogIn, Sparkles, AlertTriangle, Info, Newspaper, CalendarDays, User as UserIcon, ArrowRight } from "lucide-react";
@@ -490,44 +490,6 @@ export default function HomePage() {
   }, [t, toast]);
 
 
-  const getFilteredHourlyForecast = (currentWeatherData: WeatherData | null, dateForFilter: Date): HourlyForecastData[] => {
-    if (!currentWeatherData?.forecast || currentWeatherData.isGuessed) return [];
-
-    if (!fnsIsToday(dateForFilter)) return currentWeatherData.forecast ?? [];
-
-    const currentHourToDisplayFrom = getHours(dateForFilter);
-    return (currentWeatherData.forecast ?? []).filter(item => {
-        let itemHour = -1;
-        const timeString = item.time;
-
-        try {
-          if (timeString.includes('T') || (timeString.includes('-') && timeString.includes(':'))) {
-            const itemDateFromISO = parseISO(timeString);
-            if (isValid(itemDateFromISO)) {
-                itemHour = getHours(itemDateFromISO);
-            }
-          } else { 
-            const timeParts = timeString.match(/(\d{1,2})(:\d{2})?\s*(AM|PM)?/i);
-            if (timeParts) {
-                itemHour = parseInt(timeParts[1], 10);
-                const period = timeParts[3]?.toUpperCase();
-                if (period === 'PM' && itemHour !== 12) {
-                    itemHour += 12;
-                } else if (period === 'AM' && itemHour === 12) { 
-                    itemHour = 0;
-                }
-            }
-          }
-        } catch (e) { console.error("Error parsing hourly forecast time:", e); }
-        
-        if (itemHour !== -1) {
-            return itemHour >= currentHourToDisplayFrom;
-        }
-        return true; 
-    });
-  };
-
-
   if (authIsLoading || isLoadingPreferences || appSettingsLoading) {
     return (
       <div>
@@ -563,7 +525,6 @@ export default function HomePage() {
   }
 
   const effectiveFamilyProfileForDisplay = familyProfile || appSettings.defaultFamilyProfile;
-  const hourlyForecastToDisplay = getFilteredHourlyForecast(weatherData, selectedDate);
 
   const formatDateString = (dateString?: string | null) => {
     if (!dateString) return '';
@@ -636,27 +597,7 @@ export default function HomePage() {
           isLoading={isLoadingWeather} 
         />
 
-        {weatherData && hourlyForecastToDisplay.length > 0 && !weatherData.isGuessed && (
-           <HourlyForecastCard 
-            forecastData={hourlyForecastToDisplay} 
-            isLoading={isLoadingWeather} 
-            date={selectedDate}
-            isParentGuessed={weatherData.isGuessed}
-          />
-        )}
-        {weatherData && weatherData.isGuessed && (
-          <Card className="shadow-md rounded-lg">
-            <CardHeader>
-               <CardTitle className="text-lg flex items-center gap-2">
-                <Info className="text-amber-600" /> {t('hourlyForecastForDate', { date: format(selectedDate, "MMM d, yyyy", { locale: dateLocale })})}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{t('hourlyForecastNotAvailable')}</p>
-            </CardContent>
-          </Card>
-        )}
-
+        {/* Standalone HourlyForecastCard removed here */}
 
         {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
           <SuggestionsTabs
@@ -792,4 +733,3 @@ export default function HomePage() {
     </div>
   );
 }
-
