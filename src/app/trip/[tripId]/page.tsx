@@ -470,7 +470,7 @@ export default function TripDetailsPage() {
 
   if (authIsLoading || overallLoading || appSettingsLoading) {
      return (
-        <div className="space-y-4 mt-4 py-4">
+        <div className="container mx-auto max-w-2xl p-4 space-y-4 mt-4 py-4">
             <Skeleton className="h-10 w-1/4 mb-4" />
             <Card className="shadow-xl">
               <CardHeader className="bg-primary/10 rounded-t-lg p-6">
@@ -495,29 +495,33 @@ export default function TripDetailsPage() {
 
   if (pageError) {
     return (
-      <Card className="mt-4 shadow-lg">
-        <CardHeader><CardTitle className="text-xl flex items-center gap-2 text-destructive"><AlertCircle /> {t('error')}</CardTitle></CardHeader>
-        <CardContent>
-          <p>{pageError}</p>
-          <Button onClick={() => router.push('/travelplanner')} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}</Button>
-        </CardContent>
-      </Card>
+      <div className="container mx-auto max-w-2xl p-4">
+        <Card className="mt-4 shadow-lg">
+          <CardHeader><CardTitle className="text-xl flex items-center gap-2 text-destructive"><AlertCircle /> {t('error')}</CardTitle></CardHeader>
+          <CardContent>
+            <p>{pageError}</p>
+            <Button onClick={() => router.push('/travelplanner')} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}</Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   if (!plan) {
     return (
+      <div className="container mx-auto max-w-2xl p-4">
          <Card className="mt-4 shadow-lg">
             <CardHeader><CardTitle>{t('loadingPlanDetails')}</CardTitle></CardHeader>
             <CardContent><p>{t('loadingPlanDetailsError')}</p>
              <Button onClick={() => router.push('/travelplanner')} className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}</Button>
             </CardContent>
          </Card>
+      </div>
     );
   }
   
   return (
-    <div className="space-y-6 py-4">
+    <div className="container mx-auto max-w-2xl p-4 space-y-6 py-4">
         <Button variant="outline" onClick={() => router.push('/travelplanner')} className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" /> {t('backToTravelPlans')}
         </Button>

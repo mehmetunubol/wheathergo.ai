@@ -20,6 +20,9 @@ export const enTranslations = {
   // Navbar
   appTagline: "Your personal weather & travel companion.",
   // MainPage
+  heroTitle: "Weatherugo", 
+  heroDescription: "Your personal guide for weather-based clothing, activity suggestions, and travel planning. Get tailored advice based on your location, date, and family profile.",
+  heroSignUpButton: "Sign Up",
   locationDateTime: "Location & Date/Time",
   locationLabel: "Location",
   locationPlaceholder: "E.g., New York, London or Current Location",
@@ -125,6 +128,7 @@ export const enTranslations = {
   deleteTravelPlan: "Delete travel plan",
   notificationsConfiguredPremium: "Email notifications are configured for your travel plans.",
   notificationsPremiumFeature: "Automated email notifications for travel plans are a premium feature. Upgrade to receive daily/weekly updates!",
+  notificationsConfiguredForTrip: "Notifications for '{tripName}' will be sent to {email} {frequency} at {time}.",
   // Trip Details Dialog
   tripSummaryTitle: "{tripName} - Summary",
   viewFullPlanButton: "View Full Plan",
@@ -218,10 +222,7 @@ export const enTranslations = {
   loadingPlanDetailsError: "Could not load plan details. Please try again or go back.",
   travelPlanNotFound: "Travel plan not found.",
   aiEst: "AI Est.",
-  notificationsConfigured: "notifications will be configured.",
-  notificationsConfiguredForTrip: "Notifications for '{tripName}' will be sent to {email} {frequency} at {time}.",
-
-
+  // notificationsConfigured: "notifications will be configured.", // Redundant due to notificationsConfiguredForTrip
   // Subscription Page
   subscriptionTitle: "Subscription & Billing",
   subscriptionDescription: "Manage your Weatherugo subscription and payment details.",
@@ -433,25 +434,28 @@ export const enTranslations = {
   errorCouldNotAddTravelPlan: "Could not add travel plan. Please try again.",
   successTravelPlanDeletedParam: "Travel plan '{tripName}' has been deleted.",
   errorCouldNotDeleteTravelPlan: "Could not delete travel plan.",
+
   userStatusUpdatedParam: "User {userId} active status updated to: {status}.",
   userAdminStatusUpdatedParam: "User {userId} admin status updated to: {status}.",
   userPremiumStatusUpdatedParam: "User {userId} premium status updated to: {status}.",
   userDeletedParam: "User {userId} Firestore record has been deleted.",
+
   blogPostStatusUpdatedParam: "Blog post '{postId}' status updated to: {status}.",
   blogPostDeletedParam: "Blog post '{postId}' has been deleted.",
   errorAIGenerateGeneric: "Failed to generate content with AI. Please try again.",
-
+  
   activated: "activated",
   deactivated: "deactivated",
   promotedToAdmin: "promoted to admin",
   demotedFromAdmin: "demoted from admin",
   grantedPremium: "granted premium",
   revokedPremium: "revoked premium",
+
   // Blog
   blogTitle: "Blog",
-  blogDescription: "Explore articles, tips, and updates from the Weatherugo team.",
+  blogDescription: "Discover articles, tips, and updates from the Weatherugo team.",
   readMore: "Read More",
-  noBlogPostsPublished: "No blog posts have been published yet. Check back soon!",
+  noBlogPostsPublished: "No blog posts published yet. Check back soon!",
   backToBlog: "Back to Blog",
   editPost: "Edit Post",
   tags: "Tags",
@@ -479,18 +483,18 @@ export const enTranslations = {
   editBlogPostTitle: "Edit Blog Post",
   blogPostDetailsTitle: "Post Details",
   blogPostDetailsDesc: "Fill in the details for your blog post.",
-  blogTitlePlaceholder: "My Awesome Blog Post Title",
+  blogTitlePlaceholder: "Title of My Awesome Blog Post",
   slug: "Slug (URL Path)",
-  blogSlugPlaceholder: "my-awesome-blog-post-title",
+  blogSlugPlaceholder: "title-of-my-awesome-blog-post",
   blogSlugDesc: "URL-friendly identifier. Auto-generated from title if left blank.",
   content: "Content",
   blogContentPlaceholder: "Write your amazing blog content here...",
   generateWithAIButton: "Generate with AI",
   generatingButton: "Generating...",
-  blogAIGenTitleRequired: "Please provide a title to generate content with AI.",
+  blogAIGenTitleRequired: "Please enter a title to generate content with AI.",
   aiGeneratedContentTitle: "AI Content Generated",
   aiGeneratedContentDesc: "AI has generated some content. Feel free to edit it.",
-  blogAIGenPlaceholderContent: "AI generated content for '{title}' will appear here. You can then edit and refine it.",
+  blogAIGenPlaceholderContent: "AI-generated content for '{title}' will appear here. You can then edit and refine it.",
   excerptOptional: "Excerpt (Optional)",
   blogExcerptPlaceholder: "A short summary of your blog post...",
   imageUrlOptional: "Image URL (Optional)",
@@ -505,32 +509,36 @@ export const enTranslations = {
   saveChangesButton: "Save Changes",
   blogPostCreatedSuccess: "Blog post created successfully!",
   blogPostUpdatedSuccess: "Blog post updated successfully!",
-  blogTitleContentRequired: "Title and Content are required for a blog post.",
-  blogPromptDetailsLabel: "AI Prompt Details (Optional)",
-  blogPromptDetailsPlaceholder: "e.g., Focus on budget-friendly options, target audience is families with young children, make it humorous...",
+  blogTitleContentRequired: "Title and Content are required for the blog post.",
+  blogPromptDetailsLabel: "Prompt Details for AI (Optional)",
+  blogPromptDetailsPlaceholder: "E.g., Focus on budget-friendly options, target audience is families with young children, use a humorous tone...",
+  latestFromOurBlog: "Latest From Our Blog",
+  noRecentBlogPosts: "No recent blog posts published. Check back soon or visit our blog for all articles.",
+  goToBlogButton: "Read Our Blog",
 
   // Outfit Visualization Card
   visualizeOutfitTitle: "Visualize Outfit",
-  visualizeOutfitDescription: "Let AI generate an image of the suggested outfit in the current weather!",
+  visualizeOutfitDescription: "Let AI visualize the suggested outfit in the current weather conditions!",
   generateOutfitImageButton: "Visualize with AI",
   generatingImageMessage: "Generating image...",
-  visualizedOutfitAlt: "AI-generated visualization of the suggested outfit",
+  visualizedOutfitAlt: "AI generated outfit visualization",
   visualizationSuccessTitle: "Image Generated!",
   visualizationSuccessDesc: "Your outfit visualization is ready.",
   imageGenerationErrorTitle: "Image Generation Failed",
   imageGenerationErrorDefault: "Sorry, we couldn't generate the image right now. Please try again later.",
   imageGenerationApiKeyError: "Image generation failed: API key issue. Please contact support.",
-  visualizationPrerequisitesError: "Weather and outfit suggestions must be loaded first.",
+  visualizationPrerequisitesError: "Weather data and outfit suggestions must be loaded first.",
   loginToVisualizeTitle: "Visualize Your Outfit with AI!",
-  loginToVisualizeDescription: "Log in or sign up to use our AI-powered image generation and see your suggested outfit come to life.",
+  loginToVisualizeDescription: "Log in or sign up to use our AI-powered image generation to see your suggested outfit come to life.",
   loginToVisualizeButton: "Log In to Visualize",
 
   // Usage Limits
   limitReachedTitle: "Limit Reached",
-  dailyImageGenerationLimitReached: "You have reached your daily limit for image generations. Please try again tomorrow or upgrade your plan.",
-  dailyOutfitSuggestionsLimitReached: "You have reached your daily limit for outfit suggestions. Please try again tomorrow or upgrade your plan.",
-  dailyActivitySuggestionsLimitReached: "You have reached your daily limit for activity suggestions. Please try again tomorrow or upgrade your plan.",
-  dailyTripDetailsSuggestionsLimitReached: "You have reached your daily limit for generating trip detail suggestions. Please try again tomorrow or upgrade your plan.", // New
-  maxTravelPlansLimitReached: "You have reached the maximum number of travel plans allowed. Please remove an existing plan to add a new one or upgrade your plan.",
-  suggestionsLimitReached: "Daily AI suggestions limit reached for today.",
+  dailyImageGenerationLimitReached: "You've reached your daily image generation limit. Please try again tomorrow or upgrade your plan.",
+  dailyOutfitSuggestionsLimitReached: "You've reached your daily outfit suggestion limit. Please try again tomorrow or upgrade your plan.",
+  dailyActivitySuggestionsLimitReached: "You've reached your daily activity suggestion limit. Please try again tomorrow or upgrade your plan.",
+  dailyTripDetailsSuggestionsLimitReached: "You've reached your daily trip detail suggestion limit. Please try again tomorrow or upgrade your plan.", // New
+  maxTravelPlansLimitReached: "You've reached the maximum number of travel plans allowed. Please delete an existing plan or upgrade your plan to add a new one.",
+  suggestionsLimitReached: "Daily AI suggestion limit reached for today.",
 };
+

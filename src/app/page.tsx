@@ -1,7 +1,9 @@
+
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from 'next/navigation';
 import { LocationDateSelector } from "@/components/location-date-selector";
 import { FamilyProfileEditor } from "@/components/family-profile-editor";
@@ -10,17 +12,17 @@ import { SuggestionsTabs } from "@/components/suggestions-tabs";
 import { fetchWeather } from "@/lib/weather-api";
 import { suggestClothing, type ClothingSuggestionsOutput } from "@/ai/flows/clothing-suggestions";
 import { suggestActivities, type ActivitySuggestionsOutput } from "@/ai/flows/activity-suggestions";
-import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings } from "@/types";
+import type { WeatherData, LastKnownWeather, CachedWeatherData, CachedOutfitSuggestions, CachedActivitySuggestions, HourlyForecastData, User, DailyUsage, AppSettings, BlogPost } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay, addHours } from "date-fns";
-// HourlyForecastCard import removed
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { HourlyForecastCard } from "@/components/hourly-forecast-card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, LogIn, Sparkles, AlertTriangle } from "lucide-react";
+import { Plane, LogIn, Sparkles, AlertTriangle, Info, Newspaper, CalendarDays, User as UserIcon, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, runTransaction } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, runTransaction, collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
@@ -28,11 +30,11 @@ import { OutfitVisualizationCard } from "@/components/outfit-visualization-card"
 
 function getTimeOfDay(dateWithTime: Date): string {
   const hour = getHours(dateWithTime);
-  if (hour < 6) return "night"; 
+  if (hour < 6) return "night";
   if (hour < 12) return "morning";
   if (hour < 18) return "afternoon";
   if (hour < 22) return "evening";
-  return "night"; 
+  return "night";
 }
 
 export default function HomePage() {
@@ -59,6 +61,9 @@ export default function HomePage() {
   const [isLoadingActivity, setIsLoadingActivity] = React.useState(false);
 
   const [isLoadingPreferences, setIsLoadingPreferences] = React.useState(true);
+
+  const [latestPosts, setLatestPosts] = React.useState<BlogPost[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = React.useState(true);
 
   const { toast } = useToast();
   const { isAuthenticated, user, isLoading: authIsLoading } = useAuth();
@@ -184,8 +189,16 @@ export default function HomePage() {
       const localStorageKey = `weatherugo-${usageType}`;
 
       if (!isAuthenticated || !user) {
+        let storedUsage: DailyUsage = { date: '', count: 0 };
         const storedUsageRaw = localStorage.getItem(localStorageKey);
-        const storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+        if (storedUsageRaw) {
+          try {
+            storedUsage = JSON.parse(storedUsageRaw);
+          } catch (e) {
+            console.warn("Corrupted usage data in localStorage", e);
+            localStorage.removeItem(localStorageKey);
+          }
+        }
         if (storedUsage.date === todayStr && storedUsage.count >= currentLimit) {
           toast({ title: t('limitReachedTitle'), description: t(limitKey === 'dailyOutfitSuggestions' ? 'dailyOutfitSuggestionsLimitReached' : 'dailyActivitySuggestionsLimitReached'), variant: "destructive" });
           return false;
@@ -219,8 +232,16 @@ export default function HomePage() {
       const localStorageKey = `weatherugo-${usageType}`;
 
       if (!isAuthenticated || !user) {
+        let storedUsage: DailyUsage = { date: '', count: 0 };
         const storedUsageRaw = localStorage.getItem(localStorageKey);
-        let storedUsage: DailyUsage = storedUsageRaw ? JSON.parse(storedUsageRaw) : { date: '', count: 0 };
+        if (storedUsageRaw) {
+          try {
+            storedUsage = JSON.parse(storedUsageRaw);
+          } catch (e) {
+            console.warn("Corrupted usage data in localStorage for increment", e);
+            localStorage.removeItem(localStorageKey);
+          }
+        }
         if (storedUsage.date === todayStr) {
           storedUsage.count += 1;
         } else {
@@ -279,7 +300,7 @@ export default function HomePage() {
              localStorage.removeItem(weatherCacheKey);
           }
         } catch (e) {
-          console.error("Failed to parse cached weather data", e);
+          console.warn("Failed to parse cached weather data, removing item.", e);
           localStorage.removeItem(weatherCacheKey);
         }
       }
@@ -291,10 +312,6 @@ export default function HomePage() {
         setActivitySuggestions(null);
         try {
           const data = await fetchWeather(location, selectedDate, MAX_API_FORECAST_DAYS, language);
-          // Filter hourly forecast for CurrentWeatherCard display
-          if (data && data.forecast) {
-            data.forecast = getFilteredHourlyForecast(data, selectedDate);
-          }
           setWeatherData(data);
           currentFetchedWeatherData = data;
           localStorage.setItem(weatherCacheKey, JSON.stringify({ timestamp: currentTime, data }));
@@ -315,7 +332,10 @@ export default function HomePage() {
                             });
                         }
                     }
-                } catch (e) { localStorage.removeItem("weatherugo-lastKnownWeather"); }
+                } catch (e) { 
+                  console.warn("Failed to parse lastKnownWeather, removing item.", e);
+                  localStorage.removeItem("weatherugo-lastKnownWeather"); 
+                }
             }
             localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({
                 location: data.location,
@@ -359,7 +379,7 @@ export default function HomePage() {
               setIsLoadingOutfit(false);
               outfitFromCache = true;
             } else { localStorage.removeItem(outfitCacheKey); }
-          } catch (e) { console.error("Failed to parse cached outfit suggestions", e); localStorage.removeItem(outfitCacheKey); }
+          } catch (e) { console.warn("Failed to parse cached outfit suggestions, removing item.", e); localStorage.removeItem(outfitCacheKey); }
         }
 
         if (!outfitFromCache) {
@@ -397,7 +417,7 @@ export default function HomePage() {
               setIsLoadingActivity(false);
               activityFromCache = true;
             } else { localStorage.removeItem(activityCacheKey); }
-          } catch (e) { console.error("Failed to parse cached activity suggestions", e); localStorage.removeItem(activityCacheKey); }
+          } catch (e) { console.warn("Failed to parse cached activity suggestions, removing item.", e); localStorage.removeItem(activityCacheKey); }
         }
 
         if (!activityFromCache) {
@@ -443,14 +463,40 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, selectedDate, familyProfile, authIsLoading, isLoadingProfileFromEditor, isLoadingPreferences, appSettingsLoading, language, t, appSettings.cacheDurationMs, appSettings.maxApiForecastDays, appSettings.freeTierLimits, appSettings.premiumTierLimits, toast, user, isAuthenticated]);
 
+  React.useEffect(() => {
+    setIsLoadingPosts(true);
+    const postsCollectionRef = collection(db, "blogPosts");
+    const q = query(
+      postsCollectionRef,
+      where("isPublished", "==", true),
+      orderBy("publishedAt", "desc"),
+      limit(2) // Fetch latest 2 published posts
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const fetchedPosts: BlogPost[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedPosts.push({ id: doc.id, ...doc.data() } as BlogPost);
+      });
+      setLatestPosts(fetchedPosts);
+      setIsLoadingPosts(false);
+    }, (error) => {
+      console.error("Error fetching latest blog posts:", error);
+      toast({ title: t('error'), description: t('errorFetchingBlogPosts'), variant: "destructive" });
+      setIsLoadingPosts(false);
+    });
+    
+    return () => unsubscribe();
+  }, [t, toast]);
+
 
   const getFilteredHourlyForecast = (currentWeatherData: WeatherData | null, dateForFilter: Date): HourlyForecastData[] => {
     if (!currentWeatherData?.forecast || currentWeatherData.isGuessed) return [];
 
-    if (!fnsIsToday(dateForFilter)) return currentWeatherData.forecast;
+    if (!fnsIsToday(dateForFilter)) return currentWeatherData.forecast ?? [];
 
     const currentHourToDisplayFrom = getHours(dateForFilter);
-    return currentWeatherData.forecast.filter(item => {
+    return (currentWeatherData.forecast ?? []).filter(item => {
         let itemHour = -1;
         const timeString = item.time;
 
@@ -484,95 +530,266 @@ export default function HomePage() {
 
   if (authIsLoading || isLoadingPreferences || appSettingsLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          <Skeleton className="h-[230px] w-full" />
-          <Skeleton className="h-[230px] w-full" />
+      <div>
+        {/* Modern Hero Section Placeholder while loading */}
+        <div className="bg-primary text-primary-foreground py-8 sm:py-10 md:py-12">
+          <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 items-center">
+              <div>
+                <Skeleton className="h-8 w-3/4 mb-2" /> 
+                <Skeleton className="h-4 w-full mb-1" /> 
+                <Skeleton className="h-4 w-5/6 mb-4" /> 
+                <Skeleton className="h-9 w-32" /> 
+              </div>
+              <div className="flex justify-center md:justify-end">
+                <Skeleton className="h-40 w-full max-w-xs rounded-lg" /> 
+              </div>
+            </div>
+          </div>
         </div>
-        <Skeleton className="h-[200px] w-full" />
-        <Skeleton className="h-[150px] w-full" />
-        <Skeleton className="h-[180px] w-full" />
-        <Skeleton className="h-[180px] w-full" />
+        {/* Main content skeleton */}
+        <div className="container mx-auto max-w-2xl p-4 space-y-6 mt-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Skeleton className="h-[230px] w-full" />
+            <Skeleton className="h-[230px] w-full" />
+          </div>
+          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[150px] w-full" />
+          <Skeleton className="h-[180px] w-full" />
+          <Skeleton className="h-[180px] w-full" />
+        </div>
       </div>
     );
   }
 
   const effectiveFamilyProfileForDisplay = familyProfile || appSettings.defaultFamilyProfile;
+  const hourlyForecastToDisplay = getFilteredHourlyForecast(weatherData, selectedDate);
+
+  const formatDateString = (dateString?: string | null) => {
+    if (!dateString) return '';
+    try {
+      return format(parseISO(dateString), "MMMM d, yyyy", { locale: dateLocale });
+    } catch {
+      return dateString; 
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="grid md:grid-cols-2 gap-6">
-        <LocationDateSelector
-          location={location}
-          onLocationChange={setLocation}
-          selectedDate={selectedDate}
-          onDateChange={handleDateChange}
-          maxApiForecastDays={appSettings.maxApiForecastDays}
-        />
-        <FamilyProfileEditor
-          profile={familyProfile}
-          onProfileSave={handleProfileUpdate}
-        />
+    <div>
+      {/* Modern Hero Section */}
+      <div className="bg-primary text-primary-foreground py-8 sm:py-10 md:py-12">
+        <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 items-center">
+            <div className="text-center md:text-left">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
+                {t('heroTitle')}
+              </h1>
+              <p className="mt-2 text-sm sm:text-base text-primary-foreground/90 max-w-2xl mx-auto md:mx-0">
+                {t('heroDescription')}
+              </p>
+              <div className="mt-6 flex flex-col sm:flex-row sm:justify-center md:justify-start gap-2.5">
+                <Button
+                  size="default" 
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out px-5 py-2 text-sm font-semibold"
+                  asChild
+                  href="/login"
+                >
+                  <Link href="/login">{t('heroSignUpButton')}</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-center md:justify-end">
+              <div className="w-full max-w-[280px] sm:max-w-xs md:max-w-xs lg:max-w-sm rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 transition-transform duration-300 ease-out">
+                <Image
+                  src="https://i.ibb.co/JRtf4S5W/image.png"
+                  alt={t('visualizedOutfitAlt')}
+                  width={400}
+                  height={320}
+                  className="object-cover w-full h-full"
+                  data-ai-hint="travel clothing illustration"
+                  priority
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <CurrentWeatherCard 
-        weatherData={weatherData} 
-        isLoading={isLoadingWeather} 
-      />
+      {/* Rest of the page content */}
+      <div className="container mx-auto max-w-2xl p-4 space-y-6 mt-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          <LocationDateSelector
+            location={location}
+            onLocationChange={setLocation}
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            maxApiForecastDays={appSettings.maxApiForecastDays}
+          />
+          <FamilyProfileEditor
+            profile={familyProfile}
+            onProfileSave={handleProfileUpdate}
+          />
+        </div>
 
-      {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
-        <SuggestionsTabs
-          outfitSuggestions={outfitSuggestions}
-          isOutfitLoading={isLoadingOutfit}
-          activitySuggestions={activitySuggestions}
-          isActivityLoading={isLoadingActivity}
-          outfitLimitReached={outfitLimitReached}
-          activityLimitReached={activityLimitReached}
+        <CurrentWeatherCard 
+          weatherData={weatherData} 
+          isLoading={isLoadingWeather} 
         />
-      )}
 
-      {outfitSuggestions && weatherData && !isLoadingWeather && !isLoadingOutfit && !outfitLimitReached && (
-        <OutfitVisualizationCard
-            weatherData={weatherData}
-            familyProfile={effectiveFamilyProfileForDisplay}
-            clothingSuggestions={outfitSuggestions}
-            language={language}
-            isLoadingParentData={isLoadingWeather || isLoadingOutfit}
-        />
-      )}
+        {weatherData && hourlyForecastToDisplay.length > 0 && !weatherData.isGuessed && (
+           <HourlyForecastCard 
+            forecastData={hourlyForecastToDisplay} 
+            isLoading={isLoadingWeather} 
+            date={selectedDate}
+            isParentGuessed={weatherData.isGuessed}
+          />
+        )}
+        {weatherData && weatherData.isGuessed && (
+          <Card className="shadow-md rounded-lg">
+            <CardHeader>
+               <CardTitle className="text-lg flex items-center gap-2">
+                <Info className="text-amber-600" /> {t('hourlyForecastForDate', { date: format(selectedDate, "MMM d, yyyy", { locale: dateLocale })})}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{t('hourlyForecastNotAvailable')}</p>
+            </CardContent>
+          </Card>
+        )}
 
 
-      <Card className="shadow-lg bg-primary/10 border-primary/30">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
-            <Sparkles className="text-accent h-6 w-6" />
-            {t('readyForAdventure')}
-            <Sparkles className="text-accent h-6 w-6" />
-          </CardTitle>
-          <CardDescription className="!mt-2 text-foreground/90">
-            {t('travelPlannerPrompt')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {t('travelPlannerSubPrompt', { authPrompt: !isAuthenticated ? t('travelPlannerAuthPrompt') : ''})}
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
-            <Link href="/travelplanner" passHref>
-              <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Plane className="mr-2 h-5 w-5" /> {t('exploreTravelPlans')}
-              </Button>
-            </Link>
-            {!isAuthenticated && (
-              <Link href="/login" passHref>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <LogIn className="mr-2 h-5 w-5" /> {t('signUpLogin')}
+        {(weatherData || isLoadingOutfit || isLoadingActivity || isLoadingWeather || outfitLimitReached || activityLimitReached) && (
+          <SuggestionsTabs
+            outfitSuggestions={outfitSuggestions}
+            isOutfitLoading={isLoadingOutfit}
+            activitySuggestions={activitySuggestions}
+            isActivityLoading={isLoadingActivity}
+            outfitLimitReached={outfitLimitReached}
+            activityLimitReached={activityLimitReached}
+          />
+        )}
+
+        {outfitSuggestions && weatherData && !isLoadingWeather && !isLoadingOutfit && !outfitLimitReached && (
+          <OutfitVisualizationCard
+              weatherData={weatherData}
+              familyProfile={effectiveFamilyProfileForDisplay}
+              clothingSuggestions={outfitSuggestions}
+              language={language}
+              isLoadingParentData={isLoadingWeather || isLoadingOutfit}
+          />
+        )}
+
+
+        <Card className="shadow-lg bg-primary/10 border-primary/30">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
+              <Sparkles className="text-accent h-6 w-6" />
+              {t('readyForAdventure')}
+              <Sparkles className="text-accent h-6 w-6" />
+            </CardTitle>
+            <CardDescription className="!mt-2 text-foreground/90">
+              {t('travelPlannerPrompt')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {t('travelPlannerSubPrompt', { authPrompt: !isAuthenticated ? t('travelPlannerAuthPrompt') : ''})}
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
+              <Link href="/travelplanner" passHref>
+                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Plane className="mr-2 h-5 w-5" /> {t('exploreTravelPlans')}
                 </Button>
               </Link>
+              {!isAuthenticated && (
+                <Link href="/login" passHref>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <LogIn className="mr-2 h-5 w-5" /> {t('signUpLogin')}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Latest Blog Posts Section */}
+        <Card className="shadow-lg bg-secondary/20 border-secondary/40">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
+              <Newspaper className="text-primary h-6 w-6" />
+              {t('latestFromOurBlog')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingPosts && (
+              <div className="grid gap-6 md:grid-cols-2">
+                {[...Array(2)].map((_, i) => (
+                  <Card key={i} className="flex flex-col">
+                    <Skeleton className="h-40 w-full rounded-t-lg" />
+                    <CardHeader><Skeleton className="h-5 w-3/4" /><Skeleton className="h-3 w-1/2 mt-1" /></CardHeader>
+                    <CardContent className="flex-grow"><Skeleton className="h-10 w-full" /></CardContent>
+                    <CardFooter><Skeleton className="h-8 w-24" /></CardFooter>
+                  </Card>
+                ))}
+              </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+            {!isLoadingPosts && latestPosts.length > 0 && (
+              <div className="grid gap-6 md:grid-cols-2">
+                {latestPosts.map((post) => (
+                  <Card key={post.id} className="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
+                    {post.imageUrl && (
+                      <Link href={`/blog/${post.slug}`} passHref className="block h-40 w-full overflow-hidden">
+                          <Image
+                            src={post.imageUrl}
+                            alt={post.title}
+                            width={400}
+                            height={200}
+                            className="w-full h-full object-cover"
+                            data-ai-hint={`blog post ${post.tags ? post.tags.join(' ') : 'general'}`}
+                          />
+                      </Link>
+                    )}
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg hover:text-primary transition-colors">
+                        <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                      </CardTitle>
+                       <CardDescription className="!mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 items-center">
+                        <span className="flex items-center gap-1"><UserIcon size={12} /> {post.authorName || 'Weatherugo Team'}</span>
+                        <span className="flex items-center gap-1"><CalendarDays size={12} /> {formatDateString(post.publishedAt)}</span>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow text-sm text-muted-foreground">
+                      <p className="line-clamp-3">
+                        {post.excerpt || post.content.substring(0, 120) + (post.content.length > 120 ? "..." : "")}
+                      </p>
+                    </CardContent>
+                    <CardFooter>
+                      <Link href={`/blog/${post.slug}`} passHref>
+                        <Button variant="link" className="px-0 text-primary">
+                          {t('readMore')} <ArrowRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {!isLoadingPosts && latestPosts.length === 0 && (
+              <div className="text-center py-6">
+                <p className="text-muted-foreground">{t('noRecentBlogPosts')}</p>
+              </div>
+            )}
+            <div className="text-center mt-6">
+              <Link href="/blog" passHref>
+                <Button variant="outline">
+                  {t('goToBlogButton')} <Sparkles className="ml-2 h-4 w-4 text-accent" />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
+
