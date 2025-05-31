@@ -8,17 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase"; // Added auth
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth"; // Added Firebase auth functions
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings as SettingsIcon, Save, UserCircle, Languages, MapPin as MapPinIcon } from "lucide-react"; // Renamed MapPin to MapPinIcon
+import { Settings as SettingsIcon, Save, UserCircle, Languages, KeyRound, AlertTriangle } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 import { useTranslation } from "@/hooks/use-translation";
 import type { Language } from "@/types";
-import { DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context"; // Import default settings
-
+import { DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 
 export default function SettingsPage() {
   const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
@@ -30,6 +31,16 @@ export default function SettingsPage() {
   const [isLoadingSettings, setIsLoadingSettings] = React.useState(true);
   const [isSavingFamilyProfile, setIsSavingFamilyProfile] = React.useState(false);
   const [selectedLanguage, setSelectedLanguage] = React.useState<Language>(language);
+
+  // Password Management State
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [passwordProviderExists, setPasswordProviderExists] = React.useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false);
+  const [passwordError, setPasswordError] = React.useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = React.useState<string | null>(null);
+
 
   React.useEffect(() => {
     setSelectedLanguage(language);
@@ -47,11 +58,17 @@ export default function SettingsPage() {
 
       setIsLoadingSettings(true);
       try {
+        // Check for password provider
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const providerData = currentUser.providerData;
+          setPasswordProviderExists(providerData.some(provider => provider.providerId === EmailAuthProvider.PROVIDER_ID));
+        }
+
         const profileRef = doc(db, "users", user.uid, "profile", "mainProfile");
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists() && profileSnap.data().description) {
           const desc = profileSnap.data().description;
-          // If stored profile is the generic English default, show the localized one instead
           if (desc === DEFAULT_APP_SETTINGS.defaultFamilyProfile) {
             setFamilyProfile(translatedDefaultProfileText);
           } else {
@@ -62,7 +79,7 @@ export default function SettingsPage() {
         }
       } catch (error) {
         console.error("Error loading settings:", error);
-        toast({ title: t('error'), description: "Could not load settings.", variant: "destructive" });
+        toast({ title: t('error'), description: t('settingsLoadError'), variant: "destructive" });
         setFamilyProfile(translatedDefaultProfileText);
       } finally {
         setIsLoadingSettings(false);
@@ -76,7 +93,7 @@ export default function SettingsPage() {
 
   const handleSaveFamilyProfile = async () => {
     if (!isAuthenticated || !user) {
-      toast({ title: t('login'), description: "Please log in to save settings.", variant: "destructive" });
+      toast({ title: t('login'), description: t('loginToSaveSettingsDesc'), variant: "destructive" });
       return;
     }
     setIsSavingFamilyProfile(true);
@@ -95,8 +112,60 @@ export default function SettingsPage() {
   const handleLanguageChange = (newLang: string) => {
     const lang = newLang as Language;
     setSelectedLanguage(lang);
-    setLanguage(lang); // This will update context and localStorage
-    toast({ title: t('language'), description: `${t('language')} ${lang === 'tr' ? 'Türkçe' : 'English'} ${t('selectedStatus') || 'olarak değiştirildi.'}` });
+    setLanguage(lang);
+    toast({ title: t('language'), description: `${t('language')} ${lang === 'tr' ? 'Türkçe' : 'English'} ${t('selectedStatus')}.` });
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!auth.currentUser) {
+      setPasswordError(t('passwordErrorNotLoggedIn'));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError(t('passwordErrorMismatch'));
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError(t('passwordErrorTooShort'));
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      if (passwordProviderExists) { // Change existing password
+        if (!currentPassword) {
+          setPasswordError(t('passwordErrorCurrentRequired'));
+          setIsUpdatingPassword(false);
+          return;
+        }
+        const credential = EmailAuthProvider.credential(auth.currentUser.email!, currentPassword);
+        await reauthenticateWithCredential(auth.currentUser, credential);
+        await updatePassword(auth.currentUser, newPassword);
+        setPasswordSuccess(t('passwordChangeSuccess'));
+      } else { // Set new password for OAuth user
+        await updatePassword(auth.currentUser, newPassword);
+        setPasswordSuccess(t('passwordSetSuccess'));
+        setPasswordProviderExists(true); // Password provider now exists
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Password update error:", error);
+      if (error.code === 'auth/wrong-password') {
+        setPasswordError(t('passwordErrorWrongCurrent'));
+      } else if (error.code === 'auth/requires-recent-login') {
+        setPasswordError(t('passwordErrorRequiresRecentLogin'));
+      } else {
+        setPasswordError(t('passwordErrorGeneric') + `: ${error.message}`);
+      }
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
 
@@ -106,21 +175,16 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-1/3" />
         </div>
-        <Card>
-          <CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-20 w-full" />
-          </CardContent>
-          <CardFooter><Skeleton className="h-10 w-32" /></CardFooter>
-        </Card>
-        <Card>
-          <CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+            <CardFooter><Skeleton className="h-10 w-32" /></CardFooter>
+          </Card>
+        ))}
       </div>
     );
   }
@@ -130,9 +194,9 @@ export default function SettingsPage() {
       <div className="container mx-auto max-w-2xl p-4 flex flex-col items-center justify-center py-12 text-center">
         <SettingsIcon size={48} className="text-muted-foreground mb-4" />
         <h1 className="text-2xl font-semibold mb-2">{t('settings')}</h1>
-        <p className="text-muted-foreground mb-4">{t('loginToManageSettings') || "Please log in to manage your application settings."}</p>
+        <p className="text-muted-foreground mb-4">{t('loginToManageSettings')}</p>
         <Link href="/login" passHref>
-          <Button>{t('login')} / {t('signUp')}</Button>
+          <Button>{t('loginButton')}</Button>
         </Link>
       </div>
     );
@@ -170,6 +234,78 @@ export default function SettingsPage() {
           </Button>
         </CardFooter>
       </Card>
+      
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2"><KeyRound /> {t('passwordManagementTitle')}</CardTitle>
+          <CardDescription>
+            {passwordProviderExists ? t('changePasswordDesc') : t('setPasswordDesc')}
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handlePasswordUpdate}>
+          <CardContent className="space-y-4">
+            {passwordError && (
+              <div className="p-3 border rounded-md bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+                <AlertTriangle size={16} /> {passwordError}
+              </div>
+            )}
+            {passwordSuccess && (
+              <div className="p-3 border rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm">
+                {passwordSuccess}
+              </div>
+            )}
+            {passwordProviderExists && (
+              <div>
+                <Label htmlFor="currentPassword">{t('currentPasswordLabel')}</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  disabled={isUpdatingPassword}
+                  className="mt-1"
+                />
+              </div>
+            )}
+            <div>
+              <Label htmlFor="newPassword">{t('newPasswordLabel')}</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                disabled={isUpdatingPassword}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirmPassword">{t('confirmNewPasswordLabel')}</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                disabled={isUpdatingPassword}
+                className="mt-1"
+              />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={isUpdatingPassword}>
+              <Save className="mr-2 h-4 w-4" /> 
+              {isUpdatingPassword ? t('saving') : (passwordProviderExists ? t('updatePasswordButton') : t('setPasswordButton'))}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
 
       <Card className="shadow-md">
         <CardHeader>
@@ -192,3 +328,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+    

@@ -84,12 +84,33 @@ export const enTranslations = {
   authErrorOperationNotAllowed: "Email/password accounts are not enabled.",
   // Settings Page
   appSettingsTitle: "Application Settings",
+  familyProfileTitle: "Family Profile", // Added this key
   familyProfileSettingsDescription: "This profile is used by the AI to provide personalized weather and activity suggestions.",
   saveFamilyProfile: "Save Family Profile",
   language: "Language",
   languageSelection: "Select Application Language",
   loginToManageSettings: "Please log in to manage your application settings.",
+  loginToSaveSettingsDesc: "Please log in to save settings.",
+  settingsLoadError: "Could not load settings.",
   selectedStatus: "selected",
+  passwordManagementTitle: "Password Management",
+  changePasswordDesc: "Change your existing password.",
+  setPasswordDesc: "Set a password for your account to enable email/password sign-in.",
+  currentPasswordLabel: "Current Password",
+  newPasswordLabel: "New Password",
+  confirmNewPasswordLabel: "Confirm New Password",
+  updatePasswordButton: "Update Password",
+  setPasswordButton: "Set Password",
+  passwordErrorNotLoggedIn: "You are not logged in. Cannot update password.",
+  passwordErrorMismatch: "New passwords do not match.",
+  passwordErrorTooShort: "Password must be at least 6 characters long.",
+  passwordErrorCurrentRequired: "Current password is required to change your password.",
+  passwordErrorWrongCurrent: "Incorrect current password.",
+  passwordErrorRequiresRecentLogin: "This operation is sensitive and requires recent authentication. Please sign out and sign back in before trying again.",
+  passwordErrorGeneric: "Could not update password",
+  passwordChangeSuccess: "Password changed successfully.",
+  passwordSetSuccess: "Password set successfully. You can now also sign in using your email and this password.",
+
   // Notifications (Travel Planner) Page
   travelPlannerTitle: "Travel Planner",
   travelPlannerDescription: "Manage your travel plans and set up daily email notifications for weather updates and suggestions during your trips.",
@@ -550,3 +571,4 @@ export const enTranslations = {
   maxTravelPlansLimitReached: "You've reached the maximum number of travel plans allowed. Please delete an existing plan or upgrade your plan to add a new one.",
   suggestionsLimitReached: "Daily AI suggestion limit reached for today.",
 };
+    

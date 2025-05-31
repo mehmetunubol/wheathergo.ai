@@ -20,7 +20,7 @@ export const trTranslations = {
   // Navbar
   appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
   // MainPage
-  heroTitle: "Weatherugo", 
+  heroTitle: "Weatherugo",
   heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.",
   heroSignUpButton: "Kaydol",
   locationDateTime: "Konum & Tarih/Saat",
@@ -84,12 +84,33 @@ export const trTranslations = {
   authErrorOperationNotAllowed: "E-posta/şifre hesapları etkin değil.",
   // Settings Page
   appSettingsTitle: "Uygulama Ayarları",
+  familyProfileTitle: "Aile Profili", // Added this key
   familyProfileSettingsDescription: "Bu profil, AI tarafından kişiselleştirilmiş hava durumu ve aktivite önerileri sağlamak için kullanılır.",
   saveFamilyProfile: "Aile Profilini Kaydet",
   language: "Dil",
   languageSelection: "Uygulama Dilini Seçin",
   loginToManageSettings: "Uygulama ayarlarınızı yönetmek için lütfen giriş yapın.",
+  loginToSaveSettingsDesc: "Ayarları kaydetmek için lütfen giriş yapın.",
+  settingsLoadError: "Ayarlar yüklenemedi.",
   selectedStatus: "olarak seçildi",
+  passwordManagementTitle: "Şifre Yönetimi",
+  changePasswordDesc: "Mevcut şifrenizi değiştirin.",
+  setPasswordDesc: "E-posta/şifre ile girişi etkinleştirmek için hesabınıza bir şifre belirleyin.",
+  currentPasswordLabel: "Mevcut Şifre",
+  newPasswordLabel: "Yeni Şifre",
+  confirmNewPasswordLabel: "Yeni Şifreyi Onayla",
+  updatePasswordButton: "Şifreyi Güncelle",
+  setPasswordButton: "Şifre Belirle",
+  passwordErrorNotLoggedIn: "Giriş yapılmadı. Şifre güncellenemiyor.",
+  passwordErrorMismatch: "Yeni şifreler eşleşmiyor.",
+  passwordErrorTooShort: "Şifre en az 6 karakter uzunluğunda olmalıdır.",
+  passwordErrorCurrentRequired: "Şifrenizi değiştirmek için mevcut şifreniz gereklidir.",
+  passwordErrorWrongCurrent: "Mevcut şifre yanlış.",
+  passwordErrorRequiresRecentLogin: "Bu işlem hassastır ve yakın zamanda kimlik doğrulaması gerektirir. Lütfen çıkış yapıp tekrar giriş yapın ve ardından tekrar deneyin.",
+  passwordErrorGeneric: "Şifre güncellenemedi",
+  passwordChangeSuccess: "Şifre başarıyla değiştirildi.",
+  passwordSetSuccess: "Şifre başarıyla belirlendi. Artık e-postanız ve bu yeni şifrenizle de giriş yapabilirsiniz.",
+
   // Notifications (Travel Planner) Page
   travelPlannerTitle: "Seyahat Planlayıcı",
   travelPlannerDescription: "Seyahat planlarınızı yönetin ve seyahatleriniz sırasında hava durumu güncellemeleri ve öneriler için günlük e-posta bildirimleri ayarlayın.",
@@ -452,14 +473,14 @@ export const trTranslations = {
   blogPostStatusUpdatedParam: "'{postId}' başlıklı blog yazısının durumu şuna güncellendi: {status}.",
   blogPostDeletedParam: "'{postId}' başlıklı blog yazısı silindi.",
   errorAIGenerateGeneric: "AI ile içerik oluşturulamadı. Lütfen tekrar deneyin.",
-  
+
   activated: "etkinleştirildi",
   deactivated: "devre dışı bırakıldı",
   promotedToAdmin: "yönetici yapıldı",
   demotedFromAdmin: "yöneticilikten çıkarıldı",
   grantedPremium: "premium verildi",
   revokedPremium: "premium geri alındı",
-
+  
   // Blog
   blogTitle: "Blog",
   blogDescription: "Weatherugo ekibinden makaleleri, ipuçlarını ve güncellemeleri keşfedin.",
@@ -550,3 +571,4 @@ export const trTranslations = {
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
+    

@@ -40,4 +40,9 @@ export const translations: AllTranslations = {
   },
 };
 
-export type TranslationKey = keyof typeof translations.en;
+// Ensure all keys from enTranslations are available as TranslationKey
+// This helps catch missing keys during development.
+// Note: This only checks against 'en' keys. If 'tr' has unique keys, they won't be type-checked here.
+// A more robust solution might involve a script to verify key consistency across all languages.
+export type TranslationKey = keyof typeof enTranslations;
+    
