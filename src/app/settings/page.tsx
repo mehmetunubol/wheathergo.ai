@@ -22,7 +22,7 @@ import type { Language } from "@/types";
 import { DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 
 export default function SettingsPage() {
-  const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authIsLoading, refreshUser } = useAuth(); // Added refreshUser
   const { toast } = useToast();
   const { t } = useTranslation();
   const { language, setLanguage } = useLanguage();
@@ -146,10 +146,12 @@ export default function SettingsPage() {
         await reauthenticateWithCredential(auth.currentUser, credential);
         await updatePassword(auth.currentUser, newPassword);
         setPasswordSuccess(t('passwordChangeSuccess'));
+        await refreshUser(); // Refresh user state after successful change
       } else { // Set new password for OAuth user
         await updatePassword(auth.currentUser, newPassword);
         setPasswordSuccess(t('passwordSetSuccess'));
         setPasswordProviderExists(true); // Password provider now exists
+        await refreshUser(); // Refresh user state to update providerData
       }
       setCurrentPassword("");
       setNewPassword("");
