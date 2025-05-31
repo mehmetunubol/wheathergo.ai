@@ -182,7 +182,12 @@ export const trTranslations = {
   weatherDataUnavailableForDay: "Bu gün için hava durumu verisi mevcut değil. Öneriler yüklenemiyor.",
   aiServiceBusy: "AI öneri servisi şu anda meşgul. Lütfen birazdan tekrar deneyin.",
   // footer
-  footerText: "© {year} Weatherugo, Flow Teknoloji tarafından. Kişisel hava durumu & seyahat rehberiniz.",
+  footerCopyright: "© {year} Weatherugo, Flow Teknoloji tarafından. Tüm hakları saklıdır.",
+  privacyPolicyShort: "Gizlilik",
+  termsOfServiceShort: "Şartlar",
+  supportLinkText: "Destek",
+  instagramAltText: "Weatherugo Instagram",
+  linkedinAltText: "Weatherugo LinkedIn",
   // Current Weather Card
   humidity: "Nem",
   wind: "Rüzgar",
@@ -283,7 +288,7 @@ export const trTranslations = {
   privacyS4P1: "Verileriniz, hesabınız aktif olduğu sürece veya geçerli yasaların gerektirdiği şekilde güvenli bir şekilde saklanır ve muhafaza edilir. Şunları talep edebilirsiniz:",
   privacyS4L1: "Hesabınızı silmek",
   privacyS4L2: "Verilerinize erişmek veya düzeltmek",
-  privacyS4P2: "Bunu yapmak için lütfen weatherugo@gmail.com adresinden iletişime geçin.",
+  privacyS4P2: "Bunu yapmak için lütfen support@weatherugo.com adresinden iletişime geçin.",
   privacyS5Title: "5. Haklarınız",
   privacyS5P1: "Bulunduğunuz yere (örneğin, AB, Kaliforniya) bağlı olarak şu haklara sahip olabilirsiniz:",
   privacyS5L1: "Verilerinize erişmek, değiştirmek veya silmek",
@@ -295,7 +300,7 @@ export const trTranslations = {
   privacyS7Title: "7. Bu Politikadaki Değişiklikler",
   privacyS7P1: "Bu Gizlilik Politikasını güncelleyebiliriz. Önemli değişiklikleri uygulamada bir bildirim yayınlayarak kullanıcılara bildireceğiz.",
   privacyS8Title: "8. Bize Ulaşın",
-  privacyS8P1: "Sorularınız mı var? Bize şuradan ulaşın: weatherugo@gmail.com",
+  privacyS8P1: "Sorularınız mı var? Bize şuradan ulaşın: support@weatherugo.com",
 
   // Terms Page
   termsTitleFull: "Weatherugo Hizmet Şartları",
@@ -329,7 +334,7 @@ export const trTranslations = {
   termsS7P1: "Bu şartlar {jurisdiction} yasalarına tabidir. Anlaşmazlıkları o yargı bölgesindeki mahkemelerde çözmeyi kabul edersiniz.",
   termsS7P2Placeholder: "yetkili yargı bölgenizin",
   termsS8Title: "8. İletişim",
-  termsS8P1: "Bu şartlarla ilgili sorularınız için iletişim: weatherugo@gmail.com",
+  termsS8P1: "Bu şartlarla ilgili sorularınız için iletişim: support@weatherugo.com",
 
   // Admin Layout
   adminSiteName: "Weatherugo Yönetim",

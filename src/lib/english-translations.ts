@@ -182,7 +182,12 @@ export const enTranslations = {
   weatherDataUnavailableForDay: "Weather data unavailable for this day. Suggestions cannot be loaded.",
   aiServiceBusy: "AI suggestion service is currently busy. Please try again in a moment.",
   // footer
-  footerText: "© {year} Weatherugo by Flow Teknoloji. Your personal weather & travel companion.",
+  footerCopyright: "© {year} Weatherugo by Flow Teknoloji. All rights reserved.",
+  privacyPolicyShort: "Privacy",
+  termsOfServiceShort: "Terms",
+  supportLinkText: "Support",
+  instagramAltText: "Weatherugo Instagram",
+  linkedinAltText: "Weatherugo LinkedIn",
   // Current Weather Card
   humidity: "Humidity",
   wind: "Wind",
@@ -283,7 +288,7 @@ export const enTranslations = {
   privacyS4P1: "Your data is securely stored and retained as long as your account is active or as required by applicable law. You may request to:",
   privacyS4L1: "Delete your account",
   privacyS4L2: "Access or correct your data",
-  privacyS4P2: "To do so, please contact: weatherugo@gmail.com.",
+  privacyS4P2: "To do so, please contact: support@weatherugo.com.",
   privacyS5Title: "5. Your Rights",
   privacyS5P1: "Depending on your location (e.g., EU, California), you may have rights to:",
   privacyS5L1: "Access, modify, or delete your data",
@@ -295,7 +300,7 @@ export const enTranslations = {
   privacyS7Title: "7. Changes to This Policy",
   privacyS7P1: "We may update this Privacy Policy. We'll notify users of significant changes by posting a notice in the app.",
   privacyS8Title: "8. Contact Us",
-  privacyS8P1: "Questions? Contact us at: weatherugo@gmail.com",
+  privacyS8P1: "Questions? Contact us at: support@weatherugo.com",
 
   // Terms Page
   termsTitleFull: "Terms of Service for Weatherugo",
@@ -329,7 +334,7 @@ export const enTranslations = {
   termsS7P1: "These terms are governed by the laws of {jurisdiction}. You agree to resolve disputes in the courts of that jurisdiction.",
   termsS7P2Placeholder: "your governing jurisdiction",
   termsS8Title: "8. Contact",
-  termsS8P1: "For questions about these terms, contact: weatherugo@gmail.com",
+  termsS8P1: "For questions about these terms, contact: support@weatherugo.com",
 
   // Admin Layout
   adminSiteName: "Weatherugo Admin",
