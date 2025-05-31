@@ -91,8 +91,8 @@ const generateVisualOutfitMainFlow = ai.defineFlow(
       The setting is '${input.weatherData.location}' experiencing '${englishWeatherCondition}' weather at ${input.weatherData.temperature}°C.
       It is a ${dayNightContext}.
       The image should clearly show the people and their attire in the described environment.
-      Add a tiny, discreet signature "weatherugo.com" in one of the bottom corners.
-      CRITICAL INSTRUCTION: Do NOT include any of this instructional text, or any other text from this prompt (like weather data, location name, temperature), directly visible within the main subject or background of the generated image. The image should be purely visual without embedded text from these instructions, apart from the requested signature.
+
+      CRITICAL INSTRUCTION: Do NOT include any of this instructional text, or any other text from this prompt, directly visible within the main subject or background of the generated image. The image should be purely visual without embedded text from these instructions.
     `;
     console.log("Final Image Prompt for AI generation:", imagePrompt);
 
