@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image"; // Added for the hero image
 import { usePathname } from 'next/navigation';
 import { LocationDateSelector } from "@/components/location-date-selector";
 import { FamilyProfileEditor } from "@/components/family-profile-editor";
@@ -498,12 +499,23 @@ export default function HomePage() {
   if (authIsLoading || isLoadingPreferences || appSettingsLoading) {
     return (
       <div>
-        <div className="bg-primary/10 py-12 px-4 sm:px-6 lg:px-8 shadow">
-          <div className="container mx-auto max-w-3xl text-center">
-            <Skeleton className="h-10 w-3/4 mx-auto mb-4" />
-            <Skeleton className="h-6 w-full mx-auto" />
+        {/* Modern Hero Section Placeholder while loading */}
+        <div className="bg-primary text-primary-foreground py-16 sm:py-24">
+          <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <Skeleton className="h-12 w-3/4 mb-4" />
+                <Skeleton className="h-6 w-full mb-2" />
+                <Skeleton className="h-6 w-5/6 mb-8" />
+                <Skeleton className="h-12 w-40" />
+              </div>
+              <div className="flex justify-center md:justify-end">
+                <Skeleton className="h-64 w-full max-w-md rounded-lg" />
+              </div>
+            </div>
           </div>
         </div>
+        {/* Main content skeleton */}
         <div className="container mx-auto max-w-2xl p-4 space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
             <Skeleton className="h-[230px] w-full" />
@@ -523,14 +535,45 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero Section */}
-      <div className="bg-primary/10 py-10 px-4 sm:px-6 lg:px-8 shadow-md">
-        <div className="container mx-auto max-w-3xl text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground tracking-tight">{t('heroTitle')}</h1>
-            <p className="mt-3 text-lg text-primary-foreground/90 max-w-xl mx-auto">{t('heroDescription')}</p>
+      {/* Modern Hero Section */}
+      <div className="bg-primary text-primary-foreground py-12 sm:py-20 md:py-28">
+        <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12 items-center">
+            <div className="text-center md:text-left">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
+                Weatherugo
+              </h1>
+              <p className="mt-4 text-lg sm:text-xl text-primary-foreground/90 max-w-2xl mx-auto md:mx-0">
+                {t('heroDescription')}
+              </p>
+              <div className="mt-10 flex flex-col sm:flex-row sm:justify-center md:justify-start gap-4">
+                <Button
+                  size="lg"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-xl transform hover:scale-105 transition-transform duration-150 ease-in-out px-8 py-3 text-base font-semibold"
+                  asChild
+                >
+                  <Link href="#">{t('downloadAppButton')}</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-center md:justify-end">
+              <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 transition-transform duration-300 ease-out">
+                <Image
+                  src="https://placehold.co/600x500.png"
+                  alt="App illustration or lifestyle image placeholder"
+                  width={600}
+                  height={500}
+                  className="object-cover w-full h-full"
+                  data-ai-hint="app interface mobile lifestyle"
+                  priority
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Rest of the page content */}
       <div className="container mx-auto max-w-2xl p-4 space-y-6 mt-6">
         <div className="grid md:grid-cols-2 gap-6">
           <LocationDateSelector

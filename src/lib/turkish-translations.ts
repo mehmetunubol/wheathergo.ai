@@ -20,8 +20,9 @@ export const trTranslations = {
   // Navbar
   appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
   // MainPage
-  heroTitle: "Weatherugo'ya Hoş Geldiniz!",
-  heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.",
+  heroTitle: "Weatherugo'ya Hoş Geldiniz!", // This key exists
+  heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.", // This key exists
+  downloadAppButton: "Uygulamayı İndir", // New key for the modern hero CTA
   locationDateTime: "Konum & Tarih/Saat",
   locationLabel: "Konum",
   locationPlaceholder: "Örn: New York, Londra veya Mevcut Konum",
