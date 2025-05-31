@@ -329,7 +329,10 @@ export default function HomePage() {
                             });
                         }
                     }
-                } catch (e) { localStorage.removeItem("weatherugo-lastKnownWeather"); }
+                } catch (e) { 
+                  console.warn("Failed to parse lastKnownWeather, removing item.", e);
+                  localStorage.removeItem("weatherugo-lastKnownWeather"); 
+                }
             }
             localStorage.setItem("weatherugo-lastKnownWeather", JSON.stringify({
                 location: data.location,
@@ -552,7 +555,7 @@ export default function HomePage() {
                   className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out px-5 py-2 text-sm font-semibold"
                   asChild
                 >
-                  <Link href="#">{t('downloadAppButton')}</Link>
+                  <Link href="/login">{t('heroSignUpButton')}</Link>
                 </Button>
               </div>
             </div>
@@ -673,5 +676,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

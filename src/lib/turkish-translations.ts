@@ -20,9 +20,9 @@ export const trTranslations = {
   // Navbar
   appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
   // MainPage
-  heroTitle: "Weatherugo'ya Hoş Geldiniz!", // This key exists
-  heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.", // This key exists
-  downloadAppButton: "Uygulamayı İndir", // New key for the modern hero CTA
+  heroTitle: "Weatherugo'ya Hoş Geldiniz!", 
+  heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.",
+  heroSignUpButton: "Kaydol", // Changed from downloadAppButton
   locationDateTime: "Konum & Tarih/Saat",
   locationLabel: "Konum",
   locationPlaceholder: "Örn: New York, Londra veya Mevcut Konum",
@@ -449,6 +449,14 @@ export const trTranslations = {
   demotedFromAdmin: "yöneticilikten çıkarıldı",
   grantedPremium: "premium verildi",
   revokedPremium: "premium geri alındı",
+  errorFirebase: "Bir Firebase hatası oluştu: {message}",
+  adminToggleOwnAdminError: "Yöneticiler kendi yönetici durumlarını değiştiremezler.",
+  adminToggleOwnActiveError: "Yöneticiler kendi aktiflik durumlarını değiştiremezler.",
+  adminDeleteOwnError: "Yöneticiler kendi hesap kayıtlarını silemezler.",
+  confirmDeleteUserTitle: "Kullanıcı Kaydını Sil?",
+  confirmDeleteUserDesc: "'{userIdentifier}' kullanıcısının Firestore kaydını silmek istediğinizden emin misiniz? Bu işlem Firebase Kimlik Doğrulama hesabını SİLMEZ. Kullanıcı tekrar giriş yaparak yeni bir kayıt oluşturabilir.",
+  confirmDeleteBlogPostTitle: "Blog Yazısını Sil?",
+  confirmDeleteBlogPostDesc: "'{postTitle}' başlıklı blog yazısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
   // Blog
   blogTitle: "Blog",
   blogDescription: "Weatherugo ekibinden makaleleri, ipuçlarını ve güncellemeleri keşfedin.",
@@ -536,4 +544,3 @@ export const trTranslations = {
   maxTravelPlansLimitReached: "İzin verilen maksimum seyahat planı sayısına ulaştınız. Yeni bir plan eklemek için lütfen mevcut bir planı silin veya planınızı yükseltin.",
   suggestionsLimitReached: "Bugün için günlük AI öneri limitine ulaşıldı.",
 };
-
