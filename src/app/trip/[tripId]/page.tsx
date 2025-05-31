@@ -210,7 +210,7 @@ export default function TripDetailsPage() {
       setSegments([]);
       return;
     }
-    if (isRegenerating) return; // Skip normal init if regeneration is in progress
+    if (isRegenerating) return; 
 
     const baseUiSegments = getUniqueDateSegments(plan);
     const newSegments = baseUiSegments.map(uiSeg => {
@@ -231,7 +231,7 @@ export default function TripDetailsPage() {
     });
     setSegments(newSegments);
   // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [plan, user, familyProfile, appSettingsLoading, getUniqueDateSegments]); // Removed isRegenerating from here
+  }, [plan, user, familyProfile, appSettingsLoading, getUniqueDateSegments]);
 
   React.useEffect(() => {
     if (authIsLoading || appSettingsLoading || !plan || !user || !familyProfile) {
@@ -309,7 +309,7 @@ export default function TripDetailsPage() {
             fetchedAt: new Date().toISOString(),
           }));
   
-        if (newStoredSuggestionsArray.length > 0 || baseUiSegments.length > 0) { // Update even if all failed to clear old ones
+        if (newStoredSuggestionsArray.length > 0 || baseUiSegments.length > 0) { 
           try {
             const planDocRef = doc(db, "users", user.uid, "travelPlans", tripId);
             await updateDoc(planDocRef, { storedSuggestions: newStoredSuggestionsArray });
@@ -383,15 +383,15 @@ export default function TripDetailsPage() {
     }
     return () => { activeFetches = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, user, familyProfile, isRegenerating, language, appSettingsLoading]); // Removed many deps that are stable or indirectly covered
+  }, [plan, user, familyProfile, isRegenerating, language, appSettingsLoading, appSettings.maxApiForecastDays, t, toast, getUniqueDateSegments, checkAndUpdateTripSegmentUsage, incrementTripSegmentUsage]);
 
   const handleRegenerateSuggestions = async () => {
     if (!plan || !user) return;
-    const confirmed = window.confirm(t('confirmRegenerate') || "Are you sure you want to regenerate all suggestions for this trip? This will fetch fresh data and overwrite any stored suggestions.");
-    if (confirmed) {
+    // const confirmed = window.confirm(t('confirmRegenerate') || "Are you sure you want to regenerate all suggestions for this trip? This will fetch fresh data and overwrite any stored suggestions.");
+    // if (confirmed) { // Removed confirm to avoid sandbox issues
         setTripDetailLimitReachedForPage(false); 
         setIsRegenerating(true); 
-    }
+    // }
   };
 
   const handleAccordionTriggerClick = (segmentToLoad: ExtendedTripSegmentSuggestions) => {
@@ -744,3 +744,5 @@ export default function TripDetailsPage() {
     </div>
   );
 }
+
+
