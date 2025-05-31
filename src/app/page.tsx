@@ -18,7 +18,7 @@ import { format, isToday as fnsIsToday, getHours, isValid, parseISO, startOfDay,
 import { HourlyForecastCard } from "@/components/hourly-forecast-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plane, LogIn, Sparkles, AlertTriangle, Info } from "lucide-react";
+import { Plane, LogIn, Sparkles, AlertTriangle, Info, Newspaper } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/contexts/app-settings-context";
 import { db } from "@/lib/firebase";
@@ -505,7 +505,7 @@ export default function HomePage() {
         {/* Modern Hero Section Placeholder while loading */}
         <div className="bg-primary text-primary-foreground py-8 sm:py-10 md:py-12">
           <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 items-center">
               <div>
                 <Skeleton className="h-8 w-3/4 mb-2" /> 
                 <Skeleton className="h-4 w-full mb-1" /> 
@@ -544,7 +544,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 items-center">
             <div className="text-center md:text-left">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
-                Weatherugo
+                {t('heroTitle')}
               </h1>
               <p className="mt-2 text-sm sm:text-base text-primary-foreground/90 max-w-2xl mx-auto md:mx-0">
                 {t('heroDescription')}
@@ -563,7 +563,7 @@ export default function HomePage() {
               <div className="w-full max-w-[280px] sm:max-w-xs md:max-w-xs lg:max-w-sm rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 transition-transform duration-300 ease-out">
                 <Image
                   src="https://i.ibb.co/JRtf4S5W/image.png"
-                  alt="Weatherugo app illustration showing travel and clothing items"
+                  alt={t('visualizedOutfitAlt')}
                   width={400}
                   height={320}
                   className="object-cover w-full h-full"
@@ -672,9 +672,27 @@ export default function HomePage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="shadow-lg bg-secondary/20 border-secondary/40">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
+              <Newspaper className="text-primary h-6 w-6" />
+              {t('blogPromoCardTitle')}
+            </CardTitle>
+            <CardDescription className="!mt-2 text-foreground/90">
+              {t('blogPromoCardDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Link href="/blog" passHref>
+              <Button variant="outline" className="w-full sm:w-auto">
+                {t('goToBlogButton')} <Sparkles className="ml-2 h-4 w-4 text-accent" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
 }
-
-    

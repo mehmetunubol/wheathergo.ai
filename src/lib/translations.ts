@@ -14,11 +14,9 @@ type AllTranslations = {
 export const translations: AllTranslations = {
   en: {
     ...enTranslations,
-    // Removed downloadAppButton, heroSignUpButton is already in enTranslations
   },
   tr: {
     ...trTranslations,
-    // Removed downloadAppButton, heroSignUpButton is already in trTranslations
   },
 };
 

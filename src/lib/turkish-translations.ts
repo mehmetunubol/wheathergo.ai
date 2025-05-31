@@ -20,9 +20,9 @@ export const trTranslations = {
   // Navbar
   appTagline: "Kişisel hava durumu & seyahat rehberiniz.",
   // MainPage
-  heroTitle: "Weatherugo'ya Hoş Geldiniz!", 
+  heroTitle: "Weatherugo", 
   heroDescription: "Hava durumuna dayalı kıyafet, aktivite önerileri ve seyahat planlaması için kişisel rehberiniz. Konumunuza, tarihe ve aile profilinize göre özel tavsiyeler alın.",
-  heroSignUpButton: "Kaydol", // Changed from downloadAppButton
+  heroSignUpButton: "Kaydol",
   locationDateTime: "Konum & Tarih/Saat",
   locationLabel: "Konum",
   locationPlaceholder: "Örn: New York, Londra veya Mevcut Konum",
@@ -518,6 +518,9 @@ export const trTranslations = {
   blogTitleContentRequired: "Blog yazısı için Başlık ve İçerik gereklidir.",
   blogPromptDetailsLabel: "AI İçin Detaylar (İsteğe Bağlı)",
   blogPromptDetailsPlaceholder: "Örn: Bütçe dostu seçeneklere odaklanın, hedef kitle küçük çocuklu aileler, mizahi bir dil kullanın...",
+  blogPromoCardTitle: "Blogumuzu Keşfedin",
+  blogPromoCardDescription: "Weatherugo ekibinden bilgilendirici makaleleri, seyahat ipuçlarını ve en son güncellemeleri keşfedin!",
+  goToBlogButton: "Blogumuzu Okuyun",
 
   // Outfit Visualization Card
   visualizeOutfitTitle: "Kıyafeti Görselleştir",
